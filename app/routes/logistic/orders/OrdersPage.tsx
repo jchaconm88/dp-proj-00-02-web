@@ -1,0 +1,166 @@
+import { useRef, useState } from "react";
+import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import {
+  getOrders,
+  deleteOrder,
+  deleteOrders,
+  type OrderRecord,
+} from "~/features/logistic/orders";
+import type { Route } from "./+types/OrdersPage";
+import { DpContent, DpContentHeader } from "~/components/DpContent";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { ORDER_STATUS } from "~/constants/status-options";
+import OrderDialog from "./OrderDialog";
+
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: "Pedidos" },
+    { name: "description", content: "Gestión de pedidos logísticos" },
+  ];
+}
+
+type OrderRow = OrderRecord & { locationStr?: string; windowStr?: string };
+
+const TABLE_DEF: DpTableDefColumn[] = [
+  { header: "Código", column: "code", order: 1, display: true, filter: true },
+  { header: "Cliente", column: "client", order: 2, display: true, filter: true },
+  {
+    header: "Dirección entrega",
+    column: "deliveryAddress",
+    order: 3,
+    display: true,
+    filter: true,
+  },
+  {
+    header: "Ubicación",
+    column: "locationStr",
+    order: 4,
+    display: true,
+    filter: true,
+  },
+  {
+    header: "Ventana",
+    column: "windowStr",
+    order: 5,
+    display: true,
+    filter: true,
+  },
+  { header: "Peso", column: "weight", order: 6, display: true, filter: true },
+  { header: "Volumen", column: "volume", order: 7, display: true, filter: true },
+  {
+    header: "Estado",
+    column: "status",
+    order: 8,
+    display: true,
+    filter: true,
+    type: "status",
+    typeOptions: ORDER_STATUS,
+  },
+];
+
+export async function clientLoader() {
+  const { items } = await getOrders();
+  return {
+    items: items.map((o) => ({
+      ...o,
+      locationStr: `${o.location.latitude}, ${o.location.longitude}`,
+      windowStr: `${o.deliveryWindowStart} - ${o.deliveryWindowEnd}`,
+    })),
+  };
+}
+
+export default function OrdersPage({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
+  const navigation = useNavigation();
+  const revalidator = useRevalidator();
+  const tableRef = useRef<DpTableRef<OrderRow>>(null);
+
+  const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
+  const isAdd = !!useMatch("/logistic/orders/add");
+  const editMatch = useMatch("/logistic/orders/edit/:id");
+  const editId = editMatch?.params.id ?? null;
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filterValue, setFilterValue] = useState("");
+  const [selectedCount, setSelectedCount] = useState(0);
+
+  const dialogVisible = isAdd || !!editId;
+
+  const handleFilter = (value: string) => {
+    setFilterValue(value);
+    tableRef.current?.filter(value);
+  };
+
+  const openAdd = () => navigate("/logistic/orders/add");
+  const openEdit = (row: OrderRow) =>
+    navigate(`/logistic/orders/edit/${encodeURIComponent(row.id)}`);
+
+  const handleDelete = async () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (!selected.length) return;
+    if (!confirm(`¿Eliminar ${selected.length} pedido(s)?`)) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      if (selected.length === 1) {
+        await deleteOrder(selected[0].id);
+      } else {
+        await deleteOrders(selected.map((r) => r.id));
+      }
+      tableRef.current?.clearSelectedRows();
+      revalidator.revalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSuccess = () => {
+    navigate("/logistic/orders");
+    revalidator.revalidate();
+  };
+
+  const handleHide = () => navigate("/logistic/orders");
+
+  return (
+    <DpContent title="PEDIDOS">
+      <DpContentHeader
+        onLoad={() => revalidator.revalidate()}
+        onCreate={openAdd}
+        onDelete={handleDelete}
+        deleteDisabled={selectedCount === 0 || saving}
+        filterValue={filterValue}
+        onFilter={handleFilter}
+        filterPlaceholder="Filtrar por cliente, dirección..."
+      />
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
+      <DpTable<OrderRow>
+        ref={tableRef}
+        data={loaderData.items}
+        loading={isLoading || saving}
+        tableDef={TABLE_DEF}
+        onSelectionChange={(rows) => setSelectedCount(rows.length)}
+        onEdit={openEdit}
+        showFilterInHeader={false}
+        emptyMessage="No hay pedidos."
+        emptyFilterMessage="No se encontraron pedidos."
+      />
+
+      {dialogVisible && (
+        <OrderDialog
+          visible={dialogVisible}
+          orderId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
+    </DpContent>
+  );
+}

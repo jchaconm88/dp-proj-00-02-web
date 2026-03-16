@@ -1,0 +1,139 @@
+import { useRef, useState } from "react";
+import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import {
+  getTripById,
+  getTripStops,
+  deleteTripStop,
+  type TripRecord,
+  type TripStopRecord,
+} from "~/features/transport/trips";
+import type { Route } from "./+types/TripStopsPage";
+import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { STOP_TYPE, STOP_STATUS } from "~/constants/status-options";
+import TripStopDialog from "./TripStopDialog";
+
+export function meta({ data }: Route.MetaArgs) {
+  const tripCode = data?.trip?.code ?? "Viaje";
+  return [
+    { title: `Paradas: ${tripCode}` },
+    { name: "description", content: `Paradas del viaje ${tripCode}` },
+  ];
+}
+
+const TABLE_DEF: DpTableDefColumn[] = [
+  { header: "Orden", column: "order", order: 1, display: true, filter: true },
+  { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: STOP_TYPE },
+  { header: "Nombre", column: "name", order: 3, display: true, filter: true },
+  { header: "Lat", column: "lat", order: 4, display: true, filter: true },
+  { header: "Lng", column: "lng", order: 5, display: true, filter: true },
+  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: STOP_STATUS },
+  { header: "Llegada planificada", column: "plannedArrival", order: 7, display: true, filter: true, type: "datetime" },
+];
+
+export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  const tripId = (params?.id ?? "") as string;
+  if (!tripId) throw new Error("ID de viaje no encontrado");
+  const trip = await getTripById(tripId);
+  if (!trip) throw new Error("Viaje no encontrado");
+  const { items } = await getTripStops(tripId);
+  return { trip, stops: items, tripId };
+}
+
+export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
+  const { trip, stops, tripId } = loaderData;
+  const navigate = useNavigate();
+  const navigation = useNavigation();
+  const revalidator = useRevalidator();
+  const tableRef = useRef<DpTableRef<TripStopRecord>>(null);
+
+  const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
+  const isAdd = !!useMatch("/transport/trips/:id/trip-stops/add");
+  const editMatch = useMatch("/transport/trips/:id/trip-stops/edit/:stopId");
+  const editStopId = editMatch?.params.stopId ?? null;
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filterValue, setFilterValue] = useState("");
+  const [selectedCount, setSelectedCount] = useState(0);
+
+  const dialogVisible = isAdd || !!editStopId;
+
+  const handleFilter = (value: string) => {
+    setFilterValue(value);
+    tableRef.current?.filter(value);
+  };
+
+  const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops/add`);
+  const openEdit = (row: TripStopRecord) =>
+    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops/edit/${encodeURIComponent(row.id)}`);
+
+  const handleDelete = async () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (!selected.length) return;
+    if (!confirm(`¿Eliminar ${selected.length} parada(s)?`)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      for (const s of selected) {
+        await deleteTripStop(tripId, s.id);
+      }
+      tableRef.current?.clearSelectedRows();
+      revalidator.revalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSuccess = () => {
+    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`);
+    revalidator.revalidate();
+  };
+  const handleHide = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`);
+  const onBack = () => navigate("/transport/trips");
+
+  return (
+    <DpContentInfo
+      title={trip ? `Paradas: ${trip.code}` : "Paradas del viaje"}
+      backLabel="Volver a viajes"
+      onBack={onBack}
+    >
+      <DpContentHeader
+        onLoad={() => revalidator.revalidate()}
+        onCreate={openAdd}
+        onDelete={handleDelete}
+        deleteDisabled={selectedCount === 0 || saving}
+        filterValue={filterValue}
+        onFilter={handleFilter}
+        filterPlaceholder="Filtrar paradas..."
+      />
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
+      <DpTable<TripStopRecord>
+        ref={tableRef}
+        data={loaderData.stops}
+        loading={isLoading || saving}
+        tableDef={TABLE_DEF}
+        onSelectionChange={(rows) => setSelectedCount(rows.length)}
+        onEdit={openEdit}
+        showFilterInHeader={false}
+        emptyMessage="No hay paradas en este viaje."
+        emptyFilterMessage="No se encontraron paradas."
+      />
+      {dialogVisible && (
+        <TripStopDialog
+          visible={dialogVisible}
+          tripId={tripId}
+          stopId={editStopId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
+    </DpContentInfo>
+  );
+}

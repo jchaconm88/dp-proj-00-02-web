@@ -1,0 +1,275 @@
+[
+  {
+    "title": "Inicio",
+    "enabled": true,
+    "icon": "shopping-cart",
+    "link": "/home",
+    "home": true
+  },
+  {
+    "title": "IoT Dashboard",
+    "enabled": true,
+    "icon": "home",
+    "link": "/home",
+    "permission": [
+      "view",
+      "dashboard"
+    ]
+  },
+  {
+    "title": "FEATURES",
+    "enabled": true,
+    "group": true,
+    "permission": [
+      "view",
+      "features"
+    ]
+  },
+  {
+    "title": "Sistema",
+    "enabled": true,
+    "icon": "folder",
+    "children": [
+      {
+        "title": "Usuarios",
+        "link": "/system/users",
+        "permission": [
+          "view",
+          "user"
+        ]
+      },
+      {
+        "title": "Roles",
+        "link": "/system/roles",
+        "permission": [
+          "view",
+          "role"
+        ]
+      },
+      {
+        "title": "Módulos",
+        "link": "/system/modules",
+        "permission": [
+          "view",
+          "module"
+        ]
+      },
+      {
+        "title": "Secuencias",
+        "link": "/system/sequences",
+        "permission": [
+          "view",
+          "sequence"
+        ]
+      },
+      {
+        "title": "Contadores",
+        "link": "/system/counters",
+        "permission": [
+          "view",
+          "counter"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Maestros",
+    "enabled": true,
+    "icon": "pencil",
+    "children": [
+      {
+        "title": "Tipos de Documento",
+        "link": "/master/document-types",
+        "permission": [
+          "view",
+          "document-type"
+        ]
+      },
+      {
+        "title": "Clientes",
+        "link": "/master/clients",
+        "permission": [
+          "view",
+          "client"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Recursos humanos",
+    "enabled": true,
+    "icon": "users",
+    "children": [
+      {
+        "title": "Empleados",
+        "link": "/human-resource/employees",
+        "permission": [
+          "view",
+          "employee"
+        ]
+      },
+      {
+        "title": "Contratos Laborales",
+        "link": "/human-resource/contracts",
+        "permission": [
+          "view",
+          "contract"
+        ]
+      },
+      {
+        "title": "Cargos",
+        "link": "/human-resource/positions",
+        "permission": [
+          "view",
+          "position"
+        ]
+      },
+      {
+        "title": "Recursos Externos",
+        "link": "/human-resource/resources",
+        "permission": [
+          "view",
+          "resource"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Logística",
+    "enabled": true,
+    "icon": "stop",
+    "children": [
+      {
+        "title": "Pedidos",
+        "link": "/logistic/orders",
+        "permission": [
+          "view",
+          "order"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Transporte",
+    "enabled": true,
+    "icon": "truck",
+    "children": [
+      {
+        "title": "Servicios",
+        "link": "/transport/transport-services",
+        "permission": [
+          "view",
+          "transport-service"
+        ]
+      },
+      {
+        "title": "Contratos",
+        "link": "/transport/transport-contracts",
+        "permission": [
+          "view",
+          "transport-contract"
+        ]
+      },
+      {
+        "title": "Vehículos",
+        "link": "/transport/vehicles",
+        "permission": [
+          "view",
+          "vehicle"
+        ]
+      },
+      {
+        "title": "Conductores",
+        "link": "/transport/drivers",
+        "permission": [
+          "view",
+          "driver"
+        ]
+      },
+      {
+        "title": "Planes",
+        "link": "/transport/plans",
+        "permission": [
+          "view",
+          "plan"
+        ]
+      },
+      {
+        "title": "Rutas",
+        "link": "/transport/routes",
+        "permission": [
+          "view",
+          "route"
+        ]
+      },
+      {
+        "title": "Viajes",
+        "link": "/transport/trips",
+        "permission": [
+          "view",
+          "trip"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Recursos Humanos",
+    "enabled": true,
+    "icon": "align-left",
+    "children": []
+  },
+  {
+    "title": "UI Features",
+    "enabled": true,
+    "icon": "th-large",
+    "children": []
+  },
+  {
+    "title": "Modal & Overlays",
+    "enabled": true,
+    "icon": "stop",
+    "link": "#"
+  },
+  {
+    "title": "Extra Components",
+    "enabled": true,
+    "icon": "comments",
+    "link": "#"
+  },
+  {
+    "title": "Maps",
+    "enabled": true,
+    "icon": "map-marker",
+    "link": "#"
+  },
+  {
+    "title": "Charts",
+    "enabled": true,
+    "icon": "chart-line",
+    "link": "#"
+  },
+  {
+    "title": "Editors",
+    "enabled": true,
+    "icon": "align-left",
+    "link": "#"
+  },
+  {
+    "title": "Tables & Data",
+    "enabled": true,
+    "icon": "table",
+    "link": "/home"
+  },
+  {
+    "title": "Miscellaneous",
+    "enabled": true,
+    "icon": "wrench",
+    "link": "#"
+  },
+  {
+    "title": "Auth",
+    "enabled": true,
+    "icon": "lock",
+    "link": "/account"
+  }
+]
