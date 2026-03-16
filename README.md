@@ -1,4 +1,4 @@
-# dp-proj-00-02 — Panel de Administración
+# dp-proj-00-02-web — Panel de Administración
 
 Aplicación de administración tipo back-office construida con **React Router v7** (SPA), **Firebase** (Auth + Firestore) y **PrimeReact**. Incluye gestión de usuarios, roles y módulos del sistema con layout responsivo, temas claro/oscuro y barra de progreso global.
 
@@ -38,7 +38,7 @@ Aplicación de administración tipo back-office construida con **React Router v7
 
 ```bash
 git clone <repo-url>
-cd dp-proj-00-02
+cd dp-proj-00-02-web
 npm install
 ```
 
@@ -150,7 +150,7 @@ Cache-Control:
 ## Estructura del proyecto
 
 ```
-dp-proj-00-02/
+dp-proj-00-02-web/
 ├── app/
 │   ├── components/
 │   │   ├── DpContent/          # Panel + header de página (DpContent, DpContentHeader,

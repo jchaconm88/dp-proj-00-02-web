@@ -1,4 +1,4 @@
-# Arquitectura y Convenciones — dp-proj-00-02
+# Arquitectura y Convenciones — dp-proj-00-02-web
 
 Este proyecto es una SPA de administración construida con **React Router v7 (framework mode)**, **Firebase/Firestore**, y **PrimeReact**. Todos los AI assistants deben seguir las convenciones documentadas aquí al generar o modificar código.
 
