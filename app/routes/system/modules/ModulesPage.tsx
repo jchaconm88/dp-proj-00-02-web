@@ -94,7 +94,7 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {/* data prop: modo controlado â€” se actualiza automáticamente con cada revalidación */}
+      {/* data prop: modo controlado - se actualiza automáticamente con cada revalidación */}
       <DpTable<ModuleRecord>
         ref={tableRef}
         data={loaderData.modules}

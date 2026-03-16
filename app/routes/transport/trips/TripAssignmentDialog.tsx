@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
+import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
+import { resolveCodeIfEmpty } from "~/features/system/sequences";
 import {
   getTripAssignmentById,
   addTripAssignment,
@@ -78,8 +80,16 @@ export default function TripAssignmentDialog({
     setSaving(true);
     setError(null);
     try {
+      let finalCode: string;
+      try {
+        finalCode = await resolveCodeIfEmpty(code, "trip-assignment");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al generar código.");
+        setSaving(false);
+        return;
+      }
       const payload = {
-        code: code.trim(),
+        code: finalCode,
         tripId,
         entityType,
         entityId: entityId.trim(),
@@ -124,7 +134,7 @@ export default function TripAssignmentDialog({
               {error}
             </div>
           )}
-          <DpInput type="input" label="Código" name="code" value={code} onChange={setCode} placeholder="ASG-001" />
+          <DpCodeInput entity="trip-assignment" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput
             type="select"
             label="Tipo entidad"

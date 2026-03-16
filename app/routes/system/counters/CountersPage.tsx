@@ -39,7 +39,7 @@ export default function Counters({ loaderData }: Route.ComponentProps) {
   // Loading unificado: navegación entre rutas + revalidaciones
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
 
-  // Detección de diálogo activo por URL â€” useMatch es la API oficial de RR v7
+  // Detección de diálogo activo por URL - useMatch es la API oficial de RR v7
   const addMatch = useMatch("/system/counters/add");
   const editMatch = useMatch("/system/counters/edit/:id");
   const isAdd = !!addMatch;
@@ -96,7 +96,7 @@ export default function Counters({ loaderData }: Route.ComponentProps) {
           </div>
         )}
 
-        {/* data prop: modo controlado â€” se actualiza automáticamente con cada revalidación */}
+        {/* data prop: modo controlado - se actualiza automáticamente con cada revalidación */}
         <DpTable<CounterRecord>
           ref={tableRef}
           data={loaderData.counters}

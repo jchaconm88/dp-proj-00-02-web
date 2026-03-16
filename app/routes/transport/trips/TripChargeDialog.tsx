@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
+import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
+import { resolveCodeIfEmpty } from "~/features/system/sequences";
 import {
   getTripChargeById,
   addTripCharge,
@@ -93,8 +95,16 @@ export default function TripChargeDialog({
     setSaving(true);
     setError(null);
     try {
+      let finalCode: string;
+      try {
+        finalCode = await resolveCodeIfEmpty(code, "trip-charge");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al generar código.");
+        setSaving(false);
+        return;
+      }
       const payload = {
-        code: code.trim(),
+        code: finalCode,
         tripId,
         type,
         source,
@@ -140,11 +150,11 @@ export default function TripChargeDialog({
               {error}
             </div>
           )}
-          <DpInput type="input" label="Código" name="code" value={code} onChange={setCode} placeholder="CHARGE-001" />
+          <DpCodeInput entity="trip-charge" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => setType(v as TripChargeType)} options={TYPE_OPTIONS} />
           <DpInput type="select" label="Origen" name="source" value={source} onChange={(v) => setSource(v as TripChargeSource)} options={SOURCE_OPTIONS} />
           <DpInput type="number" label="Monto" name="amount" value={amount} onChange={setAmount} placeholder="0" />
-          <DpInput type="select" label="Moneda" name="currency" value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
+          <DpInput type="select" label="Moneda" name="currency" value={currency} onChange={(v) => setCurrency(String(v ?? ""))} options={CURRENCY_OPTIONS} />
           <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as TripChargeStatus)} options={STATUS_OPTIONS} />
           <DpInput type="input" label="ID liquidación" name="settlementId" value={settlementId} onChange={setSettlementId} placeholder="Opcional" />
         </div>

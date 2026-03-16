@@ -60,7 +60,7 @@ export function DpCodeInput({
 
   let effectivePlaceholder = placeholder;
   if (loading) {
-    effectivePlaceholder = "Cargandoâ€¦";
+    effectivePlaceholder = "Cargando...";
   } else if (!sequence) {
     effectivePlaceholder = placeholder ?? "No hay secuencia para esta entidad";
   } else if (!allowManual) {

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
+import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
+import { resolveCodeIfEmpty } from "~/features/system/sequences";
 import {
   getTripCostById,
   addTripCost,
@@ -103,8 +105,16 @@ export default function TripCostDialog({
     setSaving(true);
     setError(null);
     try {
+      let finalCode: string;
+      try {
+        finalCode = await resolveCodeIfEmpty(code, "trip-cost");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al generar código.");
+        setSaving(false);
+        return;
+      }
       const payload = {
-        code: code.trim(),
+        code: finalCode,
         tripId,
         entity,
         entityId: entityId.trim(),
@@ -152,13 +162,13 @@ export default function TripCostDialog({
               {error}
             </div>
           )}
-          <DpInput type="input" label="Código" name="code" value={code} onChange={setCode} placeholder="COST-001" />
+          <DpCodeInput entity="trip-cost" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput type="select" label="Entidad" name="entity" value={entity} onChange={(v) => setEntity(v as TripCostEntity)} options={ENTITY_OPTIONS} />
           <DpInput type="input" label="ID entidad" name="entityId" value={entityId} onChange={setEntityId} placeholder="ID de asignación o empresa" />
           <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => setType(v as TripCostType)} options={TYPE_OPTIONS} />
           <DpInput type="select" label="Origen" name="source" value={source} onChange={(v) => setSource(v as TripCostSource)} options={SOURCE_OPTIONS} />
           <DpInput type="number" label="Monto" name="amount" value={amount} onChange={setAmount} placeholder="0" />
-          <DpInput type="select" label="Moneda" name="currency" value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
+          <DpInput type="select" label="Moneda" name="currency" value={currency} onChange={(v) => setCurrency(String(v ?? ""))} options={CURRENCY_OPTIONS} />
           <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as TripCostStatus)} options={STATUS_OPTIONS} />
           <DpInput type="input" label="ID liquidación" name="settlementId" value={settlementId} onChange={setSettlementId} placeholder="Opcional" />
         </div>

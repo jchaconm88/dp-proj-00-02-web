@@ -59,7 +59,7 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
   const [permissionEditModuleId, setPermissionEditModuleId] = useState<string | null>(null);
   const [editRoleOpen, setEditRoleOpen] = useState(false);
 
-  // Filas de permisos derivadas del loaderData â€” se recalculan en cada revalidación
+  // Filas de permisos derivadas del loaderData - se recalculan en cada revalidación
   const permissionRows: PermissionRow[] = Object.entries(role?.permissions ?? {}).map(
     ([moduleId, codes]) => ({
       id: moduleId,
@@ -165,7 +165,7 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
             htmlFor="full-access"
             className="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Acceso total al sistema (*.*) â€” este rol puede hacer cualquier operación
+            Acceso total al sistema (*.*) - este rol puede hacer cualquier operación
           </label>
         </div>
 
@@ -184,7 +184,7 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
             loading={isLoading}
             filterPlaceholder="Filtrar módulos..."
           />
-          {/* data prop: modo controlado â€” se actualiza con cada revalidación */}
+          {/* data prop: modo controlado - se actualiza con cada revalidación */}
           <DpTable<PermissionRow>
             ref={permissionTableRef}
             data={permissionRows}

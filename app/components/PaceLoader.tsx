@@ -64,7 +64,7 @@ export default function PaceLoader() {
 
   return (
     <div
-      aria-label="Cargandoâ€¦"
+      aria-label="Cargando..."
       role="progressbar"
       aria-valuenow={progress}
       style={{

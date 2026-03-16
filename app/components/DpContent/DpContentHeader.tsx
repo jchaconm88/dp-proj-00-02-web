@@ -30,7 +30,7 @@ export default function DpContentHeader({
   onDelete,
   deleteDisabled = true,
   loading = false,
-  filterPlaceholder = "Filtrarâ€¦",
+  filterPlaceholder = "Filtrar...",
 }: DpContentHeaderProps) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">

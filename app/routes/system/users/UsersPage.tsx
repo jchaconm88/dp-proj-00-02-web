@@ -96,7 +96,7 @@ export default function Users({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {/* data prop: modo controlado â€” se actualiza automáticamente con cada revalidación */}
+      {/* data prop: modo controlado - se actualiza automáticamente con cada revalidación */}
       <DpTable<ProfileRecord>
         ref={tableRef}
         data={loaderData.users}

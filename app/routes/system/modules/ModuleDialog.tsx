@@ -83,7 +83,7 @@ export default function ModuleDialog({
       onHide={onHide}
     >
       {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargandoâ€¦</div>
+        <div className="py-8 text-center text-zinc-500">Cargando...</div>
       ) : (
         <>
           {error && (

@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useNavigation } from "react-router";
 import { Button } from "primereact/button";
 import { DpInput } from "~/components/DpInput";
+import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
+import { resolveCodeIfEmpty } from "~/features/system/sequences";
 import {
   getTripById,
   addTrip,
@@ -196,8 +198,16 @@ export default function TripDialog({
     setSaving(true);
     setError(null);
     try {
+      let finalCode: string;
+      try {
+        finalCode = await resolveCodeIfEmpty(code, "trip");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al generar código.");
+        setSaving(false);
+        return;
+      }
       const payload = {
-        code: code.trim(),
+        code: finalCode,
         routeId: isExternalRoute ? "" : routeId.trim(),
         route: route.trim(),
         isExternalRoute,
@@ -251,7 +261,7 @@ export default function TripDialog({
               {error}
             </div>
           )}
-          <DpInput type="input" label="Código" name="code" value={code} onChange={setCode} placeholder="VIAJE-001" />
+          <DpCodeInput entity="trip" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput
             type="check"
             label="Ruta externa"

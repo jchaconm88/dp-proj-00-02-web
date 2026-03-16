@@ -68,7 +68,7 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
   const [columnEditIndex, setColumnEditIndex] = useState<number | null>(null);
   const [editModuleOpen, setEditModuleOpen] = useState(false);
 
-  // Filas derivadas del loaderData â€” se recalculan en cada revalidación (sin useEffect)
+  // Filas derivadas del loaderData - se recalculan en cada revalidación (sin useEffect)
   const permissionRows = useMemo<PermissionRow[]>(
     () =>
       (Array.isArray(module?.permissions) ? module.permissions : []).map((p, i) => ({
@@ -185,7 +185,7 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
             loading={isLoading}
             filterPlaceholder="Filtrar permisos..."
           />
-          {/* data prop: modo controlado â€” se actualiza con cada revalidación */}
+          {/* data prop: modo controlado - se actualiza con cada revalidación */}
           <DpTable<PermissionRow>
             ref={permissionTableRef}
             data={permissionRows}
@@ -214,7 +214,7 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
             loading={isLoading}
             filterPlaceholder="Filtrar columnas..."
           />
-          {/* data prop: modo controlado â€” se actualiza con cada revalidación */}
+          {/* data prop: modo controlado - se actualiza con cada revalidación */}
           <DpTable<ColumnRow>
             ref={columnTableRef}
             data={columnRows}

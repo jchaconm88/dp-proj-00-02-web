@@ -131,7 +131,7 @@ export default function SequenceDialog({
       onHide={onHide}
     >
       {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargandoâ€¦</div>
+        <div className="py-8 text-center text-zinc-500">Cargando...</div>
       ) : (
         <div className="flex flex-col gap-4 pt-2">
           {error && (
