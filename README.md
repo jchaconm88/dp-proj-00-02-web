@@ -241,9 +241,11 @@ El componente `~/components/DpTable` admite la prop opcional **`footerTotals`** 
 
 La tabla suele mostrar un valor **formateado** (ej. moneda con símbolo), pero la suma debe hacerse sobre un **número** en otro campo del objeto fila.
 
-**Ejemplo** (costos de viaje, `TripCostsPage`): columna visible `amountFormatted` (string tipo `S/. 50.00`) y suma sobre `amount` (number):
+**Ejemplo** (costos de viaje, `TripCostsPage`): columna visible `amountFormatted` (string tipo `S/. 50.00`) y suma sobre `amount` (number). El formateador compartido está en **`~/constants/currency-format`** (`formatAmountWithSymbol`).
 
 ```tsx
+import { formatAmountWithSymbol } from "~/constants/currency-format";
+// ...
 <DpTable<TripCostTableRow>
   data={tableRows}
   tableDef={TABLE_DEF}
@@ -257,6 +259,10 @@ La tabla suele mostrar un valor **formateado** (ej. moneda con símbolo), pero l
 ```
 
 Si **no** usas `sumValueKey`, se suma la propiedad con el mismo nombre que la columna (`row[column]`).
+
+### Paginador
+
+Por defecto `DpTable` muestra paginación. Para **ocultarla** y ver todas las filas: **`paginator={false}`** (no se pasan `rows` ni `rowsPerPageOptions` al `DataTable`).
 
 Convenciones y más detalle para el equipo: **`AGENTS.md`**.
 

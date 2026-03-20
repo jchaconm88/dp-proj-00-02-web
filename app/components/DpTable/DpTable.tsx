@@ -39,6 +39,11 @@ export interface DpTableProps<T extends DpTableRow> {
   onEdit?: (row: T) => void;
   filterPlaceholder?: string;
   showFilterInHeader?: boolean;
+  /**
+   * Muestra el paginador de PrimeReact. Si es `false`, se listan todas las filas sin paginar.
+   * @default true
+   */
+  paginator?: boolean;
   pageSizes?: number[];
   emptyMessage?: string;
   emptyFilterMessage?: string;
@@ -145,6 +150,7 @@ function DpTableInner<T extends DpTableRow>(
     onEdit,
     filterPlaceholder = "Filtrar...",
     showFilterInHeader = true,
+    paginator: paginatorEnabled = true,
     pageSizes = DEFAULT_PAGE_SIZES,
     emptyMessage = "No hay datos.",
     emptyFilterMessage = "No hay resultados para el filtro.",
@@ -207,6 +213,14 @@ function DpTableInner<T extends DpTableRow>(
       filter,
     }),
     [setDatasource, clearDatasource, setLoading, getSelectedRows, clearSelectedRows, filter]
+  );
+
+  /** PrimeReact: persiste el nuevo orden de filas en el estado interno (también con `data` controlada hasta que el padre envíe nuevos datos). */
+  const onRowReorder = useCallback(
+    (e: { value: T[] }) => {
+      setRows(e.value);
+    },
+    []
   );
 
   useEffect(() => {
@@ -327,8 +341,9 @@ function DpTableInner<T extends DpTableRow>(
     return firstNonSum?.column ?? columns[0]?.column ?? null;
   }, [footerTotals, columns]);
 
+  /** Sin `text-sm`: el footer hereda la misma escala que el cuerpo del DataTable (`size="small"`). */
   const footerCellClass =
-    "border-t border-slate-200 bg-slate-100 py-2 text-sm dark:border-slate-600 dark:bg-slate-800/80";
+    "border-t border-slate-200 bg-slate-100 py-2 text-inherit dark:border-slate-600 dark:bg-slate-800/80";
 
   const renderColumnFooter = useCallback(
     (col: DpTableDefColumn): React.ReactNode => {
@@ -371,11 +386,19 @@ function DpTableInner<T extends DpTableRow>(
         onSelectionChange={(e) => setSelection(e.value ?? [])}
         selectionMode="multiple"
         metaKeySelection={false}
-        paginator
-        rows={pageSizes[0] ?? 5}
-        rowsPerPageOptions={pageSizes}
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-        currentPageReportTemplate="{first} a {last} de {totalRecords}"
+        reorderableColumns
+        reorderableRows
+        onRowReorder={onRowReorder}
+        paginator={paginatorEnabled}
+        {...(paginatorEnabled
+          ? {
+              rows: pageSizes[0] ?? 5,
+              rowsPerPageOptions: pageSizes,
+              paginatorTemplate:
+                "FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport",
+              currentPageReportTemplate: "{first} a {last} de {totalRecords}",
+            }
+          : {})}
         emptyMessage={globalFilter.trim() ? emptyFilterMessage : emptyMessage}
         header={header}
         filters={filters}
@@ -384,13 +407,25 @@ function DpTableInner<T extends DpTableRow>(
         size="small"
       >
         <Column
+          columnKey="dp-selection"
+          reorderable={false}
           selectionMode="multiple"
+          headerStyle={{ width: "3rem" }}
+          footer={footerTotals?.sumColumns?.length ? <span aria-hidden="true" /> : undefined}
+          footerClassName={footerTotals?.sumColumns?.length ? footerCellClass : undefined}
+        />
+        <Column
+          columnKey="dp-row-reorder"
+          reorderable={false}
+          rowReorder
           headerStyle={{ width: "3rem" }}
           footer={footerTotals?.sumColumns?.length ? <span aria-hidden="true" /> : undefined}
           footerClassName={footerTotals?.sumColumns?.length ? footerCellClass : undefined}
         />
         {onEdit && (
           <Column
+            columnKey="dp-edit"
+            reorderable={false}
             headerStyle={{ width: "3rem" }}
             body={bodyEdit}
             footer={footerTotals?.sumColumns?.length ? <span aria-hidden="true" /> : undefined}
@@ -405,6 +440,7 @@ function DpTableInner<T extends DpTableRow>(
             <Column
               key={col.column}
               field={hasCustomBody || isLinkCol ? undefined : col.column}
+              columnKey={hasCustomBody || isLinkCol ? col.column : undefined}
               sortField={col.column}
               header={col.header}
               body={(arg: T | { rowData: T }) => {

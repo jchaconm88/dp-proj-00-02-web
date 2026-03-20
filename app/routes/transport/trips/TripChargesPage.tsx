@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
 import {
@@ -9,15 +9,22 @@ import {
 } from "~/features/transport/trip-charges";
 import type { Route } from "./+types/TripChargesPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import {
+  DpTable,
+  type DpTableRef,
+  type DpTableDefColumn,
+  type DpTableFooterTotals,
+} from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import {
   TRIP_CHARGE_TYPE,
   TRIP_CHARGE_SOURCE,
   TRIP_CHARGE_STATUS,
-  CURRENCY,
 } from "~/constants/status-options";
+import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripChargeDialog from "./TripChargeDialog";
+
+type TripChargeTableRow = TripChargeRecord & { amountFormatted: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -31,10 +38,15 @@ const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
   { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_TYPE },
   { header: "Origen", column: "source", order: 3, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_SOURCE },
-  { header: "Monto", column: "amount", order: 4, display: true, filter: true },
-  { header: "Moneda", column: "currency", order: 5, display: true, filter: true, type: "status", typeOptions: CURRENCY },
-  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
+  { header: "Monto", column: "amountFormatted", order: 4, display: true, filter: true },
+  { header: "Estado", column: "status", order: 5, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
 ];
+
+const TRIP_CHARGES_FOOTER_TOTALS: DpTableFooterTotals = {
+  label: "Total:",
+  sumColumns: ["amountFormatted"],
+  sumValueKey: { amountFormatted: "amount" },
+};
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const tripId = (params?.id ?? "") as string;
@@ -50,7 +62,30 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
-  const tableRef = useRef<DpTableRef<TripChargeRecord>>(null);
+  const tableRef = useRef<DpTableRef<TripChargeTableRow>>(null);
+
+  const tableRows = useMemo<TripChargeTableRow[]>(
+    () =>
+      charges.map((c) => ({
+        ...c,
+        amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
+      })),
+    [charges]
+  );
+
+  const totalFooterCurrency = useMemo(() => {
+    if (!charges.length) return "PEN";
+    const c0 = (charges[0]!.currency || "PEN").trim() || "PEN";
+    return charges.every((c) => (String(c.currency ?? "PEN").trim() || "PEN") === c0) ? c0 : "PEN";
+  }, [charges]);
+
+  const tripChargesFooterTotals = useMemo<DpTableFooterTotals>(
+    () => ({
+      ...TRIP_CHARGES_FOOTER_TOTALS,
+      formatSum: (sum) => formatAmountWithSymbol(sum, totalFooterCurrency),
+    }),
+    [totalFooterCurrency]
+  );
 
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
   const isAdd = !!useMatch("/transport/trips/:id/trip-charges/add");
@@ -71,7 +106,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   };
 
   const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges/add`);
-  const openEdit = (row: TripChargeRecord) =>
+  const openEdit = (row: TripChargeTableRow) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges/edit/${encodeURIComponent(row.id)}`);
 
   const openDeleteConfirm = () => {
@@ -132,11 +167,13 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
           {error}
         </div>
       )}
-      <DpTable<TripChargeRecord>
+      <DpTable<TripChargeTableRow>
         ref={tableRef}
-        data={loaderData.charges}
+        data={tableRows}
         loading={isLoading || saving}
         tableDef={TABLE_DEF}
+        paginator={false}
+        footerTotals={tripChargesFooterTotals}
         onSelectionChange={(rows) => setSelectedCount(rows.length)}
         onEdit={openEdit}
         showFilterInHeader={false}

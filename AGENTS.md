@@ -211,7 +211,7 @@ export async function clientLoader() {
 | `DpContentInfo` | Contenedor de página de detalle (con botón back) |
 | `DpContentSet` | Dialog/modal para formularios (create/edit); usar `showLoading` / `showError` + `errorMessage` en lugar de renderizar carga o error dentro de `children` |
 | `DpConfirmDialog` | Modal de confirmación antes de eliminar filas desde la lista; **no usar** `confirm()` del navegador |
-| `DpTable<T>` | Tabla con selección, filtro, acciones (pasar `data` + `loading`) |
+| `DpTable<T>` | Tabla con selección, filtro, acciones (pasar `data` + `loading`). **Reordenar columnas** (arrastrar cabeceras) y **filas** (icono de barras) vía PrimeReact, siempre activo. Prop `paginator={false}` para listar todo sin paginador |
 | `DpInput` | Campo de formulario unificado (type: input, select, check, number, date) |
 
 ```tsx
@@ -275,6 +275,16 @@ Ejemplo (como en `TripCostsPage`):
 />
 ```
 
+### Listados con montos bajo un viaje (`trip-costs`, `trip-charges`)
+
+Alinear **`TripCostsPage`** y **`TripChargesPage`** (y futuras listas similares bajo `/transport/trips/:id/...`):
+
+1. **Columna Monto** en `tableDef`: clave **`amountFormatted`** (texto con moneda), no el número crudo.
+2. **`useMemo`**: extender cada registro con `amountFormatted: formatAmountWithSymbol(amount, currency)` importado desde **`~/constants/currency-format`** (no duplicar `CURRENCY_SYMBOL` ni el formateador).
+3. **`DpTable`**: `paginator={false}`; **`footerTotals`** con `sumColumns: ["amountFormatted"]`, **`sumValueKey: { amountFormatted: "amount" }`** y `formatSum` coherente con el formato de fila.
+4. **Imports y constantes**: todo lo usado en `TABLE_DEF` o en el componente debe existir (`import` o `const` en el mismo archivo). Un `ReferenceError` al evaluar el módulo puede provocar en runtime el error opaco *«No result returned from dataStrategy»* de React Router.
+5. Si se usa **`CURRENCY`** en `typeOptions` de una columna, debe importarse desde **`~/constants/status-options`**. Si la moneda solo va en `amountFormatted`, no hace falta columna Moneda.
+
 ### Confirmar eliminación en páginas de lista
 
 Al implementar **Eliminar** en `*Page.tsx` (selección múltiple + `DpContentHeader`):
@@ -302,3 +312,4 @@ La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc
 - **Nomenclatura de Colecciones en Firestore** — El nombre de las colecciones OMITIRÁ SIEMPRE el prefijo del módulo en el que se encuentran. Solo deben llevar el nombre de su entidad representativa en kebab-case pluralizado (Ej. usar `const COLLECTION = "document-types"` en vez de `master-document-types` y `const COLLECTION = "vehicles"` en vez de `transport-vehicles`). Esto asegura el desacoplamiento Front-Back.
 - **Servicio Agnóstico por Feature** — Cada feature debe exponer una única superficie en `*.service.ts` (más `*.types.ts` + `index.ts`). Evitar separar infraestructura por proveedor en archivos públicos como `*.functions.ts` o `*.api.ts` consumidos por UI. Los componentes/rutas deben importar únicamente desde el servicio de la feature; cualquier cambio de backend (Firestore, Cloud Functions, REST, etc.) se resuelve internamente en el `*.service.ts` conservando las mismas firmas públicas.
 - **Confirmar borrado en UI** — En listados con eliminación masiva, usar siempre `DpConfirmDialog`; nunca `confirm()` del navegador (ver sección 6 y `.cursor/rules/dp-confirm-dialog.mdc`).
+- **Tablas de montos en viajes** — Ver sección 6 *«Listados con montos bajo un viaje»* y regla Cursor **`.cursor/rules/dp-web-trip-money-tables.mdc`** (raíz del monorepo).

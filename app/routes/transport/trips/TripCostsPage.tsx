@@ -21,23 +21,9 @@ import {
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
 } from "~/constants/status-options";
+import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripCostDialog from "./TripCostDialog";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-
-const CURRENCY_SYMBOL: Record<string, string> = {
-  PEN: "S/.",
-  USD: "$",
-};
-
-function formatAmountWithSymbol(amount: number, currency: string): string {
-  const sym = CURRENCY_SYMBOL[currency] ?? currency;
-  const n = Number.isFinite(amount) ? amount : 0;
-  const formatted = new Intl.NumberFormat("es-PE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-  return `${sym} ${formatted}`;
-}
 
 type TripCostTableRow = TripCostRecord & { amountFormatted: string };
 
@@ -60,7 +46,7 @@ const TABLE_DEF: DpTableDefColumn[] = [
 ];
 
 const TRIP_COSTS_FOOTER_TOTALS: DpTableFooterTotals = {
-  label: "Totales:",
+  label: "Total:",
   sumColumns: ["amountFormatted"],
   sumValueKey: { amountFormatted: "amount" },
 };
@@ -191,6 +177,7 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
         data={tableRows}
         loading={isLoading || saving}
         tableDef={TABLE_DEF}
+        paginator={false}
         footerTotals={tripCostsFooterTotals}
         onSelectionChange={(rows) => setSelectedCount(rows.length)}
         onEdit={openEdit}
