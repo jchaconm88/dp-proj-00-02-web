@@ -151,17 +151,11 @@ export default function LocationDialog({
             saveDisabled={!valid || isNavigating}
             visible={visible}
             onHide={handleHide}
+            showLoading={loading}
+            showError={!!error}
+            errorMessage={error ?? ""}
         >
-            {loading ? (
-                <div className="py-8 text-center text-zinc-500">Cargando...</div>
-            ) : (
                 <div className="flex flex-col gap-4 pt-2">
-                    {error && (
-                        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                            {error}
-                        </div>
-                    )}
-
                     <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} placeholder="CD Lima" />
                     <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => setType(v as LocationType)} options={TYPE_OPTIONS} />
                     <DpInput type="input" label="Dirección" name="address" value={address} onChange={setAddress} placeholder="Av. Argentina 2450" />
@@ -192,7 +186,6 @@ export default function LocationDialog({
                     <DpInput type="number" label="Tiempo de servicio (min)" name="serviceTimeMin" value={serviceTimeMin} onChange={setServiceTimeMin} placeholder="45" />
                     <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
                 </div>
-            )}
         </DpContentSet>
     );
 }

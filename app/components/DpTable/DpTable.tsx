@@ -13,7 +13,7 @@ import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
 import { format, isValid } from "date-fns";
-import type { DpTableDefColumn, DpTableRef, DpTableRow } from "./types";
+import type { DpTableDefColumn, DpTableFooterTotals, DpTableRef, DpTableRow } from "./types";
 import DpTColumn from "./DpTColumn";
 
 type TagSeverity = "success" | "info" | "warning" | "danger" | "secondary";
@@ -43,7 +43,29 @@ export interface DpTableProps<T extends DpTableRow> {
   emptyMessage?: string;
   emptyFilterMessage?: string;
   onSelectionChange?: (selectedRows: T[]) => void;
+  /** Fila inferior con totales (etiqueta + sumas por columna). */
+  footerTotals?: DpTableFooterTotals;
   children?: React.ReactNode;
+}
+
+function applyGlobalFilterRows<T extends DpTableRow>(
+  rows: T[],
+  filter: string,
+  fields: string[]
+): T[] {
+  const q = filter.trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter((row) =>
+    fields.some((f) => {
+      const v = (row as Record<string, unknown>)[f];
+      return String(v ?? "").toLowerCase().includes(q);
+    })
+  );
+}
+
+function defaultFormatFooterSum(sum: number): string {
+  if (!Number.isFinite(sum)) return "—";
+  return sum.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getCellValue(row: Record<string, unknown>, columnKey: string): unknown {
@@ -127,6 +149,7 @@ function DpTableInner<T extends DpTableRow>(
     emptyMessage = "No hay datos.",
     emptyFilterMessage = "No hay resultados para el filtro.",
     onSelectionChange,
+    footerTotals,
     children,
   }: DpTableProps<T>,
   ref: React.ForwardedRef<DpTableRef<T>>
@@ -275,6 +298,69 @@ function DpTableInner<T extends DpTableRow>(
     [columnRenderers, bodyLink]
   );
 
+  const rowsForFooterTotals = useMemo(() => {
+    if (!footerTotals) return rows;
+    if (footerTotals.respectGlobalFilter === false) return rows;
+    return applyGlobalFilterRows(rows, globalFilter, globalFilterFields);
+  }, [footerTotals, rows, globalFilter, globalFilterFields]);
+
+  const footerSumsByColumn = useMemo(() => {
+    if (!footerTotals?.sumColumns?.length) return {} as Record<string, number>;
+    const out: Record<string, number> = {};
+    for (const colKey of footerTotals.sumColumns) {
+      const valueKey = footerTotals.sumValueKey?.[colKey] ?? colKey;
+      let s = 0;
+      for (const row of rowsForFooterTotals) {
+        const raw = (row as Record<string, unknown>)[valueKey];
+        const n = typeof raw === "number" ? raw : Number(raw);
+        if (Number.isFinite(n)) s += n;
+      }
+      out[colKey] = s;
+    }
+    return out;
+  }, [footerTotals, rowsForFooterTotals]);
+
+  const footerLabelColumnKey = useMemo(() => {
+    if (!footerTotals) return null as string | null;
+    if (footerTotals.labelColumn) return footerTotals.labelColumn;
+    const firstNonSum = columns.find((c) => !footerTotals.sumColumns.includes(c.column));
+    return firstNonSum?.column ?? columns[0]?.column ?? null;
+  }, [footerTotals, columns]);
+
+  const footerCellClass =
+    "border-t border-slate-200 bg-slate-100 py-2 text-sm dark:border-slate-600 dark:bg-slate-800/80";
+
+  const renderColumnFooter = useCallback(
+    (col: DpTableDefColumn): React.ReactNode => {
+      if (!footerTotals || !footerTotals.sumColumns.length) return null;
+      const { column } = col;
+      const isSum = footerTotals.sumColumns.includes(column);
+      const isLabel = footerLabelColumnKey === column;
+      const sum = footerSumsByColumn[column] ?? 0;
+      const labelText = footerTotals.label ?? "Totales:";
+      const formatted =
+        footerTotals.formatSum != null
+          ? footerTotals.formatSum(sum, column)
+          : defaultFormatFooterSum(sum);
+
+      if (isLabel && isSum) {
+        return (
+          <span className="font-semibold">
+            {labelText} {formatted}
+          </span>
+        );
+      }
+      if (isLabel) {
+        return <span className="font-semibold">{labelText}</span>;
+      }
+      if (isSum) {
+        return <span className="font-semibold">{formatted}</span>;
+      }
+      return null;
+    },
+    [footerTotals, footerLabelColumnKey, footerSumsByColumn]
+  );
+
   return (
     <div className="space-y-4">
       <DataTable
@@ -297,11 +383,24 @@ function DpTableInner<T extends DpTableRow>(
         tableStyle={{ minWidth: "50rem" }}
         size="small"
       >
-        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
-        {onEdit && <Column headerStyle={{ width: "3rem" }} body={bodyEdit} />}
+        <Column
+          selectionMode="multiple"
+          headerStyle={{ width: "3rem" }}
+          footer={footerTotals?.sumColumns?.length ? <span aria-hidden="true" /> : undefined}
+          footerClassName={footerTotals?.sumColumns?.length ? footerCellClass : undefined}
+        />
+        {onEdit && (
+          <Column
+            headerStyle={{ width: "3rem" }}
+            body={bodyEdit}
+            footer={footerTotals?.sumColumns?.length ? <span aria-hidden="true" /> : undefined}
+            footerClassName={footerTotals?.sumColumns?.length ? footerCellClass : undefined}
+          />
+        )}
         {columns.map((col) => {
           const hasCustomBody = !!columnRenderers[col.column];
           const isLinkCol = !hasCustomBody && linkColumn === col.column && onDetail;
+          const footerNode = footerTotals?.sumColumns?.length ? renderColumnFooter(col) : null;
           return (
             <Column
               key={col.column}
@@ -315,6 +414,10 @@ function DpTableInner<T extends DpTableRow>(
                     : (arg as T);
                 return bodyCell(rowData, col);
               }}
+              footer={
+                footerTotals?.sumColumns?.length ? (footerNode ?? <span aria-hidden="true" />) : undefined
+              }
+              footerClassName={footerTotals?.sumColumns?.length ? footerCellClass : undefined}
             />
           );
         })}

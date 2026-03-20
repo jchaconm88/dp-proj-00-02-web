@@ -3,7 +3,7 @@ import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import {
   getTripAssignmentById,
   addTripAssignment,
@@ -82,7 +82,7 @@ export default function TripAssignmentDialog({
     try {
       let finalCode: string;
       try {
-        finalCode = await resolveCodeIfEmpty(code, "trip-assignment");
+        finalCode = await generateSequenceCode(code, "trip-assignment");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al generar código.");
         setSaving(false);
@@ -124,16 +124,11 @@ export default function TripAssignmentDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpCodeInput entity="trip-assignment" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput
             type="select"
@@ -157,7 +152,6 @@ export default function TripAssignmentDialog({
             />
           )}
         </div>
-      )}
     </DpContentSet>
   );
 }

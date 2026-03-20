@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/TripStopsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { STOP_TYPE, STOP_STATUS } from "~/constants/status-options";
 import TripStopDialog from "./TripStopDialog";
 
@@ -56,6 +57,7 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteStopIds, setPendingDeleteStopIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editStopId;
 
@@ -68,23 +70,33 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
   const openEdit = (row: TripStopRecord) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops/edit/${encodeURIComponent(row.id)}`);
 
-  const handleDelete = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    if (!confirm(`¿Eliminar ${selected.length} parada(s)?`)) return;
+    setPendingDeleteStopIds(selected.map((s) => s.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteStopIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      for (const s of selected) {
-        await deleteTripStop(tripId, s.id);
+      for (const id of ids) {
+        await deleteTripStop(tripId, id);
       }
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteStopIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteStopIds(null);
   };
 
   const handleSuccess = () => {
@@ -103,7 +115,7 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDelete}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
@@ -134,6 +146,22 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
           onHide={handleHide}
         />
       )}
+
+      <DpConfirmDialog
+        visible={pendingDeleteStopIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar paradas"
+        message={
+          pendingDeleteStopIds?.length
+            ? `¿Eliminar ${pendingDeleteStopIds.length} parada(s) de este viaje? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
+      />
     </DpContentInfo>
   );
 }

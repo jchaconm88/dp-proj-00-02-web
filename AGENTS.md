@@ -209,7 +209,8 @@ export async function clientLoader() {
 | `DpContent` | Contenedor de página de lista |
 | `DpContentHeader` | Barra de herramientas (filtro, crear, eliminar, recargar) |
 | `DpContentInfo` | Contenedor de página de detalle (con botón back) |
-| `DpContentSet` | Dialog/modal para formularios (create/edit) |
+| `DpContentSet` | Dialog/modal para formularios (create/edit); usar `showLoading` / `showError` + `errorMessage` en lugar de renderizar carga o error dentro de `children` |
+| `DpConfirmDialog` | Modal de confirmación antes de eliminar filas desde la lista; **no usar** `confirm()` del navegador |
 | `DpTable<T>` | Tabla con selección, filtro, acciones (pasar `data` + `loading`) |
 | `DpInput` | Campo de formulario unificado (type: input, select, check, number, date) |
 
@@ -228,7 +229,61 @@ export async function clientLoader() {
 <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} />
 <DpInput type="select" label="Estado" name="status" value={status} onChange={setStatus} options={opts} />
 <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
+
+// DpContentSet — carga y errores centralizados (no duplicar bloques en cada diálogo)
+<DpContentSet
+  title="…"
+  visible={visible}
+  onHide={onHide}
+  onCancel={onHide}
+  onSave={save}
+  saving={saving || isNavigating}
+  saveDisabled={!valid || isNavigating}
+  showLoading={loading}
+  showError={!!error}
+  errorMessage={error ?? ""}
+>
+  {/* solo campos del formulario */}
+</DpContentSet>
 ```
+
+### Totales en `DpTable` (`footerTotals`)
+
+`DpTable<T>` puede mostrar una fila de footer con sumas numéricas usando la prop opcional `footerTotals`.
+
+Es especialmente útil cuando la columna visible es un valor formateado (string) pero la suma debe hacerse sobre un campo numérico real.
+
+Campos principales:
+- `label`: texto de la etiqueta (por defecto `Totales:`).
+- `sumColumns`: lista de claves `DpTableDefColumn.column` donde se mostrará la suma.
+- `sumValueKey`: mapeo desde cada `colKey` en `sumColumns` hacia la clave numérica en la fila que realmente se debe sumar.
+- `respectGlobalFilter`: si es `true` (por defecto), la suma respeta el filtro global aplicado en la tabla.
+
+Ejemplo (como en `TripCostsPage`):
+
+```tsx
+<DpTable<TripCostTableRow>
+  data={tableRows}
+  tableDef={TABLE_DEF}
+  footerTotals={{
+    label: "Totales:",
+    // Columna visible: amountFormatted (string con símbolo)
+    // Valor numérico real para sumar: amount (number)
+    sumColumns: ["amountFormatted"],
+    sumValueKey: { amountFormatted: "amount" },
+  }}
+/>
+```
+
+### Confirmar eliminación en páginas de lista
+
+Al implementar **Eliminar** en `*Page.tsx` (selección múltiple + `DpContentHeader`):
+
+1. **Prohibido** `confirm()` / `window.confirm()`.
+2. Usar **`DpConfirmDialog`** (`~/components/DpConfirmDialog`): estado `pendingDeleteIds` (o nombre explícito si hay varias entidades en la misma pantalla), `openDeleteConfirm`, `handleConfirmDelete`, `closeDeleteConfirm`; `severity="danger"`, `loading={saving}` mientras se borra; mensaje en español incluyendo *«Esta acción no se puede deshacer.»*
+3. Ver ejemplos en páginas existentes (p. ej. `TripCostsPage.tsx`, `TripsPage.tsx`).
+
+La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc` (repo raíz).
 
 ---
 
@@ -242,5 +297,8 @@ export async function clientLoader() {
 - **Rutas configuradas en `routes.ts`** — NUNCA dependas del naming del archivo para el routing
 - **Páginas de Detalle / Sub-módulos** — Si la ruta es una página anidada (ej. `/:id/locations`, `/:id/costs`), utiliza OBLIGATORIAMENTE `<DpContentInfo>` (con prop `onBack`) en lugar de `<DpContent>` para proveer navegación de retroceso estándar.
 - **Firestore Service** — NUNCA importar `firebase/firestore` directamente en los .service.ts. Se deben usar OBLIGATORIAMENTE las funciones expuestas en `~/lib/firestore.service.ts` (`getDocument`, `addDocument`, `updateDocument`, etc.) ya que éstas inyectan campos de auditoría automáticamente de forma segura.
+- **Cloud Functions (callable)** — No usar `httpsCallable` directamente en features: usar `callHttpsFunction` y `mapCallableError` desde `~/lib/functions.service.ts`. Los DTO request/response de cada callable viven en el `*.types.ts` del feature correspondiente (mantenerlos alineados con `dp-proj-00-02-functions`).
 - **Diccionarios de Constantes y Opciones** — Todas las listas estáticas de selección (ej. Tipos de Vehículo, Estados de Contrato, Monedas) DEBEN ser extraídas y exportadas desde `app/constants/status-options.ts`. Luego, inyectarlas en los `<DpTable>` (como `type="status"`) y en los formularios usarlas con `statusToSelectOptions(CONSTANTE)` para evitar arrays *hardcodeados* en los componentes.
 - **Nomenclatura de Colecciones en Firestore** — El nombre de las colecciones OMITIRÁ SIEMPRE el prefijo del módulo en el que se encuentran. Solo deben llevar el nombre de su entidad representativa en kebab-case pluralizado (Ej. usar `const COLLECTION = "document-types"` en vez de `master-document-types` y `const COLLECTION = "vehicles"` en vez de `transport-vehicles`). Esto asegura el desacoplamiento Front-Back.
+- **Servicio Agnóstico por Feature** — Cada feature debe exponer una única superficie en `*.service.ts` (más `*.types.ts` + `index.ts`). Evitar separar infraestructura por proveedor en archivos públicos como `*.functions.ts` o `*.api.ts` consumidos por UI. Los componentes/rutas deben importar únicamente desde el servicio de la feature; cualquier cambio de backend (Firestore, Cloud Functions, REST, etc.) se resuelve internamente en el `*.service.ts` conservando las mismas firmas públicas.
+- **Confirmar borrado en UI** — En listados con eliminación masiva, usar siempre `DpConfirmDialog`; nunca `confirm()` del navegador (ver sección 6 y `.cursor/rules/dp-confirm-dialog.mdc`).

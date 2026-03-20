@@ -1,10 +1,15 @@
-import { getDocument, getCollection, getFirst, addDocument, updateDocument, deleteDocument, runTransaction, getDocRef } from "~/lib/firestore.service";
-import type { ResetPeriod, SequenceRecord, SequenceAddInput, SequenceEditInput } from "./sequences.types";
+import { getDocument, getCollection, getFirst, addDocument, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import { callHttpsFunction } from "~/lib/functions.service";
+import type {
+  ResetPeriod,
+  SequenceRecord,
+  SequenceAddInput,
+  SequenceEditInput,
+  GenerateSequenceCodeRequest,
+  GenerateSequenceCodeResponse,
+} from "./sequences.types";
 
 const COLLECTION = "sequences";
-const COUNTERS_COLLECTION = "counters";
-
-
 
 type SequenceDoc = Record<string, unknown>;
 
@@ -73,80 +78,29 @@ export async function deleteSequence(id: string): Promise<void> {
   await deleteDocument(COLLECTION, id);
 }
 
-// â”€â”€ Utilidades de numeración â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——— Contadores (solo ID compuesto; la numeración correlativa vive en Cloud Functions) ———
 
 export function makeCounterId(sequenceId: string, period: string): string {
   const safe = String(period ?? "").replace(/\//g, "-").trim() || "all";
   return `${sequenceId}_${safe}`;
 }
 
-export function getCurrentPeriod(resetPeriod: ResetPeriod): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  switch (resetPeriod) {
-    case "yearly":  return String(y);
-    case "monthly": return `${y}-${m}`;
-    case "daily":   return `${y}-${m}-${d}`;
-    default:        return "all";
-  }
-}
-
 /**
- * Genera el siguiente número para la entidad según la secuencia configurada.
- * Usa una transacción para evitar condiciones de carrera por concurrencia.
+ * Código a guardar: misma regla que en servidor (`generateSequenceCode` callable).
+ * Requiere sesión; la generación correlativa y la transacción en `counters` ocurren en Cloud Functions.
  */
-export async function generateNumber(entity: string): Promise<string> {
-  const sequence = await getActiveSequenceByEntity(entity);
-  if (!sequence) {
-    throw new Error(`No existe una secuencia activa para la entidad "${entity}".`);
+export async function generateSequenceCode(currentCode: string, entity: string): Promise<string> {
+  const entityTrim = String(entity ?? "").trim();
+  if (!entityTrim) {
+    throw new Error("La entidad de secuencia es obligatoria.");
   }
-
-  const period = getCurrentPeriod(sequence.resetPeriod);
-  const counterId = makeCounterId(sequence.id, period);
-
-  const nextNumber = await runTransaction(async (transaction, firestoreDb) => {
-    const ref = getDocRef(COUNTERS_COLLECTION, counterId);
-    const snap = await transaction.get(ref);
-    let next: number;
-    if (!snap.exists()) {
-      next = 1;
-      transaction.set(ref, {
-        sequenceId: sequence.id,
-        sequence: `${sequence.entity} (${sequence.prefix})`.trim(),
-        period,
-        lastNumber: 1,
-        active: true,
-      });
-    } else {
-      const last = Number(snap.data()?.lastNumber ?? 0) || 0;
-      next = last + 1;
-      transaction.update(ref, { lastNumber: next });
-    }
-    return next;
-  });
-
-  const year  = String(new Date().getFullYear());
-  const month = String(new Date().getMonth() + 1).padStart(2, "0");
-  const day   = String(new Date().getDate()).padStart(2, "0");
-  const digits = Math.max(0, Number(sequence.digits) || 6);
-  const numberStr = String(nextNumber).padStart(digits, "0");
-
-  return String(sequence.format ?? "{prefix}-{number}")
-    .replace(/\{prefix\}/gi, sequence.prefix ?? "")
-    .replace(/\{year\}/gi,   year)
-    .replace(/\{month\}/gi,  month)
-    .replace(/\{day\}/gi,    day)
-    .replace(/\{number\}/gi, numberStr);
-}
-
-/**
- * Devuelve el código a guardar: si currentCode tiene valor lo devuelve;
- * si está vacío genera el siguiente con generateNumber(entity).
- */
-export async function resolveCodeIfEmpty(currentCode: string, entity: string): Promise<string> {
-  const trimmed = String(currentCode ?? "").trim();
-  if (trimmed) return trimmed;
-  return generateNumber(entity);
+  const res = await callHttpsFunction<GenerateSequenceCodeRequest, GenerateSequenceCodeResponse>(
+    "generateSequenceCode",
+    { currentCode: String(currentCode ?? ""), entity: entityTrim },
+    { errorFallback: "Error al resolver el código." }
+  );
+  if (typeof res.code !== "string" || !res.code.trim()) {
+    throw new Error("No se recibió un código válido del servidor.");
+  }
+  return res.code.trim();
 }

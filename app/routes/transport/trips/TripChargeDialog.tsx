@@ -3,7 +3,7 @@ import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import {
   getTripChargeById,
   addTripCharge,
@@ -97,7 +97,7 @@ export default function TripChargeDialog({
     try {
       let finalCode: string;
       try {
-        finalCode = await resolveCodeIfEmpty(code, "trip-charge");
+        finalCode = await generateSequenceCode(code, "trip-charge");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al generar código.");
         setSaving(false);
@@ -140,16 +140,11 @@ export default function TripChargeDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpCodeInput entity="trip-charge" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => setType(v as TripChargeType)} options={TYPE_OPTIONS} />
           <DpInput type="select" label="Origen" name="source" value={source} onChange={(v) => setSource(v as TripChargeSource)} options={SOURCE_OPTIONS} />
@@ -158,7 +153,6 @@ export default function TripChargeDialog({
           <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as TripChargeStatus)} options={STATUS_OPTIONS} />
           <DpInput type="input" label="ID liquidación" name="settlementId" value={settlementId} onChange={setSettlementId} placeholder="Opcional" />
         </div>
-      )}
     </DpContentSet>
   );
 }

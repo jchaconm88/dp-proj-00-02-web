@@ -102,21 +102,15 @@ export default function DocumentTypeDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} placeholder="DNI, RUC, etc." />
           <DpInput type="input" label="Descripción" name="description" value={description} onChange={setDescription} placeholder="Documento Nacional de Identidad" />
           <DpInput type="select" label="Categoría (Tipo)" name="type" value={type} onChange={(v) => setType(v as DocumentTypeCategory)} options={CATEGORY_OPTIONS} />
         </div>
-      )}
     </DpContentSet>
   );
 }

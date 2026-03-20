@@ -109,14 +109,10 @@ export default function RolePermissionDialog({
       saveDisabled={!selectedModuleId || isNavigating}
       visible={visible}
       onHide={onHide}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
       <div className="flex flex-col gap-4 pt-2">
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-            {error}
-          </div>
-        )}
-
         {!isEdit && (
           <DpInput
             type="select"

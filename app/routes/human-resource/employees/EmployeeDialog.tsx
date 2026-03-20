@@ -10,7 +10,7 @@ import {
   type EmployeeStatus,
   type SalaryType,
 } from "~/features/human-resource/employees";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import { getPositions } from "~/features/human-resource/positions";
 import { getDocumentTypes } from "~/features/master/document-types";
 import { EMPLOYEE_STATUS, SALARY_TYPE, CURRENCY, statusToSelectOptions } from "~/constants/status-options";
@@ -53,6 +53,7 @@ export default function EmployeeDialog({
   // Nómina
   const [salaryType, setSalaryType] = useState<SalaryType>("monthly");
   const [baseSalary, setBaseSalary] = useState("");
+  const [workingDays, setWorkingDays] = useState("26");
   const [currency, setCurrency]     = useState("PEN");
   // Beneficios
   const [cts, setCts]                       = useState(true);
@@ -83,7 +84,7 @@ export default function EmployeeDialog({
       setCode(""); setFirstName(""); setLastName(""); setDocumentNo("");
       setDocumentTypeId(""); setDocumentType(""); setPhone(""); setEmail(""); setPositionId("");
       setPosition(""); setHireDate(""); setStatus("active");
-      setSalaryType("monthly"); setBaseSalary(""); setCurrency("PEN");
+      setSalaryType("monthly"); setBaseSalary(""); setWorkingDays("26"); setCurrency("PEN");
       setCts(true); setGratification(true); setVacationDays("30");
       setLoading(false);
       return;
@@ -106,6 +107,7 @@ export default function EmployeeDialog({
         setStatus(data.status ?? "active");
         setSalaryType(data.payroll?.salaryType ?? "monthly");
         setBaseSalary(String(data.payroll?.baseSalary ?? ""));
+        setWorkingDays(String(data.payroll?.workingDays ?? 26));
         setCurrency(data.payroll?.currency ?? "PEN");
         setCts(data.benefits?.cts !== false);
         setGratification(data.benefits?.gratification !== false);
@@ -122,7 +124,7 @@ export default function EmployeeDialog({
     try {
       let finalCode: string;
       try {
-        finalCode = await resolveCodeIfEmpty(code, "employee");
+        finalCode = await generateSequenceCode(code, "employee");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al generar código.");
         return;
@@ -143,6 +145,7 @@ export default function EmployeeDialog({
         payroll: {
           salaryType,
           baseSalary: Number(baseSalary) || 0,
+          workingDays: Math.max(1, Number(workingDays) || 26),
           currency: currency.trim() || "PEN",
         },
         benefits: {
@@ -178,17 +181,11 @@ export default function EmployeeDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
-
           <DpCodeInput entity="employee" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput type="input"  label="Nombre"       name="firstName"  value={firstName}  onChange={setFirstName}  placeholder="Carlos" />
           <DpInput type="input"  label="Apellidos"    name="lastName"   value={lastName}   onChange={setLastName}   placeholder="Ramirez" />
@@ -234,6 +231,14 @@ export default function EmployeeDialog({
               />
               <DpInput type="number" label="Salario base" name="baseSalary" value={baseSalary} onChange={setBaseSalary} placeholder="2800" />
               <DpInput
+                type="number"
+                label="Días laborables"
+                name="workingDays"
+                value={workingDays}
+                onChange={setWorkingDays}
+                placeholder="26"
+              />
+              <DpInput
                 type="select" label="Moneda" name="currency"
                 value={currency} onChange={(v) => setCurrency(String(v))}
                 options={CURRENCY_OPTIONS}
@@ -251,7 +256,6 @@ export default function EmployeeDialog({
             </div>
           </div>
         </div>
-      )}
     </DpContentSet>
   );
 }

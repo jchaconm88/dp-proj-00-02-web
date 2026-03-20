@@ -23,10 +23,11 @@ function toPayroll(v: unknown): EmployeePayroll {
     return {
       salaryType,
       baseSalary: Number(o.baseSalary) || 0,
+      workingDays: Math.max(1, Number(o.workingDays) || 26),
       currency: String(o.currency ?? "PEN"),
     };
   }
-  return { salaryType: "monthly", baseSalary: 0, currency: "PEN" };
+  return { salaryType: "monthly", baseSalary: 0, workingDays: 26, currency: "PEN" };
 }
 
 function toBenefits(v: unknown): EmployeeBenefits {
@@ -99,6 +100,7 @@ export async function addEmployee(data: EmployeeAddInput): Promise<string> {
     payroll: {
       salaryType: data.payroll.salaryType,
       baseSalary: Number(data.payroll.baseSalary) || 0,
+      workingDays: Math.max(1, Number(data.payroll.workingDays) || 26),
       currency: (data.payroll.currency ?? "PEN").trim(),
     },
     benefits: {
@@ -127,6 +129,7 @@ export async function updateEmployee(id: string, data: EmployeeEditInput): Promi
     payload.payroll = {
       salaryType: data.payroll.salaryType,
       baseSalary: Number(data.payroll.baseSalary) || 0,
+      workingDays: Math.max(1, Number(data.payroll.workingDays) || 26),
       currency: (data.payroll.currency ?? "PEN").trim(),
     };
   }

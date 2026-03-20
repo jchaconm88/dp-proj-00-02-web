@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/TripChargesPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import {
   TRIP_CHARGE_TYPE,
   TRIP_CHARGE_SOURCE,
@@ -60,6 +61,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editChargeId;
 
@@ -72,25 +74,35 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   const openEdit = (row: TripChargeRecord) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges/edit/${encodeURIComponent(row.id)}`);
 
-  const handleDelete = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    if (!confirm(`¿Eliminar ${selected.length} cargo(s)?`)) return;
+    setPendingDeleteIds(selected.map((r) => r.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      if (selected.length === 1) {
-        await deleteTripCharge(selected[0].id);
+      if (ids.length === 1) {
+        await deleteTripCharge(ids[0]);
       } else {
-        await deleteTripCharges(selected.map((r) => r.id));
+        await deleteTripCharges(ids);
       }
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   const handleSuccess = () => {
@@ -109,7 +121,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDelete}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
@@ -140,6 +152,22 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
           onHide={handleHide}
         />
       )}
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar cargos"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} cargo(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
+      />
     </DpContentInfo>
   );
 }

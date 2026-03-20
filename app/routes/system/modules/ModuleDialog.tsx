@@ -81,16 +81,11 @@ export default function ModuleDialog({
       saveDisabled={!name.trim() || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <>
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpInput
             type="input"
             label="Nombre de la colección"
@@ -112,7 +107,6 @@ export default function ModuleDialog({
             placeholder="Ej. Usuarios"
           />
         </>
-      )}
     </DpContentSet>
   );
 }

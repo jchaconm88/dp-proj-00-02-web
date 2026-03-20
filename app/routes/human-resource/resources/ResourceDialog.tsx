@@ -12,7 +12,7 @@ import {
 } from "~/features/human-resource/resources";
 import { getPositions } from "~/features/human-resource/positions";
 import { getDocumentTypes } from "~/features/master/document-types";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import {
   RESOURCE_ENGAGEMENT_TYPE,
   RESOURCE_STATUS,
@@ -121,7 +121,7 @@ export default function ResourceDialog({
     try {
       let finalCode: string;
       try {
-        finalCode = await resolveCodeIfEmpty(code, "resource");
+        finalCode = await generateSequenceCode(code, "resource");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al generar código.");
         setSaving(false);
@@ -179,16 +179,11 @@ export default function ResourceDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={handleHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           
           <DpCodeInput entity="resource" label="Código" name="code" value={code} onChange={setCode} />
           
@@ -251,7 +246,6 @@ export default function ResourceDialog({
             />
           </div>
         </div>
-      )}
     </DpContentSet>
   );
 }

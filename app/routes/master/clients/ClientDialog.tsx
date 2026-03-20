@@ -12,7 +12,7 @@ import {
     type PaymentCondition,
 } from "~/features/master/clients";
 import { CLIENT_STATUS, PAYMENT_CONDITION, CURRENCY, statusToSelectOptions } from "~/constants/status-options";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import { getDocumentTypes } from "~/features/master/document-types";
 
 export interface ClientDialogProps {
@@ -138,7 +138,7 @@ export default function ClientDialog({
                 finalCode = code.trim();
             } else {
                 try {
-                    finalCode = await resolveCodeIfEmpty(code, "client");
+                    finalCode = await generateSequenceCode(code, "client");
                 } catch (err) {
                     setError(err instanceof Error ? err.message : "Error al generar código.");
                     setSaving(false);
@@ -203,17 +203,11 @@ export default function ClientDialog({
             saveDisabled={!valid || isNavigating}
             visible={visible}
             onHide={handleHide}
+            showLoading={loading}
+            showError={!!error}
+            errorMessage={error ?? ""}
         >
-            {loading ? (
-                <div className="py-8 text-center text-zinc-500">Cargando...</div>
-            ) : (
                 <div className="flex flex-col gap-4 pt-2">
-                    {error && (
-                        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                            {error}
-                        </div>
-                    )}
-
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <DpCodeInput entity="client" label="Código" name="code" value={code} onChange={setCode} />
                         <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as ClientStatus)} options={CLIENT_STATUS_OPTIONS} />
@@ -269,7 +263,6 @@ export default function ClientDialog({
                         <Button label="Gestionar ubicaciones" severity="secondary" onClick={goToLocations} className="w-full" type="button" />
                     )}
                 </div>
-            )}
         </DpContentSet>
     );
 }

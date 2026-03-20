@@ -134,17 +134,11 @@ export default function TransportServiceDialog({
             saveDisabled={!valid || isNavigating}
             visible={visible}
             onHide={handleHide}
+            showLoading={loading}
+            showError={!!error}
+            errorMessage={error ?? ""}
         >
-            {loading ? (
-                <div className="py-8 text-center text-zinc-500">Cargando...</div>
-            ) : (
                 <div className="flex flex-col gap-4 pt-2">
-                    {error && (
-                        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                            {error}
-                        </div>
-                    )}
-
                     <DpInput type="input" label="Código" name="code" value={code} onChange={setCode} placeholder="DIST-001" disabled={isEdit} />
                     <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} placeholder="Distribución Local" />
                     <DpInput type="input" label="Descripción" name="description" value={description} onChange={setDescription} placeholder="Detalle del servicio" />
@@ -181,7 +175,6 @@ export default function TransportServiceDialog({
                         <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
                     </div>
                 </div>
-            )}
         </DpContentSet>
     );
 }

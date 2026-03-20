@@ -9,7 +9,7 @@ import {
   updateResourceCost,
   type ResourceCostType,
 } from "~/features/human-resource/resources";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 import { RESOURCE_COST_TYPE, CURRENCY, statusToSelectOptions } from "~/constants/status-options";
 
 export interface ResourceCostDialogProps {
@@ -97,7 +97,7 @@ export default function ResourceCostDialog({
         finalCode = code.trim();
       } else {
         try {
-          finalCode = await resolveCodeIfEmpty(code, "resource-cost");
+          finalCode = await generateSequenceCode(code, "resource-cost");
         } catch (err) {
           setError(err instanceof Error ? err.message : "Error al generar código.");
           setSaving(false);
@@ -143,16 +143,11 @@ export default function ResourceCostDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={handleHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpCodeInput entity="resource-cost" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput
             type="input"
@@ -196,7 +191,6 @@ export default function ResourceCostDialog({
           />
           <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
         </div>
-      )}
     </DpContentSet>
   );
 }

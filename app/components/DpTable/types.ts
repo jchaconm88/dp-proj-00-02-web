@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /** Tipo de formato de celda: status (chip con color), bool (checkbox no editable), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm). */
 export type DpTableDefColumnType = "status" | "bool" | "date" | "datetime";
 
@@ -26,6 +28,32 @@ export interface DpTableDefColumn {
  */
 export interface DpTableRow {
   id: string;
+}
+
+/**
+ * Fila de totales bajo la tabla (suma de columnas numéricas).
+ * Las sumas usan por defecto las filas que pasan el filtro global (misma lógica que el buscador).
+ */
+export interface DpTableFooterTotals {
+  /** Texto en la celda de etiqueta (p. ej. primera columna de datos). Por defecto `"Totales:"`. */
+  label?: string;
+  /** Claves `DpTableDefColumn.column` donde mostrar la suma. */
+  sumColumns: string[];
+  /**
+   * Columna donde mostrar `label`. Por defecto: primera columna visible que no esté en `sumColumns`.
+   */
+  labelColumn?: string;
+  /**
+   * Por cada columna sumada, campo numérico en la fila (si difiere del nombre de la columna).
+   * Ej.: columna `amountFormatted` → sumar `amount`.
+   */
+  sumValueKey?: Partial<Record<string, string>>;
+  /**
+   * Si es `false`, suma todas las filas del `data` sin aplicar el filtro global. Por defecto `true`.
+   */
+  respectGlobalFilter?: boolean;
+  /** Formateo del total; si no se indica, número con 2 decimales (`es-PE`). */
+  formatSum?: (sum: number, columnKey: string) => ReactNode;
 }
 
 /**

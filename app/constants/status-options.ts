@@ -239,7 +239,8 @@ export const TRIP_COST_ENTITY: Record<string, StatusOption> = {
 
 /** Tipo de costo de viaje. */
 export const TRIP_COST_TYPE: Record<string, StatusOption> = {
-  driver_payment: { label: "Pago a conductor", severity: "info" },
+  employee_payment: { label: "Pago a empleado", severity: "info" },
+  resource_payment: { label: "Pago a recurso", severity: "secondary" },
   fuel_expense: { label: "Combustible", severity: "warning" },
   toll_expense: { label: "Peaje", severity: "success" },
   parking_expense: { label: "Estacionamiento", severity: "danger" },

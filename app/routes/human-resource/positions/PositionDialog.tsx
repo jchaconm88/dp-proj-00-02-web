@@ -4,7 +4,7 @@ import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
 import { getPosition, addPosition, updatePosition } from "~/features/human-resource/positions";
-import { resolveCodeIfEmpty } from "~/features/system/sequences";
+import { generateSequenceCode } from "~/features/system/sequences";
 
 export interface PositionDialogProps {
   visible: boolean;
@@ -69,7 +69,7 @@ export default function PositionDialog({
     try {
       let finalCode: string;
       try {
-        finalCode = await resolveCodeIfEmpty(code, "position");
+        finalCode = await generateSequenceCode(code, "position");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al generar código.");
         setSaving(false);
@@ -109,21 +109,15 @@ export default function PositionDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
           <DpCodeInput entity="position" label="Código" name="code" value={code} onChange={setCode} />
           <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} placeholder="Ej. Conductor, Analista" />
           <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
         </div>
-      )}
     </DpContentSet>
   );
 }

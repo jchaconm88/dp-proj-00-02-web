@@ -6,6 +6,7 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { callHttpsFunction } from "~/lib/functions.service";
 import { TRIP_COST_ENTITY, TRIP_COST_TYPE, TRIP_COST_SOURCE, TRIP_COST_STATUS } from "~/constants/status-options";
 import type {
   TripCostRecord,
@@ -15,6 +16,8 @@ import type {
   TripCostType,
   TripCostSource,
   TripCostStatus,
+  GetResourcePerTripCostRequest,
+  GetResourcePerTripCostResponse,
 } from "./trip-costs.types";
 
 const COLLECTION = "tripCosts";
@@ -23,7 +26,7 @@ function toEntity(s: string): TripCostEntity {
   return Object.prototype.hasOwnProperty.call(TRIP_COST_ENTITY, s) ? (s as TripCostEntity) : ("assignment" as TripCostEntity);
 }
 function toType(s: string): TripCostType {
-  return Object.prototype.hasOwnProperty.call(TRIP_COST_TYPE, s) ? (s as TripCostType) : ("driver_payment" as TripCostType);
+  return Object.prototype.hasOwnProperty.call(TRIP_COST_TYPE, s) ? (s as TripCostType) : ("employee_payment" as TripCostType);
 }
 function toSource(s: string): TripCostSource {
   return Object.prototype.hasOwnProperty.call(TRIP_COST_SOURCE, s) ? (s as TripCostSource) : ("manual" as TripCostSource);
@@ -36,10 +39,11 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
+    displayName: String(doc.displayName ?? "").trim(),
     tripId: String(doc.tripId ?? ""),
     entity: toEntity(String(doc.entity ?? "assignment")),
     entityId: String(doc.entityId ?? ""),
-    type: toType(String(doc.type ?? "driver_payment")),
+    type: toType(String(doc.type ?? "employee_payment")),
     source: toSource(String(doc.source ?? "manual")),
     amount: Number(doc.amount) ?? 0,
     currency: String(doc.currency ?? "PEN"),
@@ -61,6 +65,7 @@ export async function getTripCostById(id: string): Promise<TripCostRecord | null
 export async function addTripCost(data: TripCostAddInput): Promise<string> {
   return addDocument(COLLECTION, {
     code: data.code.trim(),
+    displayName: String(data.displayName ?? "").trim(),
     tripId: data.tripId.trim(),
     entity: data.entity,
     entityId: data.entityId.trim(),
@@ -76,6 +81,7 @@ export async function addTripCost(data: TripCostAddInput): Promise<string> {
 export async function updateTripCost(id: string, data: TripCostEditInput): Promise<void> {
   const payload: Record<string, unknown> = {};
   if (data.code !== undefined) payload.code = data.code.trim();
+  if (data.displayName !== undefined) payload.displayName = String(data.displayName).trim();
   if (data.tripId !== undefined) payload.tripId = data.tripId.trim();
   if (data.entity !== undefined) payload.entity = data.entity;
   if (data.entityId !== undefined) payload.entityId = data.entityId.trim();
@@ -95,3 +101,20 @@ export async function deleteTripCost(id: string): Promise<void> {
 export async function deleteTripCosts(ids: string[]): Promise<void> {
   return deleteManyDocuments(COLLECTION, ids);
 }
+
+export async function getTripCostByAssignment(
+  tripAssignmentId: string
+): Promise<GetResourcePerTripCostResponse> {
+  const id = tripAssignmentId.trim();
+  if (!id) {
+    throw new Error("tripAssignmentId es obligatorio.");
+  }
+  return callHttpsFunction<GetResourcePerTripCostRequest, GetResourcePerTripCostResponse>(
+    "getResourcePerTripCost",
+    { tripAssignmentId: id },
+    { errorFallback: "No se pudo obtener el costo calculado para la asignación." }
+  );
+}
+
+// Alias de compatibilidad (deprecado): mantener hasta migrar llamadas existentes.
+export const getResourcePerTripCostByAssignment = getTripCostByAssignment;

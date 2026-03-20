@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/TripAssignmentsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { TRIP_ASSIGNMENT_ENTITY_TYPE } from "~/constants/status-options";
 import TripAssignmentDialog from "./TripAssignmentDialog";
 
@@ -53,6 +54,7 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   const [error, setError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editAssignmentId;
 
@@ -65,25 +67,35 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   const openEdit = (row: TripAssignmentRecord) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments/edit/${encodeURIComponent(row.id)}`);
 
-  const handleDelete = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    if (!confirm(`¿Eliminar ${selected.length} asignación(es)?`)) return;
+    setPendingDeleteIds(selected.map((r) => r.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      if (selected.length === 1) {
-        await deleteTripAssignment(selected[0].id);
+      if (ids.length === 1) {
+        await deleteTripAssignment(ids[0]);
       } else {
-        await deleteTripAssignments(selected.map((r) => r.id));
+        await deleteTripAssignments(ids);
       }
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   const handleSuccess = () => {
@@ -102,7 +114,7 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDelete}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
@@ -133,6 +145,22 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
           onHide={handleHide}
         />
       )}
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar asignaciones"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} asignación(es)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
+      />
     </DpContentInfo>
   );
 }

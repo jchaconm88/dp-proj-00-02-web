@@ -3,6 +3,7 @@ export { default as DpTColumn } from "./DpTColumn";
 export type {
   DpTableDefColumn,
   DpTableDefColumnType,
+  DpTableFooterTotals,
   DpTableRef,
   DpTableRow,
 } from "./types";

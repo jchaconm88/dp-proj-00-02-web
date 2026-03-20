@@ -123,16 +123,11 @@ export default function VehicleDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
+      showLoading={loading}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {loading ? (
-        <div className="py-8 text-center text-zinc-500">Cargando...</div>
-      ) : (
         <div className="flex flex-col gap-4 pt-2">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-              {error}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <DpInput type="input" label="Placa" name="plate" value={plate} onChange={setPlate} placeholder="ABC-123" />
@@ -149,7 +144,6 @@ export default function VehicleDialog({
             </div>
           </div>
         </div>
-      )}
     </DpContentSet>
   );
 }

@@ -4,6 +4,7 @@ export type SalaryType = "monthly" | "weekly" | "daily";
 export interface EmployeePayroll {
   salaryType: SalaryType;
   baseSalary: number;
+  workingDays: number;
   currency: string;
 }
 

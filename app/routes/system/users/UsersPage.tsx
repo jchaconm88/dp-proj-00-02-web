@@ -9,6 +9,7 @@ import {
 import type { Route } from "./+types/UsersPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -34,7 +35,9 @@ export default function Users({ loaderData }: Route.ComponentProps) {
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<ProfileRecord>>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [editing, setEditing] = useState<ProfileRecord | null>(null);
 
@@ -46,17 +49,31 @@ export default function Users({ loaderData }: Route.ComponentProps) {
     tableRef.current?.filter(value);
   };
 
-  const handleDeleteSelected = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (selected.length === 0) return;
-    if (!confirm(`Â¿Eliminar ${selected.length} usuario(s)?`)) return;
+    setPendingDeleteIds(selected.map((u) => u.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
+    setSaving(true);
+    setError(null);
     try {
-      await Promise.all(selected.map((u) => deleteProfile(u.id)));
+      await Promise.all(ids.map((id) => deleteProfile(id)));
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   const handleEdit = (user: ProfileRecord) => {
@@ -84,8 +101,8 @@ export default function Users({ loaderData }: Route.ComponentProps) {
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onDelete={handleDeleteSelected}
-        deleteDisabled={selectedCount === 0 || isLoading}
+        onDelete={openDeleteConfirm}
+        deleteDisabled={selectedCount === 0 || isLoading || saving}
         loading={isLoading}
         filterPlaceholder="Filtrar por nombre o correo..."
       />
@@ -100,7 +117,7 @@ export default function Users({ loaderData }: Route.ComponentProps) {
       <DpTable<ProfileRecord>
         ref={tableRef}
         data={loaderData.users}
-        loading={isLoading}
+        loading={isLoading || saving}
         tableDef={TABLE_DEF}
         linkColumn="displayName"
         onDetail={handleEdit}
@@ -110,6 +127,22 @@ export default function Users({ loaderData }: Route.ComponentProps) {
         filterPlaceholder="Filtrar por nombre o correo..."
         emptyMessage='No hay usuarios en la colección.'
         emptyFilterMessage="No hay resultados para el filtro."
+      />
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar usuarios"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} usuario(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
       />
 
       {editing && (

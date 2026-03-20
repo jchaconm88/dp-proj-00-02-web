@@ -24,3 +24,13 @@ export interface SequenceAddInput {
 }
 
 export type SequenceEditInput = Partial<Omit<SequenceRecord, "id">>;
+
+/** Callable Cloud Function `generateSequenceCode` — alinear con `dp-proj-00-02-functions`. */
+export interface GenerateSequenceCodeRequest {
+  currentCode: string;
+  entity: string;
+}
+
+export interface GenerateSequenceCodeResponse {
+  code: string;
+}

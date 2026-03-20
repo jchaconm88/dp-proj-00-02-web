@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
 import {
@@ -9,15 +9,37 @@ import {
 } from "~/features/transport/trip-costs";
 import type { Route } from "./+types/TripCostsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import {
+  DpTable,
+  type DpTableRef,
+  type DpTableDefColumn,
+  type DpTableFooterTotals,
+} from "~/components/DpTable";
 import {
   TRIP_COST_ENTITY,
   TRIP_COST_TYPE,
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
-  CURRENCY,
 } from "~/constants/status-options";
 import TripCostDialog from "./TripCostDialog";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  PEN: "S/.",
+  USD: "$",
+};
+
+function formatAmountWithSymbol(amount: number, currency: string): string {
+  const sym = CURRENCY_SYMBOL[currency] ?? currency;
+  const n = Number.isFinite(amount) ? amount : 0;
+  const formatted = new Intl.NumberFormat("es-PE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+  return `${sym} ${formatted}`;
+}
+
+type TripCostTableRow = TripCostRecord & { amountFormatted: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -29,14 +51,19 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Entidad", column: "entity", order: 2, display: true, filter: true, type: "status", typeOptions: TRIP_COST_ENTITY },
-  { header: "ID entidad", column: "entityId", order: 3, display: true, filter: true },
+  { header: "Nombre", column: "displayName", order: 2, display: true, filter: true },
+  { header: "Entidad", column: "entity", order: 3, display: true, filter: true, type: "status", typeOptions: TRIP_COST_ENTITY },
   { header: "Tipo", column: "type", order: 4, display: true, filter: true, type: "status", typeOptions: TRIP_COST_TYPE },
   { header: "Origen", column: "source", order: 5, display: true, filter: true, type: "status", typeOptions: TRIP_COST_SOURCE },
-  { header: "Monto", column: "amount", order: 6, display: true, filter: true },
-  { header: "Moneda", column: "currency", order: 7, display: true, filter: true, type: "status", typeOptions: CURRENCY },
-  { header: "Estado", column: "status", order: 8, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
+  { header: "Monto", column: "amountFormatted", order: 6, display: true, filter: true },
+  { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
 ];
+
+const TRIP_COSTS_FOOTER_TOTALS: DpTableFooterTotals = {
+  label: "Totales:",
+  sumColumns: ["amountFormatted"],
+  sumValueKey: { amountFormatted: "amount" },
+};
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const tripId = (params?.id ?? "") as string;
@@ -52,7 +79,31 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
-  const tableRef = useRef<DpTableRef<TripCostRecord>>(null);
+  const tableRef = useRef<DpTableRef<TripCostTableRow>>(null);
+
+  const tableRows = useMemo<TripCostTableRow[]>(
+    () =>
+      costs.map((c) => ({
+        ...c,
+        amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
+      })),
+    [costs]
+  );
+
+  /** Moneda para el total: homogénea si todas las filas coinciden; si no, PEN (suma numérica igualmente). */
+  const totalFooterCurrency = useMemo(() => {
+    if (!costs.length) return "PEN";
+    const c0 = (costs[0]!.currency || "PEN").trim() || "PEN";
+    return costs.every((c) => (String(c.currency ?? "PEN").trim() || "PEN") === c0) ? c0 : "PEN";
+  }, [costs]);
+
+  const tripCostsFooterTotals = useMemo<DpTableFooterTotals>(
+    () => ({
+      ...TRIP_COSTS_FOOTER_TOTALS,
+      formatSum: (sum) => formatAmountWithSymbol(sum, totalFooterCurrency),
+    }),
+    [totalFooterCurrency]
+  );
 
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
   const isAdd = !!useMatch("/transport/trips/:id/trip-costs/add");
@@ -63,6 +114,8 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
+  /** IDs seleccionados para eliminar tras confirmar en el modal */
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editCostId;
 
@@ -72,28 +125,38 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   };
 
   const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs/add`);
-  const openEdit = (row: TripCostRecord) =>
+  const openEdit = (row: TripCostTableRow) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs/edit/${encodeURIComponent(row.id)}`);
 
-  const handleDelete = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    if (!confirm(`¿Eliminar ${selected.length} costo(s)?`)) return;
+    setPendingDeleteIds(selected.map((r) => r.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      if (selected.length === 1) {
-        await deleteTripCost(selected[0].id);
+      if (ids.length === 1) {
+        await deleteTripCost(ids[0]);
       } else {
-        await deleteTripCosts(selected.map((r) => r.id));
+        await deleteTripCosts(ids);
       }
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   const handleSuccess = () => {
@@ -112,7 +175,7 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDelete}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
@@ -123,11 +186,12 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
           {error}
         </div>
       )}
-      <DpTable<TripCostRecord>
+      <DpTable<TripCostTableRow>
         ref={tableRef}
-        data={loaderData.costs}
+        data={tableRows}
         loading={isLoading || saving}
         tableDef={TABLE_DEF}
+        footerTotals={tripCostsFooterTotals}
         onSelectionChange={(rows) => setSelectedCount(rows.length)}
         onEdit={openEdit}
         showFilterInHeader={false}
@@ -143,6 +207,21 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
           onHide={handleHide}
         />
       )}
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar costos"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} costo(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
+      />
     </DpContentInfo>
   );
 }

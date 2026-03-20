@@ -224,6 +224,44 @@ dp-proj-00-02-web/
 
 ---
 
+## `DpTable`: fila de totales (`footerTotals`)
+
+El componente `~/components/DpTable` admite la prop opcional **`footerTotals`** para mostrar una fila inferior con la etiqueta **Totales:** y sumas en columnas indicadas.
+
+### Campos principales
+
+| Campo | Descripción |
+|--------|-------------|
+| `label` | Texto de la etiqueta (por defecto `Totales:`). |
+| `sumColumns` | Claves `column` de `tableDef` donde se muestra cada total. |
+| `sumValueKey` | Por cada clave de `sumColumns`, indica **qué propiedad numérica del row** sumar si no coincide con el nombre de la columna (útil cuando la columna muestra un string formateado). |
+| `respectGlobalFilter` | Si es `true` (por defecto), el total usa solo las filas que pasan el filtro global de la tabla. |
+
+### `sumValueKey` en la práctica
+
+La tabla suele mostrar un valor **formateado** (ej. moneda con símbolo), pero la suma debe hacerse sobre un **número** en otro campo del objeto fila.
+
+**Ejemplo** (costos de viaje, `TripCostsPage`): columna visible `amountFormatted` (string tipo `S/. 50.00`) y suma sobre `amount` (number):
+
+```tsx
+<DpTable<TripCostTableRow>
+  data={tableRows}
+  tableDef={TABLE_DEF}
+  footerTotals={{
+    label: "Totales:",
+    sumColumns: ["amountFormatted"],
+    sumValueKey: { amountFormatted: "amount" },
+    formatSum: (sum) => formatAmountWithSymbol(sum, "PEN"), // en la app se elige moneda según los datos
+  }}
+/>
+```
+
+Si **no** usas `sumValueKey`, se suma la propiedad con el mismo nombre que la columna (`row[column]`).
+
+Convenciones y más detalle para el equipo: **`AGENTS.md`**.
+
+---
+
 ## Licencia
 
 Privado — uso interno.

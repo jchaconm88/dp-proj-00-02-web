@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
@@ -20,6 +20,11 @@ export interface DpContentSetProps {
   variant?: "panel" | "inline";
   visible?: boolean;
   onHide?: () => void;
+  showLoading?: boolean;
+  loadingMessage?: string;
+  showError?: boolean;
+  errorMessage?: string;
+  dismissibleError?: boolean;
   children: ReactNode;
 }
 
@@ -69,8 +74,62 @@ export default function DpContentSet({
   variant = "panel",
   visible,
   onHide,
+  showLoading = false,
+  loadingMessage = "Cargando...",
+  showError = false,
+  errorMessage = "",
+  dismissibleError = true,
   children,
 }: DpContentSetProps) {
+  const [errorClosed, setErrorClosed] = useState(false);
+
+  useEffect(() => {
+    setErrorClosed(false);
+  }, [errorMessage]);
+
+  const canShowError = showError && !!errorMessage && !errorClosed;
+
+  const errorBannerDialog = canShowError && !showLoading && (
+    <div className="px-6 pt-3">
+      <div
+        role="alert"
+        className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700 shadow-md dark:border-red-900/40 dark:bg-zinc-900 dark:text-red-300"
+      >
+        <span className="min-w-0 flex-1 leading-snug">{errorMessage}</span>
+        {dismissibleError && (
+          <button
+            type="button"
+            onClick={() => setErrorClosed(true)}
+            aria-label="Cerrar error"
+            className="flex-shrink-0 rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30"
+          >
+            <i className="pi pi-times" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  /** Mismo estilo “toast” que en diálogo, para panel/inline */
+  const errorBannerInline = canShowError && !showLoading && (
+    <div
+      role="alert"
+      className="flex w-full flex-shrink-0 items-start justify-between gap-3 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700 shadow-md dark:border-red-900/40 dark:bg-zinc-900 dark:text-red-300"
+    >
+      <span className="min-w-0 flex-1 leading-snug">{errorMessage}</span>
+      {dismissibleError && (
+        <button
+          type="button"
+          onClick={() => setErrorClosed(true)}
+          aria-label="Cerrar error"
+          className="flex-shrink-0 rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30"
+        >
+          <i className="pi pi-times" />
+        </button>
+      )}
+    </div>
+  );
+
   const footerEl = (
     <FooterButtons
       cancelLabel={cancelLabel}
@@ -82,6 +141,22 @@ export default function DpContentSet({
     />
   );
 
+  const scrollBody = showLoading ? (
+    <div className="py-8 text-center text-zinc-500">{loadingMessage}</div>
+  ) : (
+    children
+  );
+
+  /** Contenido con error embebido (panel / inline): barra opaca ancho completo */
+  const contentElWithInlineError = showLoading ? (
+    <div className="py-8 text-center text-zinc-500">{loadingMessage}</div>
+  ) : (
+    <>
+      {errorBannerInline}
+      {children}
+    </>
+  );
+
   if (visible !== undefined) {
     return (
       <Dialog
@@ -90,6 +165,9 @@ export default function DpContentSet({
         onHide={onHide ?? onCancel}
         style={{ width: "36rem", maxHeight: "90vh" }}
         contentStyle={{ overflow: "hidden", display: "flex", flexDirection: "column", padding: 0 }}
+        pt={{
+          header: { className: "border-b border-zinc-200 dark:border-zinc-700" },
+        }}
         closable={!saving}
         closeOnEscape={!saving}
         dismissableMask={!saving}
@@ -97,8 +175,9 @@ export default function DpContentSet({
         modal
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {errorBannerDialog}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-4">
-            <div className="flex flex-col gap-4">{children}</div>
+            <div className="flex flex-col gap-4">{scrollBody}</div>
           </div>
           <div className="flex-shrink-0 border-t border-zinc-200 bg-zinc-50/80 px-6 py-4 dark:border-zinc-700 dark:bg-zinc-900/50">
             {footerEl}
@@ -111,7 +190,7 @@ export default function DpContentSet({
   if (variant === "inline") {
     return (
       <div className="flex flex-col gap-4">
-        {children}
+        {contentElWithInlineError}
         {footerEl}
       </div>
     );
@@ -120,7 +199,7 @@ export default function DpContentSet({
   return (
     <Panel header={title}>
       <div className="space-y-4">
-        {children}
+        {contentElWithInlineError}
         {footerEl}
       </div>
     </Panel>

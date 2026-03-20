@@ -84,12 +84,9 @@ export default function PermissionDialog({
       saveDisabled={!code.trim() || isNavigating}
       visible={visible}
       onHide={onHide}
+      showError={!!error}
+      errorMessage={error ?? ""}
     >
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-          {error}
-        </div>
-      )}
       <DpInput
         type="input"
         label="Código"

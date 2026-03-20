@@ -4,6 +4,7 @@ import { getSequences, deleteSequence, type SequenceRecord } from "~/features/sy
 import type { Route } from "./+types/SequencesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import SequenceDialog from "./SequenceDialog";
 import { RESET_PERIOD } from "~/constants/status-options";
 
@@ -48,6 +49,7 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   const [filterValue, setFilterValue] = useState("");
 
   // Loading unificado: navegación entre rutas + revalidaciones
@@ -73,21 +75,31 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
   // Refresca datos re-ejecutando el clientLoader sin necesidad de refetch manual
   const handleSuccess = () => revalidator.revalidate();
 
-  const handleDeleteSelected = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (selected.length === 0) return;
-    if (!confirm(`Â¿Eliminar ${selected.length} secuencia(s)?`)) return;
+    setPendingDeleteIds(selected.map((s) => s.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      await Promise.all(selected.map((s) => deleteSequence(s.id)));
+      await Promise.all(ids.map((id) => deleteSequence(id)));
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   return (
@@ -98,7 +110,7 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
           onFilter={handleFilter}
           onLoad={() => revalidator.revalidate()}
           onCreate={openAdd}
-          onDelete={handleDeleteSelected}
+          onDelete={openDeleteConfirm}
           deleteDisabled={selectedCount === 0 || saving}
           loading={isLoading}
           filterPlaceholder="Filtrar por entidad, prefijo..."
@@ -132,6 +144,22 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
         sequenceId={editId}
         onSuccess={handleSuccess}
         onHide={handleHide}
+      />
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar secuencias"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} secuencia(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
       />
 
       <Outlet />

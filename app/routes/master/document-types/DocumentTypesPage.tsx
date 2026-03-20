@@ -4,6 +4,7 @@ import { getDocumentTypes, deleteDocumentType, deleteDocumentTypes, type Documen
 import type { Route } from "./+types/DocumentTypesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { DOCUMENT_TYPE_CATEGORY } from "~/constants/status-options";
 import DocumentTypeDialog from "./DocumentTypeDialog";
 
@@ -42,6 +43,7 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
   const [error, setError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editId;
 
@@ -53,26 +55,35 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
   const openAdd = () => navigate("/master/document-types/add");
   const openEdit = (row: DocumentTypeRow) => navigate(`/master/document-types/edit/${encodeURIComponent(row.id)}`);
 
-  const handleDelete = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    if (!confirm(`¿Eliminar ${selected.length} tipo(s) de documento?`)) return;
+    setPendingDeleteIds(selected.map((r) => r.id));
+  };
 
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      if (selected.length === 1) {
-        await deleteDocumentType(selected[0].id);
+      if (ids.length === 1) {
+        await deleteDocumentType(ids[0]);
       } else {
-        await deleteDocumentTypes(selected.map((r) => r.id));
+        await deleteDocumentTypes(ids);
       }
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   const handleSuccess = () => {
@@ -87,7 +98,7 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDelete}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
@@ -118,6 +129,22 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
           onHide={handleHide}
         />
       )}
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar tipos de documento"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} tipo(s) de documento? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
+      />
     </DpContent>
   );
 }

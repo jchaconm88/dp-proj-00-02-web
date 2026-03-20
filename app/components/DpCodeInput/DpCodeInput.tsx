@@ -23,7 +23,7 @@ export interface DpCodeInputProps {
  * Control para campos "código" vinculados a una secuencia.
  * - Si la secuencia tiene allowManualOverride = false: el input es solo lectura; el código se genera al guardar.
  * - Si allowManualOverride = true: el usuario puede editar o dejar vacío; si está vacío se genera al guardar.
- * Usar resolveCodeIfEmpty(code, entity) al guardar para obtener el código final.
+ * Usar generateSequenceCode(code, entity) al guardar para obtener el código final.
  */
 export function DpCodeInput({
   entity,

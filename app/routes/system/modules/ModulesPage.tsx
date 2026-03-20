@@ -4,6 +4,7 @@ import { getModules, deleteModule, type ModuleRecord } from "~/features/system/m
 import type { Route } from "./+types/ModulesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import ModuleDialog from "./ModuleDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -32,6 +33,7 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,21 +60,31 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
     navigate("/system/modules/" + encodeURIComponent(module.id));
   };
 
-  const handleDeleteSelected = async () => {
+  const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (selected.length === 0) return;
-    if (!confirm(`Â¿Eliminar ${selected.length} módulo(s)?`)) return;
+    setPendingDeleteIds(selected.map((m) => m.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
     setSaving(true);
     setError(null);
     try {
-      await Promise.all(selected.map((m) => deleteModule(m.id)));
+      await Promise.all(ids.map((id) => deleteModule(id)));
       tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!saving) setPendingDeleteIds(null);
   };
 
   return (
@@ -82,7 +94,7 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
         onCreate={openAdd}
-        onDelete={handleDeleteSelected}
+        onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading}
         filterPlaceholder="Filtrar por colección o descripción..."
@@ -123,6 +135,22 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
           }
         }}
         onHide={() => setDialogVisible(false)}
+      />
+
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={closeDeleteConfirm}
+        title="Eliminar módulos"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} módulo(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={saving}
       />
     </DpContent>
   );
