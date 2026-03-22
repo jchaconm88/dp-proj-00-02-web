@@ -1,4 +1,4 @@
-export type DriverRelationshipType = "employee" | "contractor";
+export type DriverRelationshipType = "employee" | "resource";
 export type DriverStatus = "available" | "assigned" | "inactive";
 
 export interface DriverRecord {
@@ -6,13 +6,15 @@ export interface DriverRecord {
     firstName: string;
     lastName: string;
     documentNo: string;
-    documentId: string;
+    documentTypeId: string;
+    documentType: string;
     phoneNo: string;
     licenseNo: string;
     licenseCategory: string;
     licenseExpiration: string;
     relationshipType: DriverRelationshipType;
     employeeId: string | null;
+    resourceId: string | null;
     status: DriverStatus;
     currentTripId: string;
 }
@@ -21,13 +23,15 @@ export interface DriverAddInput {
     firstName: string;
     lastName: string;
     documentNo: string;
-    documentId: string;
+    documentTypeId: string;
+    documentType: string;
     phoneNo: string;
     licenseNo: string;
     licenseCategory: string;
     licenseExpiration: string;
     relationshipType: DriverRelationshipType;
     employeeId: string | null;
+    resourceId: string | null;
     status: DriverStatus;
     currentTripId: string;
 }

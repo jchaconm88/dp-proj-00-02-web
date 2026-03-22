@@ -21,10 +21,11 @@ const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Nombre", column: "fullName", order: 2, display: true, filter: true },
   { header: "Tipo Doc",    column: "documentType",   order: 3, display: true, filter: true },
   { header: "Nº Doc",      column: "documentNo",     order: 4, display: true, filter: true },
-  { header: "F. Ingreso", column: "hireDate", order: 5, display: true, filter: true, type: "date" },
-  { header: "Vinculación", column: "engagementType", order: 6, display: true, filter: true, type: "status", typeOptions: RESOURCE_ENGAGEMENT_TYPE },
-  { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: RESOURCE_STATUS },
-  { header: "Costos", column: "costs", order: 8, display: true, filter: false },
+  { header: "Cargo", column: "position", order: 5, display: true, filter: true },
+  { header: "F. Ingreso", column: "hireDate", order: 6, display: true, filter: true, type: "date" },
+  { header: "Vinculación", column: "engagementType", order: 7, display: true, filter: true, type: "label", typeOptions: RESOURCE_ENGAGEMENT_TYPE },
+  { header: "Estado", column: "status", order: 8, display: true, filter: true, type: "status", typeOptions: RESOURCE_STATUS },
+  { header: "Costos", column: "costs", order: 9, display: true, filter: false },
 ];
 
 export async function clientLoader() {
@@ -81,7 +82,11 @@ export default function ResourcesPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (result?: { id: string; created: boolean }) => {
+    if (result?.created && result.id) {
+      navigate(`/human-resource/resources/${encodeURIComponent(result.id)}/costs`);
+      return;
+    }
     navigate("/human-resource/resources");
     revalidator.revalidate();
   };

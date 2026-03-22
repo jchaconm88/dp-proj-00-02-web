@@ -3,6 +3,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Calendar } from "primereact/calendar";
+import { Button } from "primereact/button";
 import type { DropdownChangeEvent } from "primereact/dropdown";
 import type { ChangeEvent } from "react";
 
@@ -88,6 +89,9 @@ export interface DpInputSelectProps extends DpInputPropsBase {
   optionValue?: string;
   placeholder?: string;
   filter?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  refreshAriaLabel?: string;
 }
 
 export interface DpInputCheckProps extends DpInputPropsBase {
@@ -137,24 +141,41 @@ export default function DpInput(props: DpInputProps) {
       optionValue = "value",
       placeholder,
       filter,
+      onRefresh,
+      refreshing = false,
+      refreshAriaLabel = "Refrescar opciones",
     } = props;
     return (
       <div className={`${wrapperClass} ${className}`.trim()}>
         <label htmlFor={id} className={labelClass}>
           {label}
         </label>
-        <Dropdown
-          id={id}
-          value={value}
-          options={options}
-          optionLabel={optionLabel}
-          optionValue={optionValue}
-          onChange={(e: DropdownChangeEvent) => onChange(e.value ?? "")}
-          placeholder={placeholder}
-          filter={filter}
-          disabled={disabled}
-          className={controlClass}
-        />
+        <div className="flex items-stretch gap-2">
+          <Dropdown
+            id={id}
+            value={value}
+            options={options}
+            optionLabel={optionLabel}
+            optionValue={optionValue}
+            onChange={(e: DropdownChangeEvent) => onChange(e.value ?? "")}
+            placeholder={placeholder}
+            filter={filter}
+            disabled={disabled}
+            className="w-full"
+          />
+          {onRefresh && (
+            <Button
+              type="button"
+              icon="pi pi-refresh"
+              outlined
+              onClick={onRefresh}
+              loading={refreshing}
+              disabled={disabled || refreshing}
+              aria-label={refreshAriaLabel}
+              title={refreshAriaLabel}
+            />
+          )}
+        </div>
       </div>
     );
   }

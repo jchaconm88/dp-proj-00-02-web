@@ -153,7 +153,7 @@ Cache-Control:
 dp-proj-00-02-web/
 ├── app/
 │   ├── components/
-│   │   ├── DpContent/          # Panel + header de página (DpContent, DpContentHeader,
+│   │   ├── DpContent/          # Panel + header (DpContent, DpContentHeader, DpContentHeaderAction,
 │   │   │                       #   DpContentSet, DpContentInfo)
 │   │   ├── DpInput/            # Control de formulario unificado
 │   │   ├── DpTable/            # Tabla con filtro, selección y acciones
@@ -265,6 +265,45 @@ Si **no** usas `sumValueKey`, se suma la propiedad con el mismo nombre que la co
 Por defecto `DpTable` muestra paginación. Para **ocultarla** y ver todas las filas: **`paginator={false}`** (no se pasan `rows` ni `rowsPerPageOptions` al `DataTable`).
 
 Convenciones y más detalle para el equipo: **`AGENTS.md`**.
+
+---
+
+## `DpContentHeader`: acciones personalizadas (`DpContentHeaderAction`)
+
+Patrón análogo a **`DpTColumn`** dentro de **`DpTable`**: un componente marcador que **no pinta nada** (`return null`); el header recorre los `children`, detecta `<DpContentHeaderAction>` y coloca su contenido en la barra.
+
+### Orden en la barra
+
+1. Filtro (si hay `onFilter`)  
+2. Actualizar (`onLoad`)  
+3. **Acciones personalizadas** (una o varias `DpContentHeaderAction`)  
+4. Eliminar (`onDelete`)  
+5. Agregar (`onCreate`)
+
+### Uso
+
+```tsx
+import { DpContentHeader, DpContentHeaderAction } from "~/components/DpContent";
+import { Button } from "primereact/button";
+
+<DpContentHeader
+  onLoad={…}
+  onCreate={…}
+  onDelete={…}
+  filterValue={…}
+  onFilter={…}
+>
+  <DpContentHeaderAction>
+    <Button size="small" icon="pi pi-flag" label="Mi acción" onClick={…} />
+  </DpContentHeaderAction>
+</DpContentHeader>
+```
+
+Dentro de cada `DpContentHeaderAction` puedes poner **cualquier `ReactNode`**: botones, grupos, `SplitButton`, etc. Puedes repetir el marcador varias veces si necesitas bloques distintos.
+
+### Ejemplo en el proyecto
+
+En **`TripsPage`** hay un botón **«Cambiar estado»** que abre un modal (`DpContentSet`) con un select de estados de viaje y aplica el cambio masivo a los viajes seleccionados (servicio `updateTripsStatus` en `~/features/transport/trips`).
 
 ---
 

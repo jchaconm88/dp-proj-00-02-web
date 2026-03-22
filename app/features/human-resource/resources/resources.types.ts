@@ -41,7 +41,6 @@ export type ResourceCostType = "per_trip" | "per_hour" | "per_day" | "fixed";
 export interface ResourceCostRecord {
   id: string;
   code: string;
-  name: string;
   type: ResourceCostType;
   amount: number;
   currency: string;
@@ -51,7 +50,6 @@ export interface ResourceCostRecord {
 
 export interface ResourceCostAddInput {
   code: string;
-  name: string;
   type: ResourceCostType;
   amount: number;
   currency: string;

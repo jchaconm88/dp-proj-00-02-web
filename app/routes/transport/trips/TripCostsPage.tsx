@@ -38,9 +38,9 @@ export function meta({ data }: Route.MetaArgs) {
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
   { header: "Nombre", column: "displayName", order: 2, display: true, filter: true },
-  { header: "Entidad", column: "entity", order: 3, display: true, filter: true, type: "status", typeOptions: TRIP_COST_ENTITY },
-  { header: "Tipo", column: "type", order: 4, display: true, filter: true, type: "status", typeOptions: TRIP_COST_TYPE },
-  { header: "Origen", column: "source", order: 5, display: true, filter: true, type: "status", typeOptions: TRIP_COST_SOURCE },
+  { header: "Entidad", column: "entity", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_COST_ENTITY },
+  { header: "Tipo", column: "type", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_COST_TYPE },
+  { header: "Origen", column: "source", order: 5, display: true, filter: true, type: "label", typeOptions: TRIP_COST_SOURCE },
   { header: "Monto", column: "amountFormatted", order: 6, display: true, filter: true },
   { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
 ];

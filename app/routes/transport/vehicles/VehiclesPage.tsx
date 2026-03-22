@@ -19,11 +19,12 @@ type VehicleRow = VehicleRecord;
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Placa",       column: "plate",      order: 1, display: true, filter: true },
-  { header: "Tipo",        column: "type",       order: 2, display: true, filter: true, type: "status", typeOptions: VEHICLE_TYPE },
+  { header: "Tipo",        column: "type",       order: 2, display: true, filter: true, type: "label", typeOptions: VEHICLE_TYPE },
   { header: "Marca",       column: "brand",      order: 3, display: true, filter: true },
   { header: "Modelo",      column: "model",      order: 4, display: true, filter: true },
   { header: "Capacidad(Kg)", column: "capacityKg", order: 5, display: true, filter: true },
-  { header: "Estado",      column: "status",     order: 6, display: true, filter: true, type: "status", typeOptions: VEHICLE_STATUS },
+  { header: "Viaje actual", column: "currentTripId", order: 6, display: true, filter: true },
+  { header: "Estado",      column: "status",     order: 7, display: true, filter: true, type: "status", typeOptions: VEHICLE_STATUS },
 ];
 
 export async function clientLoader() {

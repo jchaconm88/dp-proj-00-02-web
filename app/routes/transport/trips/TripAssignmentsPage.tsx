@@ -24,9 +24,9 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Tipo entidad", column: "entityType", order: 2, display: true, filter: true, type: "status", typeOptions: TRIP_ASSIGNMENT_ENTITY_TYPE },
-  { header: "Posición", column: "position", order: 3, display: true, filter: true },
-  { header: "Nombre a mostrar", column: "displayName", order: 4, display: true, filter: true },
+  { header: "Nombre", column: "displayName", order: 2, display: true, filter: true },
+  { header: "Tipo entidad", column: "entityType", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_ASSIGNMENT_ENTITY_TYPE },
+  { header: "Posición", column: "position", order: 4, display: true, filter: true },
 ];
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {

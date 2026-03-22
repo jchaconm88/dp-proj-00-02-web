@@ -58,7 +58,6 @@ function toResourceCostRecord(doc: { id: string } & Record<string, unknown>): Re
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
-    name: String(doc.name ?? ""),
     type,
     amount: Number(doc.amount) ?? 0,
     currency: String(doc.currency ?? "PEN"),
@@ -157,7 +156,6 @@ export async function addResourceCost(
     RESOURCE_COSTS_SUB,
     {
       code: data.code.trim(),
-      name: data.name.trim(),
       type: data.type,
       amount: Number(data.amount) ?? 0,
       currency: (data.currency ?? "PEN").trim(),
@@ -174,7 +172,6 @@ export async function updateResourceCost(
 ): Promise<void> {
   const payload: Record<string, unknown> = {};
   if (data.code !== undefined) payload.code = data.code;
-  if (data.name !== undefined) payload.name = data.name;
   if (data.type !== undefined) payload.type = data.type;
   if (data.amount !== undefined) payload.amount = Number(data.amount) ?? 0;
   if (data.currency !== undefined) payload.currency = data.currency;

@@ -22,7 +22,7 @@ import {
 export interface ResourceDialogProps {
   visible: boolean;
   resourceId: string | null;
-  onSuccess?: () => void;
+  onSuccess?: (result?: { id: string; created: boolean }) => void;
   onHide?: () => void;
 }
 
@@ -146,10 +146,11 @@ export default function ResourceDialog({
 
       if (resourceId) {
         await updateResource(resourceId, payload);
+        onSuccess?.({ id: resourceId, created: false });
       } else {
-        await addResource(payload);
+        const createdId = await addResource(payload);
+        onSuccess?.({ id: createdId, created: true });
       }
-      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar.");
     } finally {

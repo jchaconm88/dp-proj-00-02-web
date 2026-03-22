@@ -1,7 +1,9 @@
+import { Children, Fragment, isValidElement, type ReactElement, type ReactNode } from "react";
 import { Button } from "primereact/button";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import { InputText } from "primereact/inputtext";
+import DpContentHeaderAction from "./DpContentHeaderAction";
 
 export interface DpContentHeaderProps {
   /** Valor del filtro (controlado) */
@@ -20,6 +22,17 @@ export interface DpContentHeaderProps {
   loading?: boolean;
   /** Placeholder del campo de filtro */
   filterPlaceholder?: string;
+  /**
+   * Acciones extra: usar `<DpContentHeaderAction>…</DpContentHeaderAction>`.
+   * Se muestran después de Actualizar y antes de Eliminar.
+   */
+  children?: ReactNode;
+}
+
+function isDpContentHeaderActionChild(
+  child: ReactNode
+): child is ReactElement<{ children: ReactNode }> {
+  return isValidElement(child) && child.type === DpContentHeaderAction;
 }
 
 export default function DpContentHeader({
@@ -31,7 +44,15 @@ export default function DpContentHeader({
   deleteDisabled = true,
   loading = false,
   filterPlaceholder = "Filtrar...",
+  children,
 }: DpContentHeaderProps) {
+  const customActions: ReactNode[] = [];
+  Children.forEach(children, (child) => {
+    if (isDpContentHeaderActionChild(child)) {
+      customActions.push(child.props.children);
+    }
+  });
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {onFilter != null && (
@@ -56,6 +77,9 @@ export default function DpContentHeader({
           aria-label="Actualizar"
         />
       )}
+      {customActions.map((node, i) => (
+        <Fragment key={i}>{node}</Fragment>
+      ))}
       {onDelete != null && (
         <Button
           size="small"
@@ -76,3 +100,5 @@ export default function DpContentHeader({
     </div>
   );
 }
+
+export { DpContentHeaderAction };

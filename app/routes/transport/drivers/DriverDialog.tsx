@@ -10,6 +10,7 @@ import {
     type DriverStatus,
 } from "~/features/transport/drivers";
 import { getEmployees } from "~/features/human-resource/employees";
+import { getResources } from "~/features/human-resource/resources";
 import { DRIVER_STATUS, DRIVER_RELATIONSHIP, statusToSelectOptions } from "~/constants/status-options";
 
 export interface DriverDialogProps {
@@ -22,12 +23,6 @@ export interface DriverDialogProps {
 const RELATIONSHIP_OPTIONS = statusToSelectOptions(DRIVER_RELATIONSHIP);
 const DRIVER_STATUS_OPTIONS = statusToSelectOptions(DRIVER_STATUS);
 
-const DOCUMENT_OPTIONS = [
-    { label: "DNI", value: "DNI" },
-    { label: "CE", value: "CE" },
-    { label: "Pasaporte", value: "PASAPORTE" },
-];
-
 export default function DriverDialog({
     visible,
     driverId,
@@ -38,12 +33,14 @@ export default function DriverDialog({
     const navigation = useNavigation();
     const isNavigating = navigation.state !== "idle";
 
-    const [relationshipType, setRelationshipType] = useState<DriverRelationshipType>("contractor");
+    const [relationshipType, setRelationshipType] = useState<DriverRelationshipType>("employee");
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+    const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [documentNo, setDocumentNo] = useState("");
-    const [documentId, setDocumentId] = useState<string | null>(null);
+    const [documentTypeId, setDocumentTypeId] = useState<string | null>(null);
+    const [documentType, setDocumentType] = useState("");
     const [phoneNo, setPhoneNo] = useState("");
     const [licenseNo, setLicenseNo] = useState("");
     const [licenseCategory, setLicenseCategory] = useState("");
@@ -52,6 +49,7 @@ export default function DriverDialog({
     const [currentTripId, setCurrentTripId] = useState("");
 
     const [employees, setEmployees] = useState<{ id: string; label: string; raw: any }[]>([]);
+    const [resources, setResources] = useState<{ id: string; label: string; raw: any }[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -63,14 +61,24 @@ export default function DriverDialog({
     };
 
     const isEmployee = relationshipType === "employee";
-    const lockedFromEmployee = isEmployee && selectedEmployeeId;
+    const isResource = relationshipType === "resource";
 
     const loadEmployeeIntoForm = useCallback((emp: any) => {
         setFirstName(emp.firstName ?? "");
         setLastName(emp.lastName ?? "");
         setDocumentNo(emp.documentNo ?? "");
-        setDocumentId(emp.documentTypeId ?? "DNI"); // Assuming employee has documentTypeId
-        setPhoneNo(emp.phone ?? ""); // Assuming employee has phone
+        setDocumentTypeId(emp.documentTypeId ?? "");
+        setDocumentType(emp.documentType ?? "");
+        setPhoneNo(emp.phone ?? "");
+    }, []);
+
+    const loadResourceIntoForm = useCallback((res: any) => {
+        setFirstName(res.firstName ?? "");
+        setLastName(res.lastName ?? "");
+        setDocumentNo(res.documentNo ?? "");
+        setDocumentTypeId(res.documentTypeId ?? "");
+        setDocumentType(res.documentType ?? "");
+        setPhoneNo(res.phone ?? "");
     }, []);
 
     useEffect(() => {
@@ -87,14 +95,25 @@ export default function DriverDialog({
                 })));
             })
             .catch(() => setEmployees([]));
+        getResources()
+            .then(({ items }) => {
+                setResources(items.map((r) => ({
+                    id: r.id,
+                    label: `${r.firstName} ${r.lastName} (${r.code})`,
+                    raw: r,
+                })));
+            })
+            .catch(() => setResources([]));
 
         if (!driverId) {
-            setRelationshipType("contractor");
+            setRelationshipType("employee");
             setSelectedEmployeeId(null);
+            setSelectedResourceId(null);
             setFirstName("");
             setLastName("");
             setDocumentNo("");
-            setDocumentId(null);
+            setDocumentTypeId(null);
+            setDocumentType("");
             setPhoneNo("");
             setLicenseNo("");
             setLicenseCategory("");
@@ -114,10 +133,12 @@ export default function DriverDialog({
                 }
                 setRelationshipType(data.relationshipType);
                 setSelectedEmployeeId(data.employeeId);
+                setSelectedResourceId(data.resourceId ?? null);
                 setFirstName(data.firstName);
                 setLastName(data.lastName);
                 setDocumentNo(data.documentNo);
-                setDocumentId(data.documentId || null);
+                setDocumentTypeId(data.documentTypeId || null);
+                setDocumentType(data.documentType || "");
                 setPhoneNo(data.phoneNo);
                 setLicenseNo(data.licenseNo);
                 setLicenseCategory(data.licenseCategory);
@@ -137,25 +158,39 @@ export default function DriverDialog({
         }
     }, [visible, isEmployee, selectedEmployeeId, employees, loadEmployeeIntoForm]);
 
+    useEffect(() => {
+        if (!visible || !isResource || !selectedResourceId) return;
+        const res = resources.find((r) => r.id === selectedResourceId);
+        if (res && res.raw) {
+            loadResourceIntoForm(res.raw);
+        }
+    }, [visible, isResource, selectedResourceId, resources, loadResourceIntoForm]);
+
     const onRelationshipTypeChange = (value: DriverRelationshipType) => {
         setRelationshipType(value);
-        if (value === "contractor") {
+        setFirstName("");
+        setLastName("");
+        setDocumentNo("");
+        setDocumentTypeId(null);
+        setDocumentType("");
+        setPhoneNo("");
+        if (value === "employee") {
+            setSelectedResourceId(null);
+        } else {
             setSelectedEmployeeId(null);
-            setFirstName("");
-            setLastName("");
-            setDocumentNo("");
-            setDocumentId(null);
-            setPhoneNo("");
         }
     };
 
     const save = async () => {
         if (!firstName.trim() || !lastName.trim()) return;
         if (isEmployee && !selectedEmployeeId) return;
-        if (!isEmployee && !documentId) return;
+        if (isResource && !selectedResourceId) return;
+        if (!documentTypeId) return;
 
         const empId = isEmployee ? selectedEmployeeId : null;
-        const docId = documentId ?? "";
+        const resId = isResource ? selectedResourceId : null;
+        const docTypeId = documentTypeId ?? "";
+        const docType = documentType ?? "";
 
         setSaving(true);
         setError(null);
@@ -164,13 +199,15 @@ export default function DriverDialog({
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
                 documentNo: documentNo.trim(),
-                documentId: docId,
+                documentTypeId: docTypeId,
+                documentType: docType,
                 phoneNo: phoneNo.trim(),
                 licenseNo: licenseNo.trim(),
                 licenseCategory: licenseCategory.trim(),
                 licenseExpiration: licenseExpiration.trim() || "",
                 relationshipType,
                 employeeId: empId,
+                resourceId: resId,
                 status,
                 currentTripId: currentTripId.trim() || "",
             };
@@ -190,11 +227,13 @@ export default function DriverDialog({
     };
 
     const employeeOptions = employees.map((e) => ({ label: e.label, value: e.id }));
+    const resourceOptions = resources.map((r) => ({ label: r.label, value: r.id }));
 
     const valid =
         !!firstName.trim() &&
         !!lastName.trim() &&
-        (isEmployee ? !!selectedEmployeeId : !!documentId);
+        (isEmployee ? !!selectedEmployeeId : !!selectedResourceId) &&
+        !!documentTypeId;
 
     return (
         <DpContentSet
@@ -223,44 +262,30 @@ export default function DriverDialog({
                     />
 
                     {isEmployee && (
-                        <div className="flex flex-col gap-2">
-                            <DpInput
-                                type="select"
-                                label="Empleado"
-                                name="employeeId"
-                                value={selectedEmployeeId ?? ""}
-                                onChange={(v) => setSelectedEmployeeId(v ? String(v) : null)}
-                                options={employeeOptions}
-                                placeholder="Seleccionar empleado"
-                                filter
-                            />
-                            {lockedFromEmployee && (
-                                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                    Los datos personales se completan desde el empleado seleccionado.
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    <DpInput type="input" label="Nombres" name="firstName" value={firstName} onChange={setFirstName} placeholder="Juan" disabled={!!lockedFromEmployee} />
-                    <DpInput type="input" label="Apellidos" name="lastName" value={lastName} onChange={setLastName} placeholder="Pérez" disabled={!!lockedFromEmployee} />
-                    <DpInput type="input" label="Nº documento" name="documentNo" value={documentNo} onChange={setDocumentNo} placeholder="12345678" disabled={!!lockedFromEmployee} />
-
-                    {isEmployee ? (
-                        <DpInput type="input" label="Tipo de documento" name="documentId" value={documentId ?? ""} onChange={() => { }} disabled placeholder="Desde empleado" />
-                    ) : (
                         <DpInput
                             type="select"
-                            label="Tipo de documento"
-                            name="documentId"
-                            value={documentId ?? ""}
-                            onChange={(v) => setDocumentId(v ? String(v) : null)}
-                            options={DOCUMENT_OPTIONS}
-                            placeholder="Seleccionar documento"
+                            label="Empleado"
+                            name="employeeId"
+                            value={selectedEmployeeId ?? ""}
+                            onChange={(v) => setSelectedEmployeeId(v ? String(v) : null)}
+                            options={employeeOptions}
+                            placeholder="Seleccionar empleado"
+                            filter
                         />
                     )}
 
-                    <DpInput type="input" label="Teléfono" name="phoneNo" value={phoneNo} onChange={setPhoneNo} placeholder="999999999" disabled={!!lockedFromEmployee} />
+                    {isResource && (
+                        <DpInput
+                            type="select"
+                            label="Recurso"
+                            name="resourceId"
+                            value={selectedResourceId ?? ""}
+                            onChange={(v) => setSelectedResourceId(v ? String(v) : null)}
+                            options={resourceOptions}
+                            placeholder="Seleccionar recurso"
+                            filter
+                        />
+                    )}
 
                     <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
                         <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">Datos de Licencia</h4>
@@ -276,9 +301,6 @@ export default function DriverDialog({
                     <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
                         <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">Asignación Operativa</h4>
                         <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as DriverStatus)} options={DRIVER_STATUS_OPTIONS} />
-                        <div className="mt-4">
-                            <DpInput type="input" label="Viaje actual" name="currentTripId" value={currentTripId} onChange={setCurrentTripId} placeholder="TRIP-2026-0001" disabled />
-                        </div>
                     </div>
 
                 </div>

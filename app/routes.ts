@@ -110,5 +110,13 @@ export default [
       route("add", "routes/transport/trips/TripAssignmentAdd.tsx"),
       route("edit/:assignmentId", "routes/transport/trips/TripAssignmentEdit.tsx"),
     ]),
+    route("transport/settlements", "routes/transport/settlements/SettlementsPage.tsx", [
+      route("add", "routes/transport/settlements/SettlementAdd.tsx"),
+      route("edit/:id", "routes/transport/settlements/SettlementEdit.tsx"),
+    ]),
+    route("transport/settlements/:id/items", "routes/transport/settlements/SettlementItemsPage.tsx", [
+      route("add", "routes/transport/settlements/SettlementItemAdd.tsx"),
+      route("edit/:itemId", "routes/transport/settlements/SettlementItemEdit.tsx"),
+    ]),
   ]),
 ] satisfies RouteConfig;

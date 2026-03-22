@@ -23,12 +23,11 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "status", typeOptions: RESOURCE_COST_TYPE },
-  { header: "Monto", column: "amount", order: 4, display: true, filter: true },
-  { header: "Moneda", column: "currency", order: 5, display: true, filter: true, type: "status", typeOptions: CURRENCY },
-  { header: "Vigente desde", column: "effectiveFrom", order: 6, display: true, filter: true, type: "date" },
-  { header: "Activo", column: "active", order: 7, display: true, filter: true, type: "bool" },
+  { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: RESOURCE_COST_TYPE },
+  { header: "Monto", column: "amount", order: 3, display: true, filter: true },
+  { header: "Moneda", column: "currency", order: 4, display: true, filter: true, type: "status", typeOptions: CURRENCY },
+  { header: "Vigente desde", column: "effectiveFrom", order: 5, display: true, filter: true, type: "date" },
+  { header: "Activo", column: "active", order: 6, display: true, filter: true, type: "bool" },
 ];
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
@@ -113,7 +112,7 @@ export default function ResourceCostsPage({ loaderData }: Route.ComponentProps) 
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}
-        filterPlaceholder="Filtrar por código, nombre..."
+        filterPlaceholder="Filtrar por código, tipo..."
       />
 
       {error && (

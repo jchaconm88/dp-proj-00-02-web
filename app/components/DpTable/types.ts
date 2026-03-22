@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-/** Tipo de formato de celda: status (chip con color), bool (checkbox no editable), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm). */
-export type DpTableDefColumnType = "status" | "bool" | "date" | "datetime";
+/** Tipo de formato de celda: status (chip con color), label (texto desde typeOptions), bool (checkbox no editable), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm). */
+export type DpTableDefColumnType = "status" | "label" | "bool" | "date" | "datetime";
 
 /**
  * Definición de una columna de la tabla (estilo Angular tableDef).
@@ -17,9 +17,9 @@ export interface DpTableDefColumn {
   display: boolean;
   /** Si la columna participa en el filtro global */
   filter?: boolean;
-  /** Formato de visualización: status (chip), bool (checkbox), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm) */
+  /** Formato de visualización: status (chip), label (texto), bool (checkbox), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm) */
   type?: DpTableDefColumnType;
-  /** Para type="status": mapa valor â†’ etiqueta (string) o { label, severity } para definir color del chip. Severity: success|info|warning|danger|secondary. */
+  /** Para type="status" o "label": mapa valor -> etiqueta (string) o { label, severity }. En "label" solo se usa `label`. */
   typeOptions?: Record<string, string | { label: string; severity?: "success" | "info" | "warning" | "danger" | "secondary" }>;
 }
 

@@ -59,27 +59,50 @@ export default function TripDialog({
   const [clientOptions, setClientOptions] = useState<{ label: string; value: string }[]>([]);
   const [driverOptions, setDriverOptions] = useState<{ label: string; value: string }[]>([]);
   const [vehicleOptions, setVehicleOptions] = useState<{ label: string; value: string }[]>([]);
+  const [refreshingRoutes, setRefreshingRoutes] = useState(false);
+  const [refreshingServices, setRefreshingServices] = useState(false);
+  const [refreshingClients, setRefreshingClients] = useState(false);
+  const [refreshingDrivers, setRefreshingDrivers] = useState(false);
+  const [refreshingVehicles, setRefreshingVehicles] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!visible) return;
-    setError(null);
-    getRoutes().then(({ items }) => {
+  const loadRoutes = async () => {
+    setRefreshingRoutes(true);
+    try {
+      const { items } = await getRoutes();
       setRouteOptions([
         { label: "— Sin ruta —", value: "" },
         ...items.map((r) => ({ label: `${r.name} (${r.code || r.id})`, value: r.id })),
       ]);
-    }).catch(() => setRouteOptions([{ label: "— Sin ruta —", value: "" }]));
-    getTransportServices().then(({ items }) => {
+    } catch {
+      setRouteOptions([{ label: "— Sin ruta —", value: "" }]);
+    } finally {
+      setRefreshingRoutes(false);
+    }
+  };
+
+  const loadServices = async () => {
+    setRefreshingServices(true);
+    try {
+      const { items } = await getTransportServices();
       setServiceOptions([
         { label: "— Sin servicio —", value: "" },
         ...items.map((s) => ({ label: `${(s.name || s.code || s.id).trim()}`, value: s.id })),
       ]);
-    }).catch(() => setServiceOptions([{ label: "— Sin servicio —", value: "" }]));
-    getClients().then(({ items }) => {
+    } catch {
+      setServiceOptions([{ label: "— Sin servicio —", value: "" }]);
+    } finally {
+      setRefreshingServices(false);
+    }
+  };
+
+  const loadClients = async () => {
+    setRefreshingClients(true);
+    try {
+      const { items } = await getClients();
       setClientOptions([
         { label: "— Sin cliente —", value: "" },
         ...items.map((c) => ({
@@ -87,18 +110,54 @@ export default function TripDialog({
           value: c.id,
         })),
       ]);
-    }).catch(() => setClientOptions([{ label: "— Sin cliente —", value: "" }]));
-    getDrivers().then(({ items }) => {
+    } catch {
+      setClientOptions([{ label: "— Sin cliente —", value: "" }]);
+    } finally {
+      setRefreshingClients(false);
+    }
+  };
+
+  const loadDrivers = async () => {
+    setRefreshingDrivers(true);
+    try {
+      const { items } = await getDrivers();
       setDriverOptions(
         items.map((d) => ({
-          label: `${(d.licenseNo || "").trim()} - ${(d.lastName || "").trim()} ${(d.firstName || "").trim()}`.trim() || d.id,
+          label:
+            `${(d.licenseNo || "").trim()} - ${(d.lastName || "").trim()} ${(d.firstName || "").trim()}`.trim() ||
+            d.id,
           value: d.id,
         }))
       );
-    }).catch(() => setDriverOptions([]));
-    getVehicles().then(({ items }) => {
+    } catch {
+      setDriverOptions([]);
+    } finally {
+      setRefreshingDrivers(false);
+    }
+  };
+
+  const loadVehicles = async () => {
+    setRefreshingVehicles(true);
+    try {
+      const { items } = await getVehicles();
       setVehicleOptions(items.map((v) => ({ label: (v.plate || "").trim() || v.id, value: v.id })));
-    }).catch(() => setVehicleOptions([]));
+    } catch {
+      setVehicleOptions([]);
+    } finally {
+      setRefreshingVehicles(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!visible) return;
+    setError(null);
+    void Promise.all([
+      loadRoutes(),
+      loadServices(),
+      loadClients(),
+      loadDrivers(),
+      loadVehicles(),
+    ]);
 
     if (!tripId) {
       setCode("");
@@ -280,6 +339,9 @@ export default function TripDialog({
               options={routeOptions}
               placeholder="Seleccionar ruta"
               filter
+              onRefresh={loadRoutes}
+              refreshing={refreshingRoutes}
+              refreshAriaLabel="Refrescar rutas"
             />
           )}
           <DpInput
@@ -291,6 +353,9 @@ export default function TripDialog({
             options={serviceOptions}
             placeholder="Seleccionar servicio"
             filter
+            onRefresh={loadServices}
+            refreshing={refreshingServices}
+            refreshAriaLabel="Refrescar servicios"
           />
           <DpInput
             type="input"
@@ -309,6 +374,9 @@ export default function TripDialog({
             options={clientOptions}
             placeholder="Seleccionar cliente"
             filter
+            onRefresh={loadClients}
+            refreshing={refreshingClients}
+            refreshAriaLabel="Refrescar clientes"
           />
           <DpInput
             type="select"
@@ -319,6 +387,9 @@ export default function TripDialog({
             options={driverOptions}
             placeholder="Seleccionar conductor"
             filter
+            onRefresh={loadDrivers}
+            refreshing={refreshingDrivers}
+            refreshAriaLabel="Refrescar conductores"
           />
           <DpInput
             type="select"
@@ -329,6 +400,9 @@ export default function TripDialog({
             options={vehicleOptions}
             placeholder="Seleccionar vehículo"
             filter
+            onRefresh={loadVehicles}
+            refreshing={refreshingVehicles}
+            refreshAriaLabel="Refrescar vehículos"
           />
           <DpInput
             type="select"

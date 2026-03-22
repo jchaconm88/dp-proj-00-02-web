@@ -11,6 +11,7 @@ import {
   where,
   limit,
   serverTimestamp,
+  FieldValue,
   runTransaction as firestoreRunTransaction,
   writeBatch,
   type QueryConstraint,
@@ -74,6 +75,8 @@ export async function createDocumentWithId<T extends Record<string, unknown>>(
 /** Elimina propiedades undefined de un objeto/array (Firestore no acepta undefined). */
 function stripUndefined<T>(value: T): T {
   if (value === undefined) return value;
+  /** No recortar sentinels de Firestore (deleteField, etc.). */
+  if (value instanceof FieldValue) return value;
   if (Array.isArray(value)) {
     return value.map((item) => stripUndefined(item)) as T;
   }

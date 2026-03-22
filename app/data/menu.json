@@ -209,6 +209,14 @@
           "view",
           "trip"
         ]
+      },
+      {
+        "title": "Liquidaciones",
+        "link": "/transport/settlements",
+        "permission": [
+          "view",
+          "settlement"
+        ]
       }
     ]
   },

@@ -24,7 +24,7 @@ import {
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripChargeDialog from "./TripChargeDialog";
 
-type TripChargeTableRow = TripChargeRecord & { amountFormatted: string };
+type TripChargeTableRow = TripChargeRecord & { amountFormatted: string; settlementDisplay: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -36,10 +36,12 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_TYPE },
-  { header: "Origen", column: "source", order: 3, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_SOURCE },
-  { header: "Monto", column: "amountFormatted", order: 4, display: true, filter: true },
-  { header: "Estado", column: "status", order: 5, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
+  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
+  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_TYPE },
+  { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_SOURCE },
+  { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
+  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
+  { header: "ID liquidación", column: "settlementDisplay", order: 7, display: true, filter: true },
 ];
 
 const TRIP_CHARGES_FOOTER_TOTALS: DpTableFooterTotals = {
@@ -69,6 +71,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
       charges.map((c) => ({
         ...c,
         amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
+        settlementDisplay: (c.settlementId ?? "").trim() || "—",
       })),
     [charges]
   );
@@ -184,6 +187,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
         <TripChargeDialog
           visible={dialogVisible}
           tripId={tripId}
+          clientId={trip?.clientId ?? ""}
           chargeId={editChargeId}
           onSuccess={handleSuccess}
           onHide={handleHide}

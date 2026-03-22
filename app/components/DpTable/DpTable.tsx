@@ -117,6 +117,11 @@ function renderTypedCell(col: DpTableDefColumn, value: unknown): React.ReactNode
     const { label, severity } = getStatusLabelAndSeverity(col.typeOptions, str);
     return <Tag value={label} severity={severity} />;
   }
+  if (col.type === "label") {
+    const str = value != null ? String(value) : "";
+    const { label } = getStatusLabelAndSeverity(col.typeOptions, str);
+    return <span>{label}</span>;
+  }
   if (col.type === "bool") {
     const checked =
       value === true ||
@@ -132,6 +137,15 @@ function renderTypedCell(col: DpTableDefColumn, value: unknown): React.ReactNode
     return <span>{formatDateTimeValue(value)}</span>;
   }
   return null;
+}
+
+function getTypedFilterText(col: DpTableDefColumn, value: unknown): string {
+  if (col.type === "status" || col.type === "label") {
+    const str = value != null ? String(value) : "";
+    const { label } = getStatusLabelAndSeverity(col.typeOptions, str);
+    return label;
+  }
+  return String(value ?? "");
 }
 
 function isDpTColumnChild(
@@ -189,7 +203,26 @@ function DpTableInner<T extends DpTableRow>(
   );
 
   const filterColumns = useMemo(() => columns.filter((c) => c.filter !== false), [columns]);
-  const globalFilterFields = useMemo(() => filterColumns.map((c) => c.column), [filterColumns]);
+  const globalFilterFields = useMemo(
+    () =>
+      filterColumns.map((c) =>
+        c.type === "status" || c.type === "label" ? `__dp_filter_${c.column}` : c.column
+      ),
+    [filterColumns]
+  );
+
+  const rowsForTable = useMemo(() => {
+    if (!filterColumns.some((c) => c.type === "status" || c.type === "label")) return rows;
+    return rows.map((row) => {
+      const out = { ...(row as Record<string, unknown>) };
+      for (const col of filterColumns) {
+        if (col.type === "status" || col.type === "label") {
+          out[`__dp_filter_${col.column}`] = getTypedFilterText(col, out[col.column]);
+        }
+      }
+      return out as unknown as T;
+    });
+  }, [rows, filterColumns]);
 
   // API imperativa - sigue funcionando para compatibilidad y casos de uso avanzados
   const setDatasource = useCallback((newData: T[]) => setRows(newData), []);
@@ -313,10 +346,10 @@ function DpTableInner<T extends DpTableRow>(
   );
 
   const rowsForFooterTotals = useMemo(() => {
-    if (!footerTotals) return rows;
-    if (footerTotals.respectGlobalFilter === false) return rows;
-    return applyGlobalFilterRows(rows, globalFilter, globalFilterFields);
-  }, [footerTotals, rows, globalFilter, globalFilterFields]);
+    if (!footerTotals) return rowsForTable;
+    if (footerTotals.respectGlobalFilter === false) return rowsForTable;
+    return applyGlobalFilterRows(rowsForTable, globalFilter, globalFilterFields);
+  }, [footerTotals, rowsForTable, globalFilter, globalFilterFields]);
 
   const footerSumsByColumn = useMemo(() => {
     if (!footerTotals?.sumColumns?.length) return {} as Record<string, number>;
@@ -379,7 +412,7 @@ function DpTableInner<T extends DpTableRow>(
   return (
     <div className="space-y-4">
       <DataTable
-        value={rows}
+        value={rowsForTable}
         dataKey="id"
         loading={effectiveLoading}
         selection={selection}

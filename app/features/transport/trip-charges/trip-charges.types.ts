@@ -6,8 +6,12 @@ export interface TripChargeRecord {
   id: string;
   code: string;
   tripId: string;
+  /** Nombre descriptivo (p. ej. servicio de transporte en flete). */
+  name: string;
   type: TripChargeType;
   source: TripChargeSource;
+  /** Servicio de transporte cuando tipo = freight (contrato). */
+  transportServiceId: string;
   amount: number;
   currency: string;
   status: TripChargeStatus;
@@ -17,8 +21,10 @@ export interface TripChargeRecord {
 export interface TripChargeAddInput {
   code: string;
   tripId: string;
+  name: string;
   type: TripChargeType;
   source: TripChargeSource;
+  transportServiceId: string;
   amount: number;
   currency: string;
   status: TripChargeStatus;

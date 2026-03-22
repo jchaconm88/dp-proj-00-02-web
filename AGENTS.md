@@ -207,7 +207,8 @@ export async function clientLoader() {
 | Componente | Uso |
 |---|---|
 | `DpContent` | Contenedor de página de lista |
-| `DpContentHeader` | Barra de herramientas (filtro, crear, eliminar, recargar) |
+| `DpContentHeader` | Barra de herramientas (filtro, crear, eliminar, recargar); admite hijos `DpContentHeaderAction` para controles extra |
+| `DpContentHeaderAction` | Marcador (como `DpTColumn`): envuelve botones u otros controles que se inyectan en el header entre Actualizar y Eliminar |
 | `DpContentInfo` | Contenedor de página de detalle (con botón back) |
 | `DpContentSet` | Dialog/modal para formularios (create/edit); usar `showLoading` / `showError` + `errorMessage` en lugar de renderizar carga o error dentro de `children` |
 | `DpConfirmDialog` | Modal de confirmación antes de eliminar filas desde la lista; **no usar** `confirm()` del navegador |
@@ -229,6 +230,13 @@ export async function clientLoader() {
 <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} />
 <DpInput type="select" label="Estado" name="status" value={status} onChange={setStatus} options={opts} />
 <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
+
+// DpInput type="select" — onChange (TypeScript)
+// El tipo de onChange es (value: string | number) => void. Los handlers deben aceptar string | number
+// y usar String(value) cuando el estado sea string (p. ej. claves de status-options).
+// ❌ (next: string) => …  ✅ (v: string | number) => { const s = String(v); … }
+
+// DpContentSet — variant "dialog" es válido para tipos; el modo diálogo se activa con visible={true}.
 
 // DpContentSet — carga y errores centralizados (no duplicar bloques en cada diálogo)
 <DpContentSet
@@ -295,6 +303,36 @@ Al implementar **Eliminar** en `*Page.tsx` (selección múltiple + `DpContentHea
 
 La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc` (repo raíz).
 
+### `DpInput` select + `DpContentSet` (detalle)
+
+- **`DpInput` `type="select"`:** `onChange` debe ser compatible con **`(value: string | number) => void`**; normalizar con **`String(value)`** si hace falta.
+- **`DpContentSet`:** `variant` puede ser **`"panel" | "inline" | "dialog"`**; con **`visible`** el formulario se muestra en diálogo (PrimeReact `Dialog`).
+- **`updateDocument` + `deleteField()`:** en `~/lib/firestore.service.ts`, **`stripUndefined`** debe preservar instancias de **`FieldValue`** (no tratarlas como objeto plano).
+
+Regla Cursor en repo raíz: **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`**.
+
+### `DpContentHeaderAction` (acciones en la barra de lista)
+
+Patrón **igual en espíritu a `DpTColumn` en `DpTable`**: componente que retorna `null`; `DpContentHeader` inspecciona `children` con `React.Children` y `child.type === DpContentHeaderAction`, y renderiza `child.props.children` en la toolbar.
+
+**Orden visual:** filtro → refrescar → **acciones custom** → eliminar → agregar.
+
+**Import:** `DpContentHeaderAction` desde `~/components/DpContent` (también se reexporta junto a `DpContentHeader`).
+
+```tsx
+import { DpContentHeader, DpContentHeaderAction } from "~/components/DpContent";
+
+<DpContentHeader onLoad={…} onCreate={…} onDelete={…} …>
+  <DpContentHeaderAction>
+    <Button size="small" label="Extra" onClick={…} disabled={selectedCount === 0} />
+  </DpContentHeaderAction>
+</DpContentHeader>
+```
+
+- Cada `DpContentHeaderAction` puede envolver **cualquier `ReactNode`** (no solo botones).
+- Varios `<DpContentHeaderAction>` consecutivos = varios bloques en el mismo hueco de la barra.
+- **Referencia:** `TripsPage.tsx` — botón «Cambiar estado», modal con `DpContentSet` + `DpInput` select (`TRIP_STATUS` / `statusToSelectOptions`), persistencia con **`updateTripsStatus`** en `trips.service.ts`. Al abrir el modal conviene **fijar los IDs** seleccionados en estado (p. ej. `bulkTripIds`) para que un cambio posterior de la selección en la tabla no altere el lote a aplicar.
+
 ---
 
 ## 7. Reglas Generales
@@ -313,3 +351,5 @@ La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc
 - **Servicio Agnóstico por Feature** — Cada feature debe exponer una única superficie en `*.service.ts` (más `*.types.ts` + `index.ts`). Evitar separar infraestructura por proveedor en archivos públicos como `*.functions.ts` o `*.api.ts` consumidos por UI. Los componentes/rutas deben importar únicamente desde el servicio de la feature; cualquier cambio de backend (Firestore, Cloud Functions, REST, etc.) se resuelve internamente en el `*.service.ts` conservando las mismas firmas públicas.
 - **Confirmar borrado en UI** — En listados con eliminación masiva, usar siempre `DpConfirmDialog`; nunca `confirm()` del navegador (ver sección 6 y `.cursor/rules/dp-confirm-dialog.mdc`).
 - **Tablas de montos en viajes** — Ver sección 6 *«Listados con montos bajo un viaje»* y regla Cursor **`.cursor/rules/dp-web-trip-money-tables.mdc`** (raíz del monorepo).
+- **DpInput select / DpContentSet dialog** — Ver sección 6 *«DpInput select + DpContentSet»* y **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`** (raíz del monorepo).
+- **Barra de lista con acciones extra** — Usar **`DpContentHeaderAction`** dentro de **`DpContentHeader`** (sección 6 *«DpContentHeaderAction»*); ejemplo **`TripsPage`** (cambio masivo de estado).

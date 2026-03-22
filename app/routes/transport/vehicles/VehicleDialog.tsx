@@ -137,9 +137,6 @@ export default function VehicleDialog({
             <DpInput type="number" label="Capacidad (kg)" name="capacityKg" value={capacityKg} onChange={setCapacityKg} placeholder="18000" />
             <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as VehicleStatus)} options={STATUS_OPTIONS} />
             <div className="md:col-span-2">
-               <DpInput type="input" label="Viaje actual (ID)" name="currentTripId" value={currentTripId} onChange={setCurrentTripId} placeholder="TRIP-2026-0001 (Opcional)" />
-            </div>
-            <div className="md:col-span-2">
                <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
             </div>
           </div>

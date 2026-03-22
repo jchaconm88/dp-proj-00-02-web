@@ -93,7 +93,7 @@ export const DRIVER_STATUS: Record<string, StatusOption> = {
 /** Vínculo de conductor. */
 export const DRIVER_RELATIONSHIP: Record<string, StatusOption> = {
   employee: { label: "Empleado", severity: "info" },
-  contractor: { label: "Contratista", severity: "warning" },
+  resource: { label: "Recurso", severity: "warning" },
 };
 
 /** Categoría de servicio de transporte. */
@@ -193,6 +193,40 @@ export const STOP_STATUS: Record<string, StatusOption> = {
   arrived: { label: "Llegado", severity: "info" },
   completed: { label: "Completado", severity: "success" },
   skipped: { label: "Omitido", severity: "danger" },
+};
+
+/** Tipo de liquidación (por pagar / por cobrar). */
+export const SETTLEMENT_TYPE: Record<string, StatusOption> = {
+  payable: { label: "Por pagar", severity: "warning" },
+  receivable: { label: "Por cobrar", severity: "success" },
+};
+
+/** Categoría de liquidación. */
+export const SETTLEMENT_CATEGORY: Record<string, StatusOption> = {
+  customer: { label: "Cliente", severity: "info" },
+  carrier: { label: "Transportista", severity: "secondary" },
+  provider: { label: "Proveedor", severity: "warning" },
+  resource: { label: "Recurso", severity: "info" },
+};
+
+/** Estado del documento de liquidación. */
+export const SETTLEMENT_STATUS: Record<string, StatusOption> = {
+  draft: { label: "Borrador", severity: "secondary" },
+  closed: { label: "Cerrado", severity: "success" },
+};
+
+/** Estado de pago de la liquidación. */
+export const SETTLEMENT_PAYMENT_STATUS: Record<string, StatusOption> = {
+  pending: { label: "Pendiente", severity: "warning" },
+  partial: { label: "Parcial", severity: "info" },
+  paid: { label: "Pagado", severity: "success" },
+};
+
+/** Tipo de movimiento en ítem de liquidación. */
+export const SETTLEMENT_MOVEMENT_TYPE: Record<string, StatusOption> = {
+  tripCost: { label: "Costo de viaje", severity: "info" },
+  tripCharge: { label: "Cargo de viaje", severity: "warning" },
+  adjustment: { label: "Ajuste", severity: "secondary" },
 };
 
 /** Estado de viaje. */

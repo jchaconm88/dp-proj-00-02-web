@@ -1,18 +1,29 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { Button } from "primereact/button";
 import {
   getTrips,
   deleteTrip,
   deleteTrips,
+  updateTripsStatus,
   type TripRecord,
+  type TripStatus,
 } from "~/features/transport/trips";
 import type { Route } from "./+types/TripsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
+import {
+  DpContent,
+  DpContentHeader,
+  DpContentHeaderAction,
+  DpContentSet,
+} from "~/components/DpContent";
+import { DpInput } from "~/components/DpInput";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import DpTColumn from "~/components/DpTable/DpTColumn";
-import { TRIP_STATUS } from "~/constants/status-options";
+import { TRIP_STATUS, statusToSelectOptions } from "~/constants/status-options";
 import TripDialog from "./TripDialog";
+
+const TRIP_STATUS_SELECT_OPTIONS = statusToSelectOptions(TRIP_STATUS);
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -88,6 +99,12 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [statusChangeOpen, setStatusChangeOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<TripStatus>("scheduled");
+  const [bulkTargetCount, setBulkTargetCount] = useState(0);
+  /** IDs fijados al abrir el modal (no cambian si el usuario altera la selección en la tabla). */
+  const [bulkTripIds, setBulkTripIds] = useState<string[]>([]);
+  const [statusChangeSaving, setStatusChangeSaving] = useState(false);
 
   const dialogVisible = isAdd || !!editId;
 
@@ -131,6 +148,37 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
     if (!saving) setPendingDeleteIds(null);
   };
 
+  const openBulkStatusChange = () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (!selected.length) return;
+    setBulkStatus(selected[0]!.status);
+    setBulkTargetCount(selected.length);
+    setBulkTripIds(selected.map((r) => r.id));
+    setStatusChangeOpen(true);
+  };
+
+  const closeBulkStatusChange = () => {
+    if (!statusChangeSaving) setStatusChangeOpen(false);
+  };
+
+  const handleBulkStatusConfirm = async () => {
+    if (!bulkTripIds.length) return;
+    setStatusChangeSaving(true);
+    setError(null);
+    try {
+      await updateTripsStatus(bulkTripIds, bulkStatus);
+      tableRef.current?.clearSelectedRows();
+      setSelectedCount(0);
+      setBulkTripIds([]);
+      setStatusChangeOpen(false);
+      revalidator.revalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al actualizar el estado.");
+    } finally {
+      setStatusChangeSaving(false);
+    }
+  };
+
   const handleSuccess = () => {
     navigate("/transport/trips");
     revalidator.revalidate();
@@ -147,7 +195,19 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
         filterValue={filterValue}
         onFilter={handleFilter}
         filterPlaceholder="Filtrar por código, ruta..."
-      />
+      >
+        <DpContentHeaderAction>
+          <Button
+            type="button"
+            size="small"
+            icon="pi pi-flag"
+            label="Cambiar estado"
+            onClick={openBulkStatusChange}
+            disabled={selectedCount === 0 || saving || statusChangeSaving}
+            aria-label="Cambiar estado de los viajes seleccionados"
+          />
+        </DpContentHeaderAction>
+      </DpContentHeader>
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
           {error}
@@ -226,6 +286,28 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
           onHide={handleHide}
         />
       )}
+
+      <DpContentSet
+        title="Cambiar estado de viajes"
+        variant="dialog"
+        visible={statusChangeOpen}
+        onHide={closeBulkStatusChange}
+        onCancel={closeBulkStatusChange}
+        onSave={handleBulkStatusConfirm}
+        saving={statusChangeSaving}
+        saveLabel="Aplicar"
+      >
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Se actualizará el estado de <strong>{bulkTargetCount}</strong> viaje(s) seleccionado(s).
+        </p>
+        <DpInput
+          type="select"
+          label="Nuevo estado"
+          value={bulkStatus}
+          onChange={(v) => setBulkStatus(String(v) as TripStatus)}
+          options={TRIP_STATUS_SELECT_OPTIONS}
+        />
+      </DpContentSet>
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

@@ -142,6 +142,11 @@ export async function deleteTrips(ids: string[]): Promise<void> {
   return deleteManyDocuments(COLLECTION, ids);
 }
 
+/** Actualiza el estado de varios viajes en paralelo. */
+export async function updateTripsStatus(ids: string[], status: TripStatus): Promise<void> {
+  await Promise.all(ids.map((id) => updateTrip(id, { status })));
+}
+
 // --- TripStops ---
 
 export async function getTripStops(tripId: string): Promise<{ items: TripStopRecord[] }> {

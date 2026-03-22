@@ -15,9 +15,9 @@ export interface DpContentSetProps {
   /**
    * "panel" = Panel con título.
    * "inline" = solo contenido + botones.
-   * Si se pasa visible (boolean), se usa modo "dialog".
+   * "dialog" = solo documentación; el modo diálogo se activa con `visible`.
    */
-  variant?: "panel" | "inline";
+  variant?: "panel" | "inline" | "dialog";
   visible?: boolean;
   onHide?: () => void;
   showLoading?: boolean;

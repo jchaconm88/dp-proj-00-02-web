@@ -35,7 +35,6 @@ export default function ResourceCostDialog({
   const isNavigating = navigation.state !== "idle";
 
   const [code, setCode] = useState("");
-  const [name, setName] = useState("");
   const [type, setType] = useState<ResourceCostType>("per_trip");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("PEN");
@@ -57,7 +56,6 @@ export default function ResourceCostDialog({
     setError(null);
     if (!costId) {
       setCode("");
-      setName("");
       setType("per_trip");
       setAmount("");
       setCurrency("PEN");
@@ -75,7 +73,6 @@ export default function ResourceCostDialog({
           return;
         }
         setCode(data.code ?? "");
-        setName(data.name ?? "");
         setType(data.type ?? "per_trip");
         setAmount(String(data.amount ?? ""));
         setCurrency(data.currency ?? "PEN");
@@ -87,7 +84,6 @@ export default function ResourceCostDialog({
   }, [visible, resourceId, costId]);
 
   const save = async () => {
-    if (!name.trim()) return;
     if (isEdit && !code.trim()) return;
     setSaving(true);
     setError(null);
@@ -108,7 +104,6 @@ export default function ResourceCostDialog({
       const numAmount = Number(amount) || 0;
       const payload = {
         code: finalCode,
-        name: name.trim(),
         type,
         amount: numAmount,
         currency: currency.trim(),
@@ -130,7 +125,7 @@ export default function ResourceCostDialog({
     }
   };
 
-  const valid = !!name.trim() && (isEdit ? !!code.trim() : true);
+  const valid = isEdit ? !!code.trim() : true;
 
   return (
     <DpContentSet
@@ -149,14 +144,6 @@ export default function ResourceCostDialog({
     >
         <div className="flex flex-col gap-4 pt-2">
           <DpCodeInput entity="resource-cost" label="Código" name="code" value={code} onChange={setCode} />
-          <DpInput
-            type="input"
-            label="Nombre"
-            name="name"
-            value={name}
-            onChange={setName}
-            placeholder="Tarifa Lima"
-          />
           <DpInput
             type="select"
             label="Tipo"
