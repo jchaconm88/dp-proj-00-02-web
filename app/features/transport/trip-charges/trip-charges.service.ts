@@ -41,6 +41,7 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeReco
     currency: String(doc.currency ?? "PEN"),
     status: toStatus(String(doc.status ?? "open")),
     settlementId: doc.settlementId != null ? String(doc.settlementId) : null,
+    settlement: String(doc.settlement ?? ""),
   };
 }
 

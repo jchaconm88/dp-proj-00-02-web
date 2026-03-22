@@ -24,7 +24,7 @@ import {
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripChargeDialog from "./TripChargeDialog";
 
-type TripChargeTableRow = TripChargeRecord & { amountFormatted: string; settlementDisplay: string };
+type TripChargeTableRow = TripChargeRecord & { amountFormatted: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -41,7 +41,7 @@ const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_SOURCE },
   { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
   { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
-  { header: "ID liquidación", column: "settlementDisplay", order: 7, display: true, filter: true },
+  { header: "Liquidación", column: "settlement", order: 7, display: true, filter: true },
 ];
 
 const TRIP_CHARGES_FOOTER_TOTALS: DpTableFooterTotals = {
@@ -70,8 +70,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
     () =>
       charges.map((c) => ({
         ...c,
-        amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
-        settlementDisplay: (c.settlementId ?? "").trim() || "—",
+        amountFormatted: formatAmountWithSymbol(c.amount, c.currency)
       })),
     [charges]
   );

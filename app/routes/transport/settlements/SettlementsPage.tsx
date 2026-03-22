@@ -92,7 +92,7 @@ export default function SettlementsPage({ loaderData }: Route.ComponentProps) {
     () =>
       loaderData.items.map((s) => ({
         ...s,
-        entityDisplay: `${s.entity.name} (${s.entity.id})`.trim(),
+        entityDisplay: `${s.entity.name}`.trim(),
         periodLabel: s.period.label || `${s.period.start} → ${s.period.end}`,
         grossFormatted: formatAmountWithSymbol(s.totals.grossAmount, s.totals.currency),
       })),

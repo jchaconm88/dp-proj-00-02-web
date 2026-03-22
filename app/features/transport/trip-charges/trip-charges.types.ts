@@ -16,6 +16,7 @@ export interface TripChargeRecord {
   currency: string;
   status: TripChargeStatus;
   settlementId: string | null;
+  settlement: string | null;
 }
 
 export interface TripChargeAddInput {
