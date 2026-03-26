@@ -5,12 +5,14 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   setDocumentWithIdInSubcollection,
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import { deleteField } from "firebase/firestore";
 import type {
   TripRecord,
   TripAddInput,
@@ -21,6 +23,7 @@ import type {
   TripStopEditInput,
   TripStopType,
   TripStopStatus,
+  TripCascadeDeleteCounts,
 } from "./trips.types";
 
 const COLLECTION = "trips";
@@ -44,8 +47,6 @@ function toTripRecord(doc: { id: string } & Record<string, unknown>): TripRecord
     transportService: String(doc.transportService ?? ""),
     clientId: String(doc.clientId ?? ""),
     client: String(doc.client ?? ""),
-    driverId: String(doc.driverId ?? ""),
-    driver: String(doc.driver ?? ""),
     vehicleId: String(doc.vehicleId ?? ""),
     vehicle: String(doc.vehicle ?? ""),
     transportGuide: String(doc.transportGuide ?? ""),
@@ -70,9 +71,13 @@ function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripSt
   const toStr = (x: unknown): string => (x != null && x !== "" ? String(x) : "");
   return {
     id: doc.id,
+    code: String(doc.code ?? "").trim(),
     order: Number(doc.order) || 0,
     type: toTripStopType(doc.type),
     name: String(doc.name ?? ""),
+    districtId: String(doc.districtId ?? "").trim(),
+    districtName: String(doc.districtName ?? "").trim(),
+    observations: String(doc.observations ?? ""),
     lat: Number(doc.lat) || 0,
     lng: Number(doc.lng) || 0,
     status: toTripStopStatus(doc.status),
@@ -104,8 +109,6 @@ export async function addTrip(data: TripAddInput): Promise<string> {
     transportService: data.transportService.trim(),
     clientId: data.clientId.trim(),
     client: data.client.trim(),
-    driverId: data.driverId.trim(),
-    driver: data.driver.trim(),
     vehicleId: data.vehicleId.trim(),
     vehicle: data.vehicle.trim(),
     transportGuide: (data.transportGuide ?? "").trim(),
@@ -124,14 +127,16 @@ export async function updateTrip(id: string, data: TripEditInput): Promise<void>
   if (data.transportService !== undefined) payload.transportService = data.transportService.trim();
   if (data.clientId !== undefined) payload.clientId = data.clientId.trim();
   if (data.client !== undefined) payload.client = data.client.trim();
-  if (data.driverId !== undefined) payload.driverId = data.driverId.trim();
-  if (data.driver !== undefined) payload.driver = data.driver.trim();
   if (data.vehicleId !== undefined) payload.vehicleId = data.vehicleId.trim();
   if (data.vehicle !== undefined) payload.vehicle = data.vehicle.trim();
   if (data.transportGuide !== undefined) payload.transportGuide = data.transportGuide.trim();
   if (data.status !== undefined) payload.status = data.status;
   if (data.scheduledStart !== undefined) payload.scheduledStart = data.scheduledStart?.trim() || null;
-  await updateDocument(COLLECTION, id, payload);
+  await updateDocument(COLLECTION, id, {
+    ...payload,
+    driver: deleteField(),
+    driverId: deleteField(),
+  });
 }
 
 export async function deleteTrip(id: string): Promise<void> {
@@ -140,6 +145,42 @@ export async function deleteTrip(id: string): Promise<void> {
 
 export async function deleteTrips(ids: string[]): Promise<void> {
   return deleteManyDocuments(COLLECTION, ids);
+}
+
+const TRIP_ASSIGNMENTS_COL = "trip-assignments";
+const TRIP_CHARGES_COL = "trip-charges";
+const TRIP_COSTS_COL = "trip-costs";
+
+/** Conteos por un viaje (misma lógica que la cascada en Cloud Functions). */
+export async function getTripCascadeDeleteCounts(tripId: string): Promise<TripCascadeDeleteCounts> {
+  const tid = tripId.trim();
+  const [stops, assignments, charges, costs] = await Promise.all([
+    getSubcollection(COLLECTION, tid, TRIP_STOPS_SUB).then((rows) => rows.length),
+    getCollectionWithFilter(TRIP_ASSIGNMENTS_COL, "tripId", tid).then((rows) => rows.length),
+    getCollectionWithFilter(TRIP_CHARGES_COL, "tripId", tid).then((rows) => rows.length),
+    getCollectionWithFilter(TRIP_COSTS_COL, "tripId", tid).then((rows) => rows.length),
+  ]);
+  return {
+    tripStops: stops,
+    tripAssignments: assignments,
+    tripCharges: charges,
+    tripCosts: costs,
+  };
+}
+
+/** Suma de conteos para varios viajes (ids duplicados se ignoran una vez). */
+export async function getTripsCascadeDeleteTotals(tripIds: string[]): Promise<TripCascadeDeleteCounts> {
+  const unique = [...new Set(tripIds.map((id) => id.trim()).filter(Boolean))];
+  const parts = await Promise.all(unique.map((id) => getTripCascadeDeleteCounts(id)));
+  return parts.reduce(
+    (acc, c) => ({
+      tripStops: acc.tripStops + c.tripStops,
+      tripAssignments: acc.tripAssignments + c.tripAssignments,
+      tripCharges: acc.tripCharges + c.tripCharges,
+      tripCosts: acc.tripCosts + c.tripCosts,
+    }),
+    { tripStops: 0, tripAssignments: 0, tripCharges: 0, tripCosts: 0 }
+  );
 }
 
 /** Actualiza el estado de varios viajes en paralelo. */
@@ -177,9 +218,13 @@ export async function addTripStop(tripId: string, data: TripStopAddInput): Promi
     TRIP_STOPS_SUB,
     stopId,
     {
+      code: (data.code ?? "").trim(),
       order: data.order,
       type: data.type,
       name: data.name.trim(),
+      districtId: (data.districtId ?? "").trim(),
+      districtName: (data.districtName ?? "").trim(),
+      observations: (data.observations ?? "").trim(),
       lat: Number(data.lat) || 0,
       lng: Number(data.lng) || 0,
       status: data.status,
@@ -197,8 +242,12 @@ export async function updateTripStop(
 ): Promise<void> {
   const payload: Record<string, unknown> = {};
   if (data.order !== undefined) payload.order = Number(data.order) || 0;
+  if (data.code !== undefined) payload.code = data.code.trim();
   if (data.type !== undefined) payload.type = data.type;
   if (data.name !== undefined) payload.name = data.name.trim();
+  if (data.districtId !== undefined) payload.districtId = data.districtId.trim();
+  if (data.districtName !== undefined) payload.districtName = data.districtName.trim();
+  if (data.observations !== undefined) payload.observations = data.observations.trim();
   if (data.lat !== undefined) payload.lat = Number(data.lat) || 0;
   if (data.lng !== undefined) payload.lng = Number(data.lng) || 0;
   if (data.status !== undefined) payload.status = data.status;

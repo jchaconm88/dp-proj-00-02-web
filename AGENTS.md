@@ -311,6 +311,13 @@ La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc
 
 Regla Cursor en repo raíz: **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`**.
 
+### Campos `code` (código) — `DpCodeInput`
+
+- Para campos **`code`**, usar **`DpCodeInput`** (`~/components/DpCodeInput`) en vez de `DpInput type="input"`.
+- Al guardar, resolver el código final con **`generateSequenceCode(code, entity)`** (feature `~/features/system/sequences`), y persistir el **`finalCode`**.
+
+Regla Cursor en repo raíz: **`.cursor/rules/dp-web-code-fields.mdc`**.
+
 ### `DpContentHeaderAction` (acciones en la barra de lista)
 
 Patrón **igual en espíritu a `DpTColumn` en `DpTable`**: componente que retorna `null`; `DpContentHeader` inspecciona `children` con `React.Children` y `child.type === DpContentHeaderAction`, y renderiza `child.props.children` en la toolbar.

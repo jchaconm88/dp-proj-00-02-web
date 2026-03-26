@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
+import { getChargeTypesForTripAssignments } from "~/features/transport/charge-types";
 import {
   getTripAssignments,
   deleteTripAssignment,
@@ -11,7 +12,7 @@ import type { Route } from "./+types/TripAssignmentsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-import { TRIP_ASSIGNMENT_ENTITY_TYPE } from "~/constants/status-options";
+import { TRIP_ASSIGNMENT_ENTITY_TYPE, TRIP_ASSIGNMENT_TYPE } from "~/constants/status-options";
 import TripAssignmentDialog from "./TripAssignmentDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -22,20 +23,49 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
+type AssignmentRow = TripAssignmentRecord & { scopeSummary: string; assignmentTypeLabel: string };
+
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "displayName", order: 2, display: true, filter: true },
-  { header: "Tipo entidad", column: "entityType", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_ASSIGNMENT_ENTITY_TYPE },
-  { header: "Posición", column: "position", order: 4, display: true, filter: true },
+  { header: "Tipo asignación", column: "assignmentTypeLabel", order: 2, display: true, filter: true },
+  { header: "Nombre", column: "displayName", order: 3, display: true, filter: true },
+  { header: "Tipo entidad", column: "entityType", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_ASSIGNMENT_ENTITY_TYPE },
+  { header: "Posición", column: "position", order: 5, display: true, filter: true },
+  { header: "Alcance", column: "scopeSummary", order: 6, display: true, filter: true },
 ];
+
+function scopeSummaryRow(a: TripAssignmentRecord): string {
+  if (a.scope?.type === "trip") return "Todo el viaje";
+  return (a.scope?.display ?? "").trim() || "—";
+}
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const tripId = (params?.id ?? "") as string;
   if (!tripId) throw new Error("ID de viaje no encontrado");
   const trip = await getTripById(tripId);
   if (!trip) throw new Error("Viaje no encontrado");
-  const { items } = await getTripAssignments(tripId);
-  return { trip, assignments: items, tripId };
+  const [{ items }, chargeTypes] = await Promise.all([
+    getTripAssignments(tripId),
+    getChargeTypesForTripAssignments(),
+  ]);
+  const chargeTypeNameById = new Map(chargeTypes.map((c) => [c.id, (c.name || c.code).trim() || c.id]));
+  const assignments: AssignmentRow[] = items.map((a) => {
+    const ctId = a.chargeTypeId?.trim();
+    let assignmentTypeLabel = "";
+    if (ctId && chargeTypeNameById.has(ctId)) {
+      assignmentTypeLabel = chargeTypeNameById.get(ctId)!;
+    } else if (ctId) {
+      assignmentTypeLabel = ctId;
+    } else {
+      assignmentTypeLabel = TRIP_ASSIGNMENT_TYPE[a.type]?.label ?? a.type;
+    }
+    return {
+      ...a,
+      scopeSummary: scopeSummaryRow(a),
+      assignmentTypeLabel,
+    };
+  });
+  return { trip, assignments, tripId };
 }
 
 export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps) {
@@ -43,7 +73,7 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
-  const tableRef = useRef<DpTableRef<TripAssignmentRecord>>(null);
+  const tableRef = useRef<DpTableRef<AssignmentRow>>(null);
 
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
   const isAdd = !!useMatch("/transport/trips/:id/trip-assignments/add");
@@ -64,7 +94,7 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   };
 
   const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments/add`);
-  const openEdit = (row: TripAssignmentRecord) =>
+  const openEdit = (row: AssignmentRow) =>
     navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments/edit/${encodeURIComponent(row.id)}`);
 
   const openDeleteConfirm = () => {
@@ -125,9 +155,9 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
           {error}
         </div>
       )}
-      <DpTable<TripAssignmentRecord>
+      <DpTable<AssignmentRow>
         ref={tableRef}
-        data={loaderData.assignments}
+        data={assignments}
         loading={isLoading || saving}
         tableDef={TABLE_DEF}
         onSelectionChange={(rows) => setSelectedCount(rows.length)}

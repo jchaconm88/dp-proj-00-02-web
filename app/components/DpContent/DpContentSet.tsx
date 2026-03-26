@@ -20,6 +20,8 @@ export interface DpContentSetProps {
   variant?: "panel" | "inline" | "dialog";
   visible?: boolean;
   onHide?: () => void;
+  /** Para un segundo `Dialog` encima de otro (p. ej. modal dentro de modal). */
+  dialogBaseZIndex?: number;
   showLoading?: boolean;
   loadingMessage?: string;
   showError?: boolean;
@@ -74,6 +76,7 @@ export default function DpContentSet({
   variant = "panel",
   visible,
   onHide,
+  dialogBaseZIndex,
   showLoading = false,
   loadingMessage = "Cargando...",
   showError = false,
@@ -163,6 +166,7 @@ export default function DpContentSet({
         header={title}
         visible={visible}
         onHide={onHide ?? onCancel}
+        baseZIndex={dialogBaseZIndex}
         style={{ width: "36rem", maxHeight: "90vh" }}
         contentStyle={{ overflow: "hidden", display: "flex", flexDirection: "column", padding: 0 }}
         pt={{

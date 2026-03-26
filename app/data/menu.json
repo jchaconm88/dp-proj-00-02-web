@@ -163,6 +163,14 @@
         ]
       },
       {
+        "title": "Tipos de Cobros",
+        "link": "/transport/charge-types",
+        "permission": [
+          "view",
+          "charge-type"
+        ]
+      },
+      {
         "title": "Contratos",
         "link": "/transport/transport-contracts",
         "permission": [

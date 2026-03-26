@@ -10,8 +10,6 @@ export interface TripRecord {
   transportService: string;
   clientId: string;
   client: string;
-  driverId: string;
-  driver: string;
   vehicleId: string;
   vehicle: string;
   transportGuide: string;
@@ -28,8 +26,6 @@ export interface TripAddInput {
   transportService: string;
   clientId: string;
   client: string;
-  driverId: string;
-  driver: string;
   vehicleId: string;
   vehicle: string;
   transportGuide: string;
@@ -44,9 +40,16 @@ export type TripStopStatus = "pending" | "arrived" | "completed" | "skipped";
 
 export interface TripStopRecord {
   id: string;
+  /** Código legible (p. ej. STOP-003); usado en asignaciones / alcance. */
+  code: string;
   order: number;
   type: TripStopType;
   name: string;
+  /** UBIGEO (6 dígitos) según catálogo en `app/data/peru-districts.json`. */
+  districtId: string;
+  /** Nombre legible del distrito (denormalizado para listados / reportes). */
+  districtName: string;
+  observations: string;
   lat: number;
   lng: number;
   status: TripStopStatus;
@@ -57,9 +60,13 @@ export interface TripStopRecord {
 
 export interface TripStopAddInput {
   id: string;
+  code?: string;
   order: number;
   type: TripStopType;
   name: string;
+  districtId: string;
+  districtName: string;
+  observations: string;
   lat: number;
   lng: number;
   status: TripStopStatus;
@@ -69,3 +76,12 @@ export interface TripStopAddInput {
 }
 
 export type TripStopEditInput = Partial<Omit<TripStopRecord, "id">>;
+
+/** Conteos de registros que el servidor elimina en cascada al borrar viaje(s). */
+export interface TripCascadeDeleteCounts {
+  /** Documentos en `trips/{id}/tripStops`. */
+  tripStops: number;
+  tripAssignments: number;
+  tripCharges: number;
+  tripCosts: number;
+}

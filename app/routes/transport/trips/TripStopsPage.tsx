@@ -24,12 +24,13 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Orden", column: "order", order: 1, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: STOP_TYPE },
-  { header: "Nombre", column: "name", order: 3, display: true, filter: true },
-  { header: "Lat", column: "lat", order: 4, display: true, filter: true },
-  { header: "Lng", column: "lng", order: 5, display: true, filter: true },
-  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: STOP_STATUS },
-  { header: "Llegada planificada", column: "plannedArrival", order: 7, display: true, filter: true, type: "datetime" },
+  { header: "Código", column: "code", order: 2, display: true, filter: true },
+  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "status", typeOptions: STOP_TYPE },
+  { header: "Nombre", column: "name", order: 4, display: true, filter: true },
+  { header: "Distrito", column: "districtName", order: 5, display: true, filter: true },
+  { header: "Observaciones", column: "observations", order: 6, display: true, filter: true },
+  { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: STOP_STATUS },
+  { header: "Llegada planificada", column: "plannedArrival", order: 8, display: true, filter: true, type: "datetime" },
 ];
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {

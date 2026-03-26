@@ -14,7 +14,6 @@ import {
 import { getRoutes } from "~/features/transport/routes";
 import { getTransportServices } from "~/features/transport/transport-services";
 import { getClients } from "~/features/master/clients";
-import { getDrivers } from "~/features/transport/drivers";
 import { getVehicles } from "~/features/transport/vehicles";
 import { TRIP_STATUS, statusToSelectOptions } from "~/constants/status-options";
 
@@ -46,8 +45,6 @@ export default function TripDialog({
   const [transportService, setTransportService] = useState("");
   const [clientId, setClientId] = useState("");
   const [client, setClient] = useState("");
-  const [driverId, setDriverId] = useState("");
-  const [driver, setDriver] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [vehicle, setVehicle] = useState("");
   const [transportGuide, setTransportGuide] = useState("");
@@ -57,12 +54,10 @@ export default function TripDialog({
   const [routeOptions, setRouteOptions] = useState<{ label: string; value: string }[]>([]);
   const [serviceOptions, setServiceOptions] = useState<{ label: string; value: string }[]>([]);
   const [clientOptions, setClientOptions] = useState<{ label: string; value: string }[]>([]);
-  const [driverOptions, setDriverOptions] = useState<{ label: string; value: string }[]>([]);
   const [vehicleOptions, setVehicleOptions] = useState<{ label: string; value: string }[]>([]);
   const [refreshingRoutes, setRefreshingRoutes] = useState(false);
   const [refreshingServices, setRefreshingServices] = useState(false);
   const [refreshingClients, setRefreshingClients] = useState(false);
-  const [refreshingDrivers, setRefreshingDrivers] = useState(false);
   const [refreshingVehicles, setRefreshingVehicles] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -117,25 +112,6 @@ export default function TripDialog({
     }
   };
 
-  const loadDrivers = async () => {
-    setRefreshingDrivers(true);
-    try {
-      const { items } = await getDrivers();
-      setDriverOptions(
-        items.map((d) => ({
-          label:
-            `${(d.licenseNo || "").trim()} - ${(d.lastName || "").trim()} ${(d.firstName || "").trim()}`.trim() ||
-            d.id,
-          value: d.id,
-        }))
-      );
-    } catch {
-      setDriverOptions([]);
-    } finally {
-      setRefreshingDrivers(false);
-    }
-  };
-
   const loadVehicles = async () => {
     setRefreshingVehicles(true);
     try {
@@ -151,13 +127,7 @@ export default function TripDialog({
   useEffect(() => {
     if (!visible) return;
     setError(null);
-    void Promise.all([
-      loadRoutes(),
-      loadServices(),
-      loadClients(),
-      loadDrivers(),
-      loadVehicles(),
-    ]);
+    void Promise.all([loadRoutes(), loadServices(), loadClients(), loadVehicles()]);
 
     if (!tripId) {
       setCode("");
@@ -168,8 +138,6 @@ export default function TripDialog({
       setTransportService("");
       setClientId("");
       setClient("");
-      setDriverId("");
-      setDriver("");
       setVehicleId("");
       setVehicle("");
       setTransportGuide("");
@@ -194,8 +162,6 @@ export default function TripDialog({
         setTransportService(data.transportService ?? "");
         setClientId(data.clientId ?? "");
         setClient(data.client ?? "");
-        setDriverId(data.driverId ?? "");
-        setDriver(data.driver ?? "");
         setVehicleId(data.vehicleId ?? "");
         setVehicle(data.vehicle ?? "");
         setTransportGuide(data.transportGuide ?? "");
@@ -235,14 +201,6 @@ export default function TripDialog({
     });
   };
 
-  const onDriverChange = (value: string) => {
-    setDriverId(value ?? "");
-    getDrivers().then(({ items }) => {
-      const d = items.find((x) => x.id === value);
-      setDriver(d ? `${(d.licenseNo || "").trim()} - ${(d.lastName || "").trim()} ${(d.firstName || "").trim()}`.trim() : "");
-    });
-  };
-
   const onVehicleChange = (value: string) => {
     setVehicleId(value ?? "");
     getVehicles().then(({ items }) => {
@@ -253,7 +211,7 @@ export default function TripDialog({
 
   const save = async () => {
     const routeOk = isExternalRoute ? !!route.trim() : !!routeId;
-    if (!routeOk || !driverId || !vehicleId) return;
+    if (!routeOk || !vehicleId) return;
     setSaving(true);
     setError(null);
     try {
@@ -274,8 +232,6 @@ export default function TripDialog({
         transportService: transportService.trim(),
         clientId: clientId.trim(),
         client: client.trim(),
-        driverId: driverId.trim(),
-        driver: driver.trim(),
         vehicleId: vehicleId.trim(),
         vehicle: vehicle.trim(),
         transportGuide: transportGuide.trim(),
@@ -296,8 +252,7 @@ export default function TripDialog({
     }
   };
 
-  const valid =
-    (isExternalRoute ? !!route.trim() : !!routeId) && !!driverId && !!vehicleId;
+  const valid = (isExternalRoute ? !!route.trim() : !!routeId) && !!vehicleId;
 
   return (
     <DpContentSet
@@ -380,19 +335,6 @@ export default function TripDialog({
           />
           <DpInput
             type="select"
-            label="Conductor"
-            name="driverId"
-            value={driverId}
-            onChange={(v) => onDriverChange(String(v))}
-            options={driverOptions}
-            placeholder="Seleccionar conductor"
-            filter
-            onRefresh={loadDrivers}
-            refreshing={refreshingDrivers}
-            refreshAriaLabel="Refrescar conductores"
-          />
-          <DpInput
-            type="select"
             label="Vehículo"
             name="vehicleId"
             value={vehicleId}
@@ -404,6 +346,9 @@ export default function TripDialog({
             refreshing={refreshingVehicles}
             refreshAriaLabel="Refrescar vehículos"
           />
+          <p className="text-sm text-surface-600 dark:text-surface-400">
+            El conductor u otro personal se asignan desde <strong>Asignaciones</strong> del viaje (no desde este formulario).
+          </p>
           <DpInput
             type="select"
             label="Estado"

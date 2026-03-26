@@ -62,6 +62,10 @@ export default [
       route("add", "routes/transport/transport-services/TransportServiceAdd.tsx"),
       route("edit/:id", "routes/transport/transport-services/TransportServiceEdit.tsx"),
     ]),
+    route("transport/charge-types", "routes/transport/charge-types/ChargeTypesPage.tsx", [
+      route("add", "routes/transport/charge-types/ChargeTypeAdd.tsx"),
+      route("edit/:id", "routes/transport/charge-types/ChargeTypeEdit.tsx"),
+    ]),
     route("transport/transport-contracts", "routes/transport/transport-contracts/TransportContractsPage.tsx", [
       route("add",      "routes/transport/transport-contracts/TransportContractAdd.tsx"),
       route("edit/:id", "routes/transport/transport-contracts/TransportContractEdit.tsx"),

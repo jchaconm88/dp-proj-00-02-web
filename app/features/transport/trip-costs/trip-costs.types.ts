@@ -3,10 +3,17 @@ export type TripCostType = "employee_payment" | "resource_payment" | "fuel_expen
 export type TripCostSource = "salary_rule" | "manual";
 export type TripCostStatus = "open" | "paid" | "cancelled";
 
+/** Metadatos escritos por Cloud Functions (`trip-assignments-sync`). */
+export interface TripCostSyncMeta {
+  source: string;
+  sourceId: string;
+  process: string;
+}
+
 export interface TripCostRecord {
   id: string;
   code: string;
-  /** Nombre legible desde `tripAssignments` (sync salary_rule). Vacío si el costo no viene de esa asignación / es manual. */
+  /** Nombre legible desde `trip-assignments` (sync salary_rule). Vacío si el costo no viene de esa asignación / es manual. */
   displayName: string;
   tripId: string;
   entity: TripCostEntity;
@@ -17,6 +24,8 @@ export interface TripCostRecord {
   currency: string;
   status: TripCostStatus;
   settlementId: string | null;
+  /** Si existe, costo vinculado al sync desde `trip-assignments`. */
+  sync?: TripCostSyncMeta | null;
 }
 
 export interface TripCostAddInput {

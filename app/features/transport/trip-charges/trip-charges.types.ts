@@ -1,6 +1,22 @@
-export type TripChargeType = "freight" | "extra_waiting_time" | "extra_distance" | "extra_weight" | "extra_volume";
-export type TripChargeSource = "contract" | "manual";
+export type TripChargeType =
+  | "freight"
+  | "additional_support"
+  | "extra_waiting_time"
+  | "extra_distance"
+  | "extra_weight"
+  | "extra_volume";
+export type TripChargeSource = "contract" | "salary_rule" | "manual";
 export type TripChargeStatus = "open" | "paid" | "cancelled";
+
+/** Entidad vinculada al cargo: servicio (flete), empleado o recurso (apoyo adicional). */
+export type TripChargeEntityType = "transportService" | "employee" | "resource" | "";
+
+/** Metadatos escritos por Cloud Functions (`trips-sync`, etc.). */
+export interface TripChargeSyncMeta {
+  source: string;
+  sourceId: string;
+  process: string;
+}
 
 export interface TripChargeRecord {
   id: string;
@@ -10,13 +26,17 @@ export interface TripChargeRecord {
   name: string;
   type: TripChargeType;
   source: TripChargeSource;
-  /** Servicio de transporte cuando tipo = freight (contrato). */
-  transportServiceId: string;
+  /** En flete: `transportService` + `entityId` = id del servicio; apoyo adicional: `employee`/`resource`. */
+  entityType: TripChargeEntityType;
+  /** ID del documento según `entityType` (p. ej. transportServices, employees, resources). */
+  entityId: string;
   amount: number;
   currency: string;
   status: TripChargeStatus;
   settlementId: string | null;
   settlement: string | null;
+  /** Si existe, documento gestionado por sync (p. ej. flete automático). */
+  sync?: TripChargeSyncMeta | null;
 }
 
 export interface TripChargeAddInput {
@@ -25,7 +45,8 @@ export interface TripChargeAddInput {
   name: string;
   type: TripChargeType;
   source: TripChargeSource;
-  transportServiceId: string;
+  entityType: TripChargeEntityType;
+  entityId: string;
   amount: number;
   currency: string;
   status: TripChargeStatus;

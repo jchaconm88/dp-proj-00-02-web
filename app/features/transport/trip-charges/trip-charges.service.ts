@@ -1,3 +1,4 @@
+import { deleteField } from "firebase/firestore";
 import {
   getDocument,
   getCollectionWithFilter,
@@ -14,9 +15,10 @@ import type {
   TripChargeType,
   TripChargeSource,
   TripChargeStatus,
+  TripChargeEntityType,
 } from "./trip-charges.types";
 
-const COLLECTION = "tripCharges";
+const COLLECTION = "trip-charges";
 
 function toType(s: string): TripChargeType {
   return Object.prototype.hasOwnProperty.call(TRIP_CHARGE_TYPE, s) ? (s as TripChargeType) : "freight";
@@ -28,20 +30,49 @@ function toStatus(s: string): TripChargeStatus {
   return Object.prototype.hasOwnProperty.call(TRIP_CHARGE_STATUS, s) ? (s as TripChargeStatus) : "open";
 }
 
+function toEntityType(raw: unknown): TripChargeEntityType {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (s === "transportservice") return "transportService";
+  if (s === "employee") return "employee";
+  if (s === "resource") return "resource";
+  return "";
+}
+
+function toSyncMeta(raw: unknown): TripChargeRecord["sync"] {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const source = String(o.source ?? "").trim();
+  const sourceId = String(o.sourceId ?? "").trim();
+  const process = String(o.process ?? "").trim();
+  if (!source || !sourceId || !process) return null;
+  return { source, sourceId, process };
+}
+
 function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeRecord {
+  const chargeType = toType(String(doc.type ?? "freight"));
+  const legacyTransportServiceId = String(doc.transportServiceId ?? "").trim();
+  let entityType = toEntityType(doc.entityType);
+  let entityId = String(doc.entityId ?? "").trim();
+  /** Documentos antiguos con `transportServiceId` o flete con `entityId` sin tipo explícito. */
+  if (chargeType === "freight") {
+    if (legacyTransportServiceId && !entityId) entityId = legacyTransportServiceId;
+    if (entityId && !entityType) entityType = "transportService";
+  }
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
     tripId: String(doc.tripId ?? ""),
     name: String(doc.name ?? ""),
-    type: toType(String(doc.type ?? "freight")),
+    type: chargeType,
     source: toSource(String(doc.source ?? "manual")),
-    transportServiceId: String(doc.transportServiceId ?? ""),
+    entityType,
+    entityId,
     amount: Number(doc.amount) ?? 0,
     currency: String(doc.currency ?? "PEN"),
     status: toStatus(String(doc.status ?? "open")),
     settlementId: doc.settlementId != null ? String(doc.settlementId) : null,
     settlement: String(doc.settlement ?? ""),
+    sync: toSyncMeta(doc.sync),
   };
 }
 
@@ -62,7 +93,8 @@ export async function addTripCharge(data: TripChargeAddInput): Promise<string> {
     name: data.name.trim(),
     type: data.type,
     source: data.source,
-    transportServiceId: (data.transportServiceId ?? "").trim(),
+    entityType: (data.entityType ?? "") as TripChargeEntityType,
+    entityId: (data.entityId ?? "").trim(),
     amount: Number(data.amount) ?? 0,
     currency: (data.currency ?? "PEN").trim(),
     status: data.status,
@@ -77,11 +109,14 @@ export async function updateTripCharge(id: string, data: TripChargeEditInput): P
   if (data.name !== undefined) payload.name = data.name.trim();
   if (data.type !== undefined) payload.type = data.type;
   if (data.source !== undefined) payload.source = data.source;
-  if (data.transportServiceId !== undefined) payload.transportServiceId = data.transportServiceId.trim();
+  if (data.entityType !== undefined) payload.entityType = data.entityType;
+  if (data.entityId !== undefined) payload.entityId = data.entityId.trim();
   if (data.amount !== undefined) payload.amount = Number(data.amount) ?? 0;
   if (data.currency !== undefined) payload.currency = data.currency.trim();
   if (data.status !== undefined) payload.status = data.status;
   if (data.settlementId !== undefined) payload.settlementId = data.settlementId ?? null;
+  /** Deja de persistir el campo legado en trip-charges. */
+  payload.transportServiceId = deleteField();
   await updateDocument(COLLECTION, id, payload);
 }
 

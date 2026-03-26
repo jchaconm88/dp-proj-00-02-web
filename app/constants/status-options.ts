@@ -75,6 +75,28 @@ export const CLIENT_STATUS: Record<string, StatusOption> = {
   suspended: { label: 'Suspendido', severity: 'warning' },
 };
 
+/** Tipos de cobro/costo (catálogo `charge-types`). */
+export const CHARGE_TYPE_KIND: Record<string, StatusOption> = {
+  charge: { label: "Cobro", severity: "info" },
+  cost: { label: "Costo", severity: "warning" },
+};
+
+/** Origen del cobro/costo (catálogo `charge-types`). */
+export const CHARGE_TYPE_SOURCE: Record<string, StatusOption> = {
+  "": { label: "(Sin origen)", severity: "secondary" },
+  service: { label: "Servicio", severity: "info" },
+  employee: { label: "Empleado", severity: "info" },
+  resource: { label: "Recurso", severity: "info" },
+  employee_resource: { label: "Empleado/Recurso", severity: "info" },
+};
+
+/** Categoría del cobro/costo (catálogo `charge-types`). */
+export const CHARGE_TYPE_CATEGORY: Record<string, StatusOption> = {
+  base: { label: "Base", severity: "secondary" },
+  extra: { label: "Extra", severity: "info" },
+  variable: { label: "Variable", severity: "warning" },
+};
+
 /** Condición de pago. */
 export const PAYMENT_CONDITION: Record<string, StatusOption> = {
   transfer: { label: 'Transferencia', severity: 'info' },
@@ -237,7 +259,19 @@ export const TRIP_STATUS: Record<string, StatusOption> = {
   cancelled: { label: "Cancelado", severity: "danger" },
 };
 
-/** Tipo entidad en asignación de viaje. */
+/** Tipo de asignación de viaje (operativa / facturable). Campo `type` en trip-assignments. */
+export const TRIP_ASSIGNMENT_TYPE: Record<string, StatusOption> = {
+  operational: { label: "Operativa", severity: "info" },
+  billable: { label: "Facturable", severity: "warning" },
+};
+
+/** Alcance de la asignación respecto al viaje / paradas. */
+export const TRIP_ASSIGNMENT_SCOPE_TYPE: Record<string, StatusOption> = {
+  trip: { label: "Todo el viaje", severity: "info" },
+  stop: { label: "Parada", severity: "info" },
+  segment: { label: "Tramo (inicio — fin)", severity: "info" },
+};
+
 export const TRIP_ASSIGNMENT_ENTITY_TYPE: Record<string, StatusOption> = {
   employee: { label: "Empleado", severity: "info" },
   resource: { label: "Recurso", severity: "warning" },
@@ -246,6 +280,7 @@ export const TRIP_ASSIGNMENT_ENTITY_TYPE: Record<string, StatusOption> = {
 /** Tipo de cargo de viaje. */
 export const TRIP_CHARGE_TYPE: Record<string, StatusOption> = {
   freight: { label: "Flete", severity: "info" },
+  additional_support: { label: "Apoyo adicional", severity: "info" },
   extra_waiting_time: { label: "Tiempo de espera extra", severity: "secondary" },
   extra_distance: { label: "Distancia extra", severity: "warning" },
   extra_weight: { label: "Peso extra", severity: "success" },
@@ -255,6 +290,7 @@ export const TRIP_CHARGE_TYPE: Record<string, StatusOption> = {
 /** Origen del cargo de viaje. */
 export const TRIP_CHARGE_SOURCE: Record<string, StatusOption> = {
   contract: { label: "Contrato", severity: "info" },
+  salary_rule: { label: "Regla salarial", severity: "info" },
   manual: { label: "Manual", severity: "secondary" },
 };
 

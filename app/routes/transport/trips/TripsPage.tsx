@@ -5,7 +5,9 @@ import {
   getTrips,
   deleteTrip,
   deleteTrips,
+  getTripsCascadeDeleteTotals,
   updateTripsStatus,
+  type TripCascadeDeleteCounts,
   type TripRecord,
   type TripStatus,
 } from "~/features/transport/trips";
@@ -44,12 +46,11 @@ const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Servicio", column: "transportServiceDisplay", order: 3, display: true, filter: true },
   { header: "Cliente", column: "clientDisplay", order: 4, display: true, filter: true },
   { header: "Guía", column: "transportGuide", order: 5, display: true, filter: true },
-  { header: "Conductor", column: "driver", order: 6, display: true, filter: true },
-  { header: "Vehículo", column: "vehicle", order: 7, display: true, filter: true },
+  { header: "Vehículo", column: "vehicle", order: 6, display: true, filter: true },
   {
     header: "Estado",
     column: "status",
-    order: 8,
+    order: 7,
     display: true,
     filter: true,
     type: "status",
@@ -58,15 +59,15 @@ const TABLE_DEF: DpTableDefColumn[] = [
   {
     header: "Inicio programado",
     column: "scheduledStart",
-    order: 9,
+    order: 8,
     display: true,
     filter: true,
     type: "datetime",
   },
-  { header: "Paradas", column: "tripStops", order: 10, display: true, filter: false },
-  { header: "Asignaciones", column: "tripAssignments", order: 11, display: true, filter: false },
-  { header: "Cargos", column: "tripCharges", order: 12, display: true, filter: false },
-  { header: "Costos", column: "tripCosts", order: 13, display: true, filter: false },
+  { header: "Paradas", column: "tripStops", order: 9, display: true, filter: false },
+  { header: "Asignaciones", column: "tripAssignments", order: 10, display: true, filter: false },
+  { header: "Cargos", column: "tripCharges", order: 11, display: true, filter: false },
+  { header: "Costos", column: "tripCosts", order: 12, display: true, filter: false },
 ];
 
 export async function clientLoader() {
@@ -77,7 +78,6 @@ export async function clientLoader() {
       routeDisplay: (t.route || t.routeId || "—").trim(),
       transportServiceDisplay: (t.transportService || t.transportServiceId || "—").trim(),
       clientDisplay: (t.client || t.clientId || "—").trim(),
-      driver: (t.driver || t.driverId || "—").trim(),
       vehicle: (t.vehicle || t.vehicleId || "—").trim(),
     })),
   };
@@ -99,6 +99,10 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const [filterValue, setFilterValue] = useState("");
   const [selectedCount, setSelectedCount] = useState(0);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [deleteImpact, setDeleteImpact] = useState<TripCascadeDeleteCounts | null>(null);
+  const [deleteImpactLoading, setDeleteImpactLoading] = useState(false);
+  const [deleteImpactError, setDeleteImpactError] = useState<string | null>(null);
+  const deleteImpactRequestId = useRef(0);
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<TripStatus>("scheduled");
   const [bulkTargetCount, setBulkTargetCount] = useState(0);
@@ -120,7 +124,27 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
-    setPendingDeleteIds(selected.map((r) => r.id));
+    const ids = selected.map((r) => r.id);
+    const reqId = ++deleteImpactRequestId.current;
+    setPendingDeleteIds(ids);
+    setDeleteImpact(null);
+    setDeleteImpactError(null);
+    setDeleteImpactLoading(true);
+    getTripsCascadeDeleteTotals(ids)
+      .then((data) => {
+        if (deleteImpactRequestId.current !== reqId) return;
+        setDeleteImpact(data);
+      })
+      .catch((err) => {
+        if (deleteImpactRequestId.current !== reqId) return;
+        setDeleteImpactError(
+          err instanceof Error ? err.message : "No se pudo cargar el resumen de registros relacionados."
+        );
+      })
+      .finally(() => {
+        if (deleteImpactRequestId.current !== reqId) return;
+        setDeleteImpactLoading(false);
+      });
   };
 
   const handleConfirmDelete = async () => {
@@ -135,7 +159,11 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
         await deleteTrips(ids);
       }
       tableRef.current?.clearSelectedRows();
+      deleteImpactRequestId.current++;
       setPendingDeleteIds(null);
+      setDeleteImpact(null);
+      setDeleteImpactError(null);
+      setDeleteImpactLoading(false);
       revalidator.revalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar");
@@ -145,7 +173,13 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   };
 
   const closeDeleteConfirm = () => {
-    if (!saving) setPendingDeleteIds(null);
+    if (!saving) {
+      deleteImpactRequestId.current++;
+      setPendingDeleteIds(null);
+      setDeleteImpact(null);
+      setDeleteImpactError(null);
+      setDeleteImpactLoading(false);
+    }
   };
 
   const openBulkStatusChange = () => {
@@ -314,9 +348,46 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
         onHide={closeDeleteConfirm}
         title="Eliminar viajes"
         message={
-          pendingDeleteIds?.length
-            ? `¿Eliminar ${pendingDeleteIds.length} viaje(s)? Esta acción no se puede deshacer.`
-            : ""
+          pendingDeleteIds?.length ? (
+            <div className="space-y-3">
+              <p>
+                ¿Eliminar <strong>{pendingDeleteIds.length}</strong> viaje(s)? Esta acción no se puede deshacer.
+              </p>
+              <p className="font-medium text-zinc-800 dark:text-zinc-100">
+                También se eliminarán en el servidor los registros vinculados:
+              </p>
+              {deleteImpactLoading && (
+                <p className="text-zinc-500 dark:text-zinc-400">Calculando resumen…</p>
+              )}
+              {deleteImpactError && (
+                <p className="text-red-600 dark:text-red-400">{deleteImpactError}</p>
+              )}
+              {deleteImpact && !deleteImpactLoading && (
+                <ul className="list-inside list-disc space-y-1 text-zinc-600 dark:text-zinc-300">
+                  <li>
+                    Paradas del viaje (<span className="whitespace-nowrap">subcolección tripStops</span>):{" "}
+                    <strong>{deleteImpact.tripStops}</strong>
+                  </li>
+                  <li>
+                    Asignaciones: <strong>{deleteImpact.tripAssignments}</strong>
+                  </li>
+                  <li>
+                    Cargos: <strong>{deleteImpact.tripCharges}</strong>
+                  </li>
+                  <li>
+                    Costos: <strong>{deleteImpact.tripCosts}</strong>
+                  </li>
+                </ul>
+              )}
+              {pendingDeleteIds.length > 1 && deleteImpact && !deleteImpactLoading && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Cifras sumadas de todos los viajes seleccionados.
+                </p>
+              )}
+            </div>
+          ) : (
+            ""
+          )
         }
         confirmLabel="Eliminar"
         cancelLabel="Cancelar"

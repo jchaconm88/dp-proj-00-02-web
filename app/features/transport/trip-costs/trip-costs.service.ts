@@ -20,7 +20,7 @@ import type {
   GetResourcePerTripCostResponse,
 } from "./trip-costs.types";
 
-const COLLECTION = "tripCosts";
+const COLLECTION = "trip-costs";
 
 function toEntity(s: string): TripCostEntity {
   return Object.prototype.hasOwnProperty.call(TRIP_COST_ENTITY, s) ? (s as TripCostEntity) : ("assignment" as TripCostEntity);
@@ -33,6 +33,16 @@ function toSource(s: string): TripCostSource {
 }
 function toStatus(s: string): TripCostStatus {
   return Object.prototype.hasOwnProperty.call(TRIP_COST_STATUS, s) ? (s as TripCostStatus) : ("open" as TripCostStatus);
+}
+
+function toSyncMeta(raw: unknown): TripCostRecord["sync"] {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const source = String(o.source ?? "").trim();
+  const sourceId = String(o.sourceId ?? "").trim();
+  const process = String(o.process ?? "").trim();
+  if (!source || !sourceId || !process) return null;
+  return { source, sourceId, process };
 }
 
 function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord {
@@ -49,6 +59,7 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord
     currency: String(doc.currency ?? "PEN"),
     status: toStatus(String(doc.status ?? "open")),
     settlementId: doc.settlementId != null ? String(doc.settlementId) : null,
+    sync: toSyncMeta(doc.sync),
   };
 }
 
