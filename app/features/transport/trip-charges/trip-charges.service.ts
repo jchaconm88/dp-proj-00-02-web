@@ -63,6 +63,8 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeReco
     code: String(doc.code ?? ""),
     tripId: String(doc.tripId ?? ""),
     name: String(doc.name ?? ""),
+    chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
+    chargeType: String(doc.chargeType ?? "").trim(),
     type: chargeType,
     source: toSource(String(doc.source ?? "manual")),
     entityType,
@@ -91,6 +93,8 @@ export async function addTripCharge(data: TripChargeAddInput): Promise<string> {
     code: data.code.trim(),
     tripId: data.tripId.trim(),
     name: data.name.trim(),
+    chargeTypeId: data.chargeTypeId.trim(),
+    chargeType: data.chargeType.trim(),
     type: data.type,
     source: data.source,
     entityType: (data.entityType ?? "") as TripChargeEntityType,
@@ -107,6 +111,8 @@ export async function updateTripCharge(id: string, data: TripChargeEditInput): P
   if (data.code !== undefined) payload.code = data.code.trim();
   if (data.tripId !== undefined) payload.tripId = data.tripId.trim();
   if (data.name !== undefined) payload.name = data.name.trim();
+  if (data.chargeTypeId !== undefined) payload.chargeTypeId = data.chargeTypeId.trim();
+  if (data.chargeType !== undefined) payload.chargeType = data.chargeType.trim();
   if (data.type !== undefined) payload.type = data.type;
   if (data.source !== undefined) payload.source = data.source;
   if (data.entityType !== undefined) payload.entityType = data.entityType;

@@ -4,6 +4,8 @@ import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
 import { generateSequenceCode } from "~/features/system/sequences";
+import { getChargeTypesForTripCharges } from "~/features/transport/charge-types";
+import type { ChargeTypeRecord, ChargeTypeSource } from "~/features/transport/charge-types";
 import {
   getTripChargeById,
   addTripCharge,
@@ -19,7 +21,6 @@ import { getEmployees, type EmployeeRecord } from "~/features/human-resource/emp
 import { getResources, type ResourceRecord } from "~/features/human-resource/resources";
 import type { AssignmentEntityType } from "~/features/transport/trip-assignments";
 import {
-  TRIP_CHARGE_TYPE,
   TRIP_CHARGE_SOURCE,
   TRIP_CHARGE_STATUS,
   TRIP_ASSIGNMENT_ENTITY_TYPE,
@@ -37,11 +38,18 @@ export interface TripChargeDialogProps {
   onHide: () => void;
 }
 
-const TYPE_OPTIONS = statusToSelectOptions(TRIP_CHARGE_TYPE);
 const ALL_CHARGE_SOURCE = TRIP_CHARGE_SOURCE;
 const STATUS_OPTIONS = statusToSelectOptions(TRIP_CHARGE_STATUS);
 const CURRENCY_OPTIONS = statusToSelectOptions(CURRENCY);
 const SUPPORT_ENTITY_TYPE_OPTIONS = statusToSelectOptions(TRIP_ASSIGNMENT_ENTITY_TYPE);
+
+function sourceEntityPickMode(source: ChargeTypeSource): "none" | "service" | "choose" | "employee" | "resource" {
+  if (source === "service") return "service";
+  if (source === "employee") return "employee";
+  if (source === "resource") return "resource";
+  if (source === "employee_resource") return "choose";
+  return "none";
+}
 
 function formatEmployeeDisplay(e: EmployeeRecord): string {
   const name = `${e.lastName} ${e.firstName}`.trim();
@@ -67,6 +75,8 @@ export default function TripChargeDialog({
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [chargeTypeId, setChargeTypeId] = useState("");
+  const [chargeTypes, setChargeTypes] = useState<ChargeTypeRecord[]>([]);
   const [type, setType] = useState<TripChargeType>("freight");
   const [source, setSource] = useState<TripChargeSource>("manual");
   const [transportServiceId, setTransportServiceId] = useState("");
@@ -93,25 +103,52 @@ export default function TripChargeDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isFreight = type === "freight";
-  const isAdditionalSupport = type === "additional_support";
+  const selectedChargeType = useMemo(
+    () => chargeTypes.find((c) => c.id === chargeTypeId),
+    [chargeTypes, chargeTypeId]
+  );
+  const entityPickMode = selectedChargeType ? sourceEntityPickMode(selectedChargeType.source) : "none";
+
+  const isFreight = entityPickMode === "service";
+  const isAdditionalSupport =
+    entityPickMode === "choose" || entityPickMode === "employee" || entityPickMode === "resource";
   const clientIdTrim = clientId.trim();
 
+  const chargeTypeOptions = useMemo(() => {
+    const opts = chargeTypes.map((ct) => {
+      const c = (ct.code ?? "").trim();
+      const n = (ct.name ?? "").trim();
+      return { label: c && n ? `${c} · ${n}` : n || c || ct.id, value: ct.id };
+    });
+    if (chargeTypeId && !chargeTypes.some((c) => c.id === chargeTypeId)) {
+      return [
+        { label: `Tipo de cargo (referencia) · ${chargeTypeId}`, value: chargeTypeId },
+        { label: "— Seleccionar tipo —", value: "" },
+        ...opts,
+      ];
+    }
+    return [{ label: "— Seleccionar tipo —", value: "" }, ...opts];
+  }, [chargeTypes, chargeTypeId]);
+
   const sourceOptions = useMemo(() => {
-    if (isFreight) {
+    if (entityPickMode === "service") {
       return statusToSelectOptions({
         contract: ALL_CHARGE_SOURCE.contract,
         manual: ALL_CHARGE_SOURCE.manual,
       });
     }
-    if (isAdditionalSupport) {
+    if (
+      entityPickMode === "choose" ||
+      entityPickMode === "employee" ||
+      entityPickMode === "resource"
+    ) {
       return statusToSelectOptions({
         salary_rule: ALL_CHARGE_SOURCE.salary_rule,
         manual: ALL_CHARGE_SOURCE.manual,
       });
     }
     return statusToSelectOptions({ manual: ALL_CHARGE_SOURCE.manual });
-  }, [isFreight, isAdditionalSupport]);
+  }, [entityPickMode]);
 
   const applyContractFreightPricing = useCallback(
     async (svcId: string) => {
@@ -173,8 +210,8 @@ export default function TripChargeDialog({
   useEffect(() => {
     if (!visible) return;
     setListsLoading(true);
-    Promise.all([getTransportServices(), getEmployees(), getResources()])
-      .then(([{ items: svc }, { items: emp }, { items: res }]) => {
+    Promise.all([getTransportServices(), getEmployees(), getResources(), getChargeTypesForTripCharges()])
+      .then(([{ items: svc }, { items: emp }, { items: res }, chargeTypeList]) => {
         const opts = svc
           .filter((s) => s.active !== false)
           .map((s) => ({
@@ -184,11 +221,13 @@ export default function TripChargeDialog({
         setServiceOptions(opts);
         setEmployees(emp);
         setResources(res);
+        setChargeTypes(chargeTypeList);
       })
       .catch(() => {
         setServiceOptions([]);
         setEmployees([]);
         setResources([]);
+        setChargeTypes([]);
       })
       .finally(() => setListsLoading(false));
   }, [visible]);
@@ -199,6 +238,7 @@ export default function TripChargeDialog({
     if (!chargeId) {
       setCode("");
       setName("");
+      setChargeTypeId("");
       setType("freight");
       setSource("manual");
       setTransportServiceId("");
@@ -223,6 +263,7 @@ export default function TripChargeDialog({
         }
         setCode(data.code ?? "");
         setName(data.name ?? "");
+        setChargeTypeId(data.chargeTypeId ?? "");
         setType(data.type ?? "freight");
         let loadedSource = (data.source ?? "manual") as TripChargeSource;
         if (data.type === "additional_support" && loadedSource === "contract") {
@@ -321,39 +362,41 @@ export default function TripChargeDialog({
     }
   };
 
-  const handleTypeChange = (v: TripChargeType) => {
-    const prevType = type;
-    const prevSource = source;
-    setType(v);
-
-    if (v !== "freight") {
-      setTransportServiceId("");
-      setFreightPricingLocked(false);
-    }
-    if (v !== "additional_support") {
-      setSupportEntityType("employee");
-      setSupportEntitySelectId("");
-      setSupportEntityLabel("");
-      setSupportPricingLocked(false);
-    }
-
-    if (v === "additional_support" && prevType !== "additional_support") {
-      setFreightPricingLocked(false);
+  const onChargeTypeChange = (id: string) => {
+    setChargeTypeId(id);
+    const ct = chargeTypes.find((c) => c.id === id);
+    setError(null);
+    setAmount("");
+    setFreightPricingLocked(false);
+    setSupportPricingLocked(false);
+    setTransportServiceId("");
+    setSupportEntitySelectId("");
+    setSupportEntityLabel("");
+    setSupportEntityType("employee");
+    if (!ct) {
+      setType("freight");
       setSource("manual");
-      setAmount("");
-    } else if (v === "freight" && prevType !== "freight") {
-      setSupportPricingLocked(false);
-      if (prevSource === "salary_rule") setSource("manual");
-      setAmount("");
-    } else if (v !== "freight" && v !== "additional_support") {
-      setFreightPricingLocked(false);
-      setSupportPricingLocked(false);
-      if (prevSource === "contract" || prevSource === "salary_rule") setSource("manual");
+      return;
     }
-
-    if (v === "freight" && prevSource === "contract" && transportServiceId.trim() && clientIdTrim) {
-      void applyContractFreightPricing(transportServiceId);
+    if (ct.source === "service") {
+      setType("freight");
+      setSource("manual");
+      return;
     }
+    if (ct.source === "employee") {
+      setType("additional_support");
+      setSupportEntityType("employee");
+      setSource("manual");
+      return;
+    }
+    if (ct.source === "resource") {
+      setType("additional_support");
+      setSupportEntityType("resource");
+      setSource("manual");
+      return;
+    }
+    setType("additional_support");
+    setSource("manual");
   };
 
   const handleTransportServiceChange = (v: string | number) => {
@@ -389,6 +432,15 @@ export default function TripChargeDialog({
     setSupportPricingLocked(false);
     setAmount("0");
   };
+
+  useEffect(() => {
+    if (entityPickMode === "employee" && supportEntityType !== "employee") {
+      setSupportEntityType("employee");
+    }
+    if (entityPickMode === "resource" && supportEntityType !== "resource") {
+      setSupportEntityType("resource");
+    }
+  }, [entityPickMode, supportEntityType]);
 
   const onSupportEmployeeSelect = (id: string) => {
     setSupportEntitySelectId(id);
@@ -431,8 +483,14 @@ export default function TripChargeDialog({
       return { entityType: "", entityId: "" };
     }
     if (type === "additional_support") {
+      const effectiveType: AssignmentEntityType =
+        entityPickMode === "employee"
+          ? "employee"
+          : entityPickMode === "resource"
+            ? "resource"
+            : supportEntityType;
       return {
-        entityType: supportEntityType === "resource" ? "resource" : "employee",
+        entityType: effectiveType === "resource" ? "resource" : "employee",
         entityId: supportEntitySelectId.trim(),
       };
     }
@@ -440,6 +498,10 @@ export default function TripChargeDialog({
   };
 
   const save = async () => {
+    if (!chargeTypeId.trim() || !selectedChargeType) {
+      setError("Seleccione un tipo de cargo.");
+      return;
+    }
     const amountNum = Number(amount);
     if (Number.isNaN(amountNum) || amountNum < 0) return;
     if (source === "contract" && isFreight) {
@@ -474,7 +536,8 @@ export default function TripChargeDialog({
         setSaving(false);
         return;
       }
-      const typeLabel = TRIP_CHARGE_TYPE[type]?.label ?? type;
+      const typeLabel =
+        selectedChargeType.name.trim() || selectedChargeType.code.trim() || selectedChargeType.id;
       const resolvedName = name.trim() || typeLabel;
       const { entityType, entityId } = resolveEntityPayload();
 
@@ -482,6 +545,8 @@ export default function TripChargeDialog({
         code: finalCode,
         tripId,
         name: resolvedName,
+        chargeTypeId: chargeTypeId.trim(),
+        chargeType: typeLabel,
         type,
         source,
         entityType,
@@ -509,6 +574,8 @@ export default function TripChargeDialog({
     (supportPricingLocked && source === "salary_rule" && isAdditionalSupport && !!supportEntitySelectId.trim());
 
   const valid =
+    !!chargeTypeId.trim() &&
+    !!selectedChargeType &&
     !Number.isNaN(Number(amount)) &&
     Number(amount) >= 0 &&
     !(source === "contract" && isFreight && (!clientIdTrim || !transportServiceId.trim())) &&
@@ -535,13 +602,16 @@ export default function TripChargeDialog({
         <DpInput
           type="select"
           label="Tipo"
-          name="type"
-          value={type}
-          onChange={(v) => handleTypeChange(v as TripChargeType)}
-          options={TYPE_OPTIONS}
+          name="chargeTypeId"
+          value={chargeTypeId}
+          onChange={(v) => onChargeTypeChange(String(v ?? ""))}
+          options={chargeTypeOptions}
+          placeholder={listsLoading ? "Cargando tipos..." : "Seleccionar tipo"}
+          disabled={listsLoading}
+          filter
         />
 
-        {isFreight && (
+        {entityPickMode === "service" && (
           <DpInput
             type="select"
             label="Servicio de transporte"
@@ -555,17 +625,19 @@ export default function TripChargeDialog({
           />
         )}
 
-        {isAdditionalSupport && (
+        {(entityPickMode === "choose" || entityPickMode === "employee" || entityPickMode === "resource") && (
           <>
-            <DpInput
-              type="select"
-              label="Tipo entidad"
-              name="supportEntityType"
-              value={supportEntityType}
-              onChange={(v) => onSupportEntityTypeChange(v as AssignmentEntityType)}
-              options={SUPPORT_ENTITY_TYPE_OPTIONS}
-            />
-            {supportEntityType === "employee" && (
+            {entityPickMode === "choose" && (
+              <DpInput
+                type="select"
+                label="Tipo entidad"
+                name="supportEntityType"
+                value={supportEntityType}
+                onChange={(v) => onSupportEntityTypeChange(v as AssignmentEntityType)}
+                options={SUPPORT_ENTITY_TYPE_OPTIONS}
+              />
+            )}
+            {(entityPickMode === "employee" || (entityPickMode === "choose" && supportEntityType === "employee")) && (
               <DpInput
                 type="select"
                 label="Empleado"
@@ -578,7 +650,7 @@ export default function TripChargeDialog({
                 filter
               />
             )}
-            {supportEntityType === "resource" && (
+            {(entityPickMode === "resource" || (entityPickMode === "choose" && supportEntityType === "resource")) && (
               <DpInput
                 type="select"
                 label="Recurso"

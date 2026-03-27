@@ -51,6 +51,7 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripAssignment
     code: String(doc.code ?? ""),
     tripId: String(doc.tripId ?? ""),
     chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
+    chargeType: String(doc.chargeType ?? "").trim(),
     type: toAssignmentKind(doc.type),
     entityType: toEntityType(String(doc.entityType ?? "employee")),
     entityId: String(doc.entityId ?? ""),
@@ -74,6 +75,7 @@ export async function getTripAssignmentById(id: string): Promise<TripAssignmentR
 export async function addTripAssignment(data: TripAssignmentAddInput): Promise<string> {
   const payload: Record<string, unknown> = {
     chargeTypeId: data.chargeTypeId.trim(),
+    chargeType: data.chargeType.trim(),
     type: data.type,
     code: data.code.trim(),
     tripId: data.tripId.trim(),
@@ -98,6 +100,7 @@ export async function updateTripAssignment(id: string, data: TripAssignmentEditI
   if (data.code !== undefined) payload.code = data.code.trim();
   if (data.tripId !== undefined) payload.tripId = data.tripId.trim();
   if (data.chargeTypeId !== undefined) payload.chargeTypeId = data.chargeTypeId.trim();
+  if (data.chargeType !== undefined) payload.chargeType = data.chargeType.trim();
   if (data.type !== undefined) payload.type = data.type;
   if (data.entityType !== undefined) payload.entityType = data.entityType;
   if (data.entityId !== undefined) payload.entityId = data.entityId.trim();

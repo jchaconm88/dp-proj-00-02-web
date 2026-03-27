@@ -1,4 +1,4 @@
-export type TripCostEntity = "assignment" | "company";
+export type TripCostEntity = "" | "employee" | "resource";
 export type TripCostType = "employee_payment" | "resource_payment" | "fuel_expense" | "toll_expense" | "parking_expense" | "other_expense";
 export type TripCostSource = "salary_rule" | "manual";
 export type TripCostStatus = "open" | "paid" | "cancelled";
@@ -18,6 +18,10 @@ export interface TripCostRecord {
   tripId: string;
   entity: TripCostEntity;
   entityId: string;
+  /** Catálogo `charge-types` (tipo de costo). */
+  chargeTypeId: string;
+  /** Nombre denormalizado del tipo de costo. */
+  chargeType: string;
   type: TripCostType;
   source: TripCostSource;
   amount: number;
@@ -35,6 +39,8 @@ export interface TripCostAddInput {
   tripId: string;
   entity: TripCostEntity;
   entityId: string;
+  chargeTypeId: string;
+  chargeType: string;
   type: TripCostType;
   source: TripCostSource;
   amount: number;
@@ -57,3 +63,10 @@ export interface GetResourcePerTripCostResponse {
   amount: number;
   currency: string;
 }
+
+export interface GetPerTripCostByEntityRequest {
+  entityType: "employee" | "resource";
+  entityId: string;
+}
+
+export type GetPerTripCostByEntityResponse = GetResourcePerTripCostResponse;

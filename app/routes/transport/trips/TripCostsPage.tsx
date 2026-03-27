@@ -16,7 +16,6 @@ import {
   type DpTableFooterTotals,
 } from "~/components/DpTable";
 import {
-  TRIP_COST_ENTITY,
   TRIP_COST_TYPE,
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
@@ -25,7 +24,7 @@ import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripCostDialog from "./TripCostDialog";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 
-type TripCostTableRow = TripCostRecord & { amountFormatted: string };
+type TripCostTableRow = TripCostRecord & { amountFormatted: string; chargeTypeLabel: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -37,12 +36,11 @@ export function meta({ data }: Route.MetaArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "displayName", order: 2, display: true, filter: true },
-  { header: "Entidad", column: "entity", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_COST_ENTITY },
-  { header: "Tipo", column: "type", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_COST_TYPE },
-  { header: "Origen", column: "source", order: 5, display: true, filter: true, type: "label", typeOptions: TRIP_COST_SOURCE },
-  { header: "Monto", column: "amountFormatted", order: 6, display: true, filter: true },
-  { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
+  { header: "Tipo", column: "chargeTypeLabel", order: 2, display: true, filter: true },
+  { header: "Nombre", column: "displayName", order: 3, display: true, filter: true },
+  { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_COST_SOURCE },
+  { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
+  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
 ];
 
 const TRIP_COSTS_FOOTER_TOTALS: DpTableFooterTotals = {
@@ -72,6 +70,7 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
       costs.map((c) => ({
         ...c,
         amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
+        chargeTypeLabel: c.chargeType?.trim() || c.chargeTypeId?.trim() || TRIP_COST_TYPE[c.type]?.label || c.type,
       })),
     [costs]
   );

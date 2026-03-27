@@ -75,6 +75,7 @@ function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripSt
     order: Number(doc.order) || 0,
     type: toTripStopType(doc.type),
     name: String(doc.name ?? ""),
+    externalDocument: String(doc.externalDocument ?? "").trim(),
     districtId: String(doc.districtId ?? "").trim(),
     districtName: String(doc.districtName ?? "").trim(),
     observations: String(doc.observations ?? ""),
@@ -222,6 +223,7 @@ export async function addTripStop(tripId: string, data: TripStopAddInput): Promi
       order: data.order,
       type: data.type,
       name: data.name.trim(),
+      externalDocument: (data.externalDocument ?? "").trim(),
       districtId: (data.districtId ?? "").trim(),
       districtName: (data.districtName ?? "").trim(),
       observations: (data.observations ?? "").trim(),
@@ -245,6 +247,7 @@ export async function updateTripStop(
   if (data.code !== undefined) payload.code = data.code.trim();
   if (data.type !== undefined) payload.type = data.type;
   if (data.name !== undefined) payload.name = data.name.trim();
+  if (data.externalDocument !== undefined) payload.externalDocument = data.externalDocument.trim();
   if (data.districtId !== undefined) payload.districtId = data.districtId.trim();
   if (data.districtName !== undefined) payload.districtName = data.districtName.trim();
   if (data.observations !== undefined) payload.observations = data.observations.trim();

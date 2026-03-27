@@ -45,6 +45,7 @@ export interface TripStopRecord {
   order: number;
   type: TripStopType;
   name: string;
+  externalDocument: string;
   /** UBIGEO (6 dígitos) según catálogo en `app/data/peru-districts.json`. */
   districtId: string;
   /** Nombre legible del distrito (denormalizado para listados / reportes). */
@@ -64,6 +65,7 @@ export interface TripStopAddInput {
   order: number;
   type: TripStopType;
   name: string;
+  externalDocument: string;
   districtId: string;
   districtName: string;
   observations: string;

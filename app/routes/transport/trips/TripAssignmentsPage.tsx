@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
-import { getChargeTypesForTripAssignments } from "~/features/transport/charge-types";
 import {
   getTripAssignments,
   deleteTripAssignment,
@@ -44,21 +43,10 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   if (!tripId) throw new Error("ID de viaje no encontrado");
   const trip = await getTripById(tripId);
   if (!trip) throw new Error("Viaje no encontrado");
-  const [{ items }, chargeTypes] = await Promise.all([
-    getTripAssignments(tripId),
-    getChargeTypesForTripAssignments(),
-  ]);
-  const chargeTypeNameById = new Map(chargeTypes.map((c) => [c.id, (c.name || c.code).trim() || c.id]));
+  const { items } = await getTripAssignments(tripId);
   const assignments: AssignmentRow[] = items.map((a) => {
-    const ctId = a.chargeTypeId?.trim();
-    let assignmentTypeLabel = "";
-    if (ctId && chargeTypeNameById.has(ctId)) {
-      assignmentTypeLabel = chargeTypeNameById.get(ctId)!;
-    } else if (ctId) {
-      assignmentTypeLabel = ctId;
-    } else {
-      assignmentTypeLabel = TRIP_ASSIGNMENT_TYPE[a.type]?.label ?? a.type;
-    }
+    const assignmentTypeLabel =
+      a.chargeType?.trim() || a.chargeTypeId?.trim() || TRIP_ASSIGNMENT_TYPE[a.type]?.label || a.type;
     return {
       ...a,
       scopeSummary: scopeSummaryRow(a),

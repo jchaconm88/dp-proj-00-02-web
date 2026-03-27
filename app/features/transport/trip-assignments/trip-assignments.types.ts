@@ -21,6 +21,8 @@ export interface TripAssignmentRecord {
   tripId: string;
   /** Catálogo `charge-types` (tipo de asignación). */
   chargeTypeId: string;
+  /** Nombre denormalizado del tipo de cargo. */
+  chargeType: string;
   type: TripAssignmentKind;
   entityType: AssignmentEntityType;
   entityId: string;
@@ -34,6 +36,7 @@ export interface TripAssignmentRecord {
 
 export interface TripAssignmentAddInput {
   chargeTypeId: string;
+  chargeType: string;
   type: TripAssignmentKind;
   code: string;
   tripId: string;

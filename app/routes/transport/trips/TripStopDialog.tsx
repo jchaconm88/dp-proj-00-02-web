@@ -46,6 +46,7 @@ export default function TripStopDialog({
   const [code, setCode] = useState("");
   const [type, setType] = useState<TripStopType>("checkpoint");
   const [name, setName] = useState("");
+  const [externalDocument, setExternalDocument] = useState("");
   const [districtId, setDistrictId] = useState("");
   /** Denormalizado; si el id no está en el catálogo, se conserva el nombre cargado de Firestore. */
   const [districtName, setDistrictName] = useState("");
@@ -77,6 +78,7 @@ export default function TripStopDialog({
       setCode("");
       setType("checkpoint");
       setName("");
+      setExternalDocument("");
       setDistrictId("");
       setDistrictName("");
       setObservations("");
@@ -102,6 +104,7 @@ export default function TripStopDialog({
         setCode(data.code ?? "");
         setType(data.type ?? "checkpoint");
         setName(data.name ?? "");
+        setExternalDocument(data.externalDocument ?? "");
         const did = (data.districtId ?? "").trim();
         setDistrictId(did);
         const fromCatalog = did ? getDistrictNameById(did) : "";
@@ -134,6 +137,7 @@ export default function TripStopDialog({
         code: finalCode.trim(),
         type,
         name: name.trim(),
+        externalDocument: externalDocument.trim(),
         districtId: did,
         districtName: dname,
         observations: observations.trim(),
@@ -203,6 +207,14 @@ export default function TripStopDialog({
         />
         <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => setType(v as TripStopType)} options={TYPE_OPTIONS} />
         <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} placeholder="Almacén Lima" />
+        <DpInput
+          type="input"
+          label="Documento externo"
+          name="externalDocument"
+          value={externalDocument}
+          onChange={setExternalDocument}
+          placeholder="DOC-EXT-001"
+        />
         <DpInput
           type="textarea"
           label="Observaciones"

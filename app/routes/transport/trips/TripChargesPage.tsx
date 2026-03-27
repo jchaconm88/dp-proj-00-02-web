@@ -24,7 +24,7 @@ import {
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import TripChargeDialog from "./TripChargeDialog";
 
-type TripChargeTableRow = TripChargeRecord & { amountFormatted: string };
+type TripChargeTableRow = TripChargeRecord & { amountFormatted: string; chargeTypeLabel: string };
 
 export function meta({ data }: Route.MetaArgs) {
   const tripCode = data?.trip?.code ?? "Viaje";
@@ -37,7 +37,7 @@ export function meta({ data }: Route.MetaArgs) {
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
   { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_TYPE },
+  { header: "Tipo", column: "chargeTypeLabel", order: 3, display: true, filter: true },
   { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_SOURCE },
   { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
   { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
@@ -70,7 +70,8 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
     () =>
       charges.map((c) => ({
         ...c,
-        amountFormatted: formatAmountWithSymbol(c.amount, c.currency)
+        amountFormatted: formatAmountWithSymbol(c.amount, c.currency),
+        chargeTypeLabel: c.chargeType?.trim() || c.chargeTypeId?.trim() || TRIP_CHARGE_TYPE[c.type]?.label || c.type,
       })),
     [charges]
   );

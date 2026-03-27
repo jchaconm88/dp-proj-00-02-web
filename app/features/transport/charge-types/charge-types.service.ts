@@ -74,6 +74,24 @@ export async function getChargeTypesForTripAssignments(): Promise<ChargeTypeReco
   );
 }
 
+export async function getChargeTypesForTripCosts(): Promise<ChargeTypeRecord[]> {
+  const { items } = await getChargeTypes();
+  return items.filter((ct) => ct.active !== false && ct.type === "cost");
+}
+
+export async function getChargeTypesForTripCharges(): Promise<ChargeTypeRecord[]> {
+  const { items } = await getChargeTypes();
+  return items.filter(
+    (ct) =>
+      ct.active !== false &&
+      ct.type === "charge" &&
+      (ct.source === "service" ||
+        ct.source === "employee" ||
+        ct.source === "resource" ||
+        ct.source === "employee_resource")
+  );
+}
+
 export async function addChargeType(data: ChargeTypeAddInput): Promise<string> {
   return addDocument(COLLECTION, {
     code: data.code.trim(),

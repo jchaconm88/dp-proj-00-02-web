@@ -1,23 +1,25 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigation } from "react-router";
 import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
 import { generateSequenceCode } from "~/features/system/sequences";
-import { getTripAssignments, getTripAssignmentById } from "~/features/transport/trip-assignments";
+import { getEmployees, type EmployeeRecord } from "~/features/human-resource/employees";
+import { getResources, type ResourceRecord } from "~/features/human-resource/resources";
+import { getChargeTypesForTripCosts } from "~/features/transport/charge-types";
+import type { ChargeTypeRecord, ChargeTypeSource } from "~/features/transport/charge-types";
 import {
   getTripCostById,
   getTripCosts,
   addTripCost,
   updateTripCost,
-  getTripCostByAssignment,
+  getPerTripCostByEntity,
   type TripCostEntity,
   type TripCostType,
   type TripCostSource,
   type TripCostStatus,
 } from "~/features/transport/trip-costs";
 import {
-  TRIP_COST_TYPE,
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
   CURRENCY,
@@ -32,7 +34,6 @@ export interface TripCostDialogProps {
   onHide: () => void;
 }
 
-const TYPE_OPTIONS = statusToSelectOptions(TRIP_COST_TYPE);
 const SOURCE_OPTIONS = statusToSelectOptions(TRIP_COST_SOURCE);
 const STATUS_OPTIONS = statusToSelectOptions(TRIP_COST_STATUS);
 const CURRENCY_OPTIONS = statusToSelectOptions(CURRENCY);
@@ -43,6 +44,23 @@ function formatAmountForDisplay(value: number): string {
 
 function isAssignmentPaymentType(t: TripCostType): boolean {
   return t === "employee_payment" || t === "resource_payment";
+}
+
+function sourceEntityPickMode(source: ChargeTypeSource): "choose" | "employee" | "resource" | "none" {
+  if (source === "employee") return "employee";
+  if (source === "resource") return "resource";
+  if (source === "employee_resource") return "choose";
+  return "none";
+}
+
+function formatEmployeeDisplay(e: EmployeeRecord): string {
+  const name = `${e.lastName} ${e.firstName}`.trim();
+  return name || e.code.trim() || e.id;
+}
+
+function formatResourceDisplay(r: ResourceRecord): string {
+  const name = `${r.lastName} ${r.firstName}`.trim();
+  return name || r.code.trim() || r.id;
 }
 
 export default function TripCostDialog({
@@ -58,8 +76,16 @@ export default function TripCostDialog({
 
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [entity, setEntity] = useState<TripCostEntity>("assignment");
+  const [entity, setEntity] = useState<TripCostEntity>("");
   const [entityId, setEntityId] = useState("");
+
+  const [chargeTypes, setChargeTypes] = useState<ChargeTypeRecord[]>([]);
+  const [chargeTypeId, setChargeTypeId] = useState("");
+
+  const [entityType, setEntityType] = useState<"employee" | "resource">("employee");
+  const [entitySelectId, setEntitySelectId] = useState("");
+
+  // compat: seguimos guardando `type` (employee_payment/resource_payment/otros) por ahora.
   const [type, setType] = useState<TripCostType>("employee_payment");
   const [source, setSource] = useState<TripCostSource>("manual");
   const [amount, setAmount] = useState("");
@@ -70,83 +96,158 @@ export default function TripCostDialog({
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingAssignmentCost, setLoadingAssignmentCost] = useState(false);
-  const [initialAssignmentsPending, setInitialAssignmentsPending] = useState(false);
+  const [loadingComputedCost, setLoadingComputedCost] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [assignmentId, setAssignmentId] = useState("");
-  const [assignmentOptions, setAssignmentOptions] = useState<{ label: string; value: string }[]>([]);
-  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
-
-  const isEmployeePayment = type === "employee_payment";
-  const isResourcePayment = type === "resource_payment";
-  const needsAssignmentSelect = isAssignmentPaymentType(type);
-  const assignmentEntityType = isEmployeePayment ? "employee" : isResourcePayment ? "resource" : null;
-
-  const handleTypeChange = (v: TripCostType) => {
-    const wasAssign = isAssignmentPaymentType(type);
-    const nowAssign = isAssignmentPaymentType(v);
-    const switchedEmployeeResource =
-      wasAssign &&
-      nowAssign &&
-      ((type === "employee_payment" && v === "resource_payment") ||
-        (type === "resource_payment" && v === "employee_payment"));
-
-    setType(v);
-    if (nowAssign) {
-      setEntity("assignment");
-      setSource("salary_rule");
-      if (!wasAssign || switchedEmployeeResource) {
-        setAssignmentId("");
-        setEntityId("");
-      }
-      setDisplayName("");
-      setAmount("");
-      setAmountPrecise(null);
-    } else {
-      setEntity("company");
-      setSource("manual");
-      setAssignmentId("");
-      setDisplayName("");
-      setAmount("");
-      setAmountPrecise(null);
-      setCurrency("PEN");
-      if (wasAssign || !entityId.trim()) {
-        setEntityId(crypto.randomUUID());
-      }
-    }
-  };
 
   const handleSourceChange = (v: TripCostSource) => {
     const next = v;
     setSource(next);
-    if (needsAssignmentSelect && next === "manual") {
+    if (next === "manual") {
       setAmount("0");
       setAmountPrecise(0);
     }
-    // manual → salary_rule: el efecto de getTripCostByAssignment recalcula monto
+    // manual → salary_rule: el efecto de getPerTripCostByEntity recalcula monto
+  };
+
+  const selectedChargeType = useMemo(
+    () => chargeTypes.find((c) => c.id === chargeTypeId),
+    [chargeTypes, chargeTypeId]
+  );
+
+  const entityPickMode = selectedChargeType ? sourceEntityPickMode(selectedChargeType.source) : "none";
+
+  const chargeTypeOptions = useMemo(() => {
+    const opts = chargeTypes.map((ct) => {
+      const c = (ct.code ?? "").trim();
+      const n = (ct.name ?? "").trim();
+      const label = c && n ? `${c} · ${n}` : n || c || ct.id;
+      return { label, value: ct.id };
+    });
+    if (chargeTypeId && !chargeTypes.some((c) => c.id === chargeTypeId)) {
+      return [
+        { label: `Tipo de costo (referencia) · ${chargeTypeId}`, value: chargeTypeId },
+        { label: "— Seleccionar tipo —", value: "" },
+        ...opts,
+      ];
+    }
+    return [{ label: "— Seleccionar tipo —", value: "" }, ...opts];
+  }, [chargeTypes, chargeTypeId]);
+
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [resources, setResources] = useState<ResourceRecord[]>([]);
+  const [listsLoading, setListsLoading] = useState(false);
+
+  const pendingEntityTypeRef = useRef<"employee" | "resource" | null>(null);
+
+  const employeeOptions = useMemo(() => {
+    const active = employees.filter((e) => e.status === "active");
+    const opts = active.map((e) => ({
+      label: `${formatEmployeeDisplay(e)}${e.code ? ` · ${e.code}` : ""}`,
+      value: e.id,
+    }));
+    if (entitySelectId && entityType === "employee" && !active.some((e) => e.id === entitySelectId)) {
+      return [{ label: displayName.trim() || entitySelectId, value: entitySelectId }, ...opts];
+    }
+    return [{ label: "— Seleccionar empleado —", value: "" }, ...opts];
+  }, [employees, entitySelectId, entityType, displayName]);
+
+  const resourceOptions = useMemo(() => {
+    const active = resources.filter((r) => r.status === "active");
+    const opts = active.map((r) => ({
+      label: `${formatResourceDisplay(r)}${r.code ? ` · ${r.code}` : ""}`,
+      value: r.id,
+    }));
+    if (entitySelectId && entityType === "resource" && !active.some((r) => r.id === entitySelectId)) {
+      return [{ label: displayName.trim() || entitySelectId, value: entitySelectId }, ...opts];
+    }
+    return [{ label: "— Seleccionar recurso —", value: "" }, ...opts];
+  }, [resources, entitySelectId, entityType, displayName]);
+
+  const onEntityTypeChange = useCallback((v: "employee" | "resource") => {
+    setEntityType(v);
+    setEntitySelectId("");
+    setDisplayName("");
+  }, []);
+
+  const onEmployeeSelect = (id: string) => {
+    setEntitySelectId(id);
+    if (!id.trim()) {
+      setDisplayName("");
+      return;
+    }
+    const e = employees.find((x) => x.id === id);
+    setDisplayName(e ? formatEmployeeDisplay(e) : "");
+  };
+
+  const onResourceSelect = (id: string) => {
+    setEntitySelectId(id);
+    if (!id.trim()) {
+      setDisplayName("");
+      return;
+    }
+    const r = resources.find((x) => x.id === id);
+    setDisplayName(r ? formatResourceDisplay(r) : "");
+  };
+
+  const onChargeTypeChange = (id: string) => {
+    setChargeTypeId(id);
+    setError(null);
+    const ct = chargeTypes.find((c) => c.id === id);
+    setEntitySelectId("");
+    setDisplayName("");
+    if (!ct) return;
+    if (ct.source === "employee") {
+      pendingEntityTypeRef.current = "employee";
+      setEntityType("employee");
+    } else if (ct.source === "resource") {
+      pendingEntityTypeRef.current = "resource";
+      setEntityType("resource");
+    } else {
+      pendingEntityTypeRef.current = null;
+      setEntityType("employee");
+    }
+    // defaults para costos de empleado/recurso: salary_rule
+    if (ct.source === "employee" || ct.source === "resource" || ct.source === "employee_resource") {
+      setSource("salary_rule");
+      setEntity(ct.source === "resource" ? "resource" : "employee");
+      setType(ct.source === "resource" ? "resource_payment" : "employee_payment");
+      setEntityId("");
+      setAmount("");
+      setAmountPrecise(null);
+    } else {
+      setSource("manual");
+      setEntity("");
+      setType("other_expense");
+      setEntityId("");
+      setAmount("");
+      setAmountPrecise(null);
+      setCurrency("PEN");
+    }
   };
 
   useEffect(() => {
     if (!visible) return;
-    setInitialAssignmentsPending(true);
+    setError(null);
     setError(null);
     if (!costId) {
       setCode("");
+      setChargeTypeId("");
+      setChargeTypes([]);
+      setEmployees([]);
+      setResources([]);
       setDisplayName("");
-      setEntity("assignment");
+      setEntity("");
       setEntityId("");
+      setEntityType("employee");
+      setEntitySelectId("");
       setType("employee_payment");
-      setSource("salary_rule");
+      setSource("manual");
       setAmount("");
       setAmountPrecise(null);
       setCurrency("PEN");
       setStatus("open");
       setSettlementId("");
       setLoading(false);
-      setAssignmentId("");
-      setAssignmentOptions([]);
-      setAssignmentsLoading(false);
       return;
     }
     setLoading(true);
@@ -159,8 +260,9 @@ export default function TripCostDialog({
         setCode(data.code ?? "");
         const fromDoc = String(data.displayName ?? "").trim();
         setDisplayName(fromDoc);
+        setChargeTypeId(String((data as any).chargeTypeId ?? "").trim());
         const loadedType = (data.type ?? "employee_payment") as TripCostType;
-        setEntity(isAssignmentPaymentType(loadedType) ? "assignment" : "company");
+        setEntity(data.entity === "resource" ? "resource" : data.entity === "employee" ? "employee" : "");
         setEntityId(data.entityId ?? "");
         setType(loadedType);
         setSource(
@@ -177,99 +279,46 @@ export default function TripCostDialog({
         setCurrency(data.currency ?? "PEN");
         setStatus(data.status ?? "open");
         setSettlementId(data.settlementId ?? "");
-        if (isAssignmentPaymentType(loadedType)) {
-          setAssignmentId(String(data.entityId ?? ""));
-        } else {
-          setAssignmentId("");
-        }
-
-        // displayName: efecto según assignmentId (pagos a asignación) o vacío (empresa).
+        // Para compatibilidad: si venía como pago a asignación (entityId=tripAssignmentId), no podemos inferir empleado/recurso aquí.
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
   }, [visible, costId]);
 
-  // displayName interno desde la asignación elegida (no visible en UI).
   useEffect(() => {
     if (!visible) return;
-    if (!needsAssignmentSelect) {
-      setDisplayName("");
-      return;
-    }
-    if (!assignmentId.trim()) {
-      setDisplayName("");
-      return;
-    }
-    let cancelled = false;
-    getTripAssignmentById(assignmentId.trim())
-      .then((a) => {
-        if (cancelled) return;
-        setDisplayName(String(a?.displayName ?? "").trim());
+    setListsLoading(true);
+    Promise.all([getEmployees(), getResources(), getChargeTypesForTripCosts()])
+      .then(([emp, res, ct]) => {
+        setEmployees(emp.items);
+        setResources(res.items);
+        setChargeTypes(ct);
       })
       .catch(() => {
-        if (!cancelled) setDisplayName("");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, needsAssignmentSelect, assignmentId]);
-
-  useEffect(() => {
-    if (!visible) return;
-    if (!needsAssignmentSelect || !assignmentEntityType) {
-      if (initialAssignmentsPending) setInitialAssignmentsPending(false);
-      return;
-    }
-    if (!tripId.trim()) {
-      setAssignmentOptions([]);
-      if (initialAssignmentsPending) setInitialAssignmentsPending(false);
-      return;
-    }
-
-    setAssignmentsLoading(true);
-    getTripAssignments(tripId.trim())
-      .then(({ items }) => {
-        const filtered = items.filter((a) => a.entityType === assignmentEntityType);
-        setAssignmentOptions([
-          { label: "— Seleccionar asignación —", value: "" },
-          ...filtered.map((a) => ({
-            label: `${(a.displayName || "").trim() || a.entityId || a.id} (${(a.code || a.id).trim()})`,
-            value: a.id,
-          })),
-        ]);
+        setEmployees([]);
+        setResources([]);
+        setChargeTypes([]);
       })
-      .catch(() => setAssignmentOptions([{ label: "— Seleccionar asignación —", value: "" }]))
-      .finally(() => {
-        setAssignmentsLoading(false);
-        if (initialAssignmentsPending) setInitialAssignmentsPending(false);
-      });
-  }, [visible, tripId, needsAssignmentSelect, assignmentEntityType, initialAssignmentsPending]);
+      .finally(() => setListsLoading(false));
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
-
-    if (needsAssignmentSelect) {
-      // Para pagos a empleado/recurso, la entidad siempre es asignación y el ID es el tripAssignmentId.
-      setEntity("assignment");
-      setEntityId(assignmentId);
-      return;
-    }
-
-    // Para otros tipos, se usan los campos libres.
-    setAssignmentId("");
-  }, [visible, needsAssignmentSelect, assignmentId]);
-
-  useEffect(() => {
-    if (!visible) return;
-    if (!needsAssignmentSelect) return;
-    if (!assignmentId.trim()) return;
     if (source !== "salary_rule") return;
+    if (entityPickMode === "none") return;
+    const effectiveEntityType =
+      entityPickMode === "employee"
+        ? "employee"
+        : entityPickMode === "resource"
+          ? "resource"
+          : entityType;
+    if (!entitySelectId.trim()) return;
 
     let cancelled = false;
-    setLoadingAssignmentCost(true);
+    setLoadingComputedCost(true);
     setError(null);
 
-    getTripCostByAssignment(assignmentId)
+    getPerTripCostByEntity(effectiveEntityType, entitySelectId.trim())
       .then((result) => {
         if (cancelled) return;
         setAmountPrecise(result.amount);
@@ -281,35 +330,53 @@ export default function TripCostDialog({
         setError(
           err instanceof Error
             ? err.message
-            : "No se pudo obtener el costo calculado para la asignación."
+            : "No se pudo obtener el costo calculado para la entidad."
         );
       })
       .finally(() => {
         if (cancelled) return;
-        setLoadingAssignmentCost(false);
+        setLoadingComputedCost(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [visible, needsAssignmentSelect, assignmentId, source]);
+  }, [visible, source, entityPickMode, entityType, entitySelectId]);
 
   const save = async () => {
-    if (!entityId.trim()) return;
+    if (!chargeTypeId.trim() || !selectedChargeType) {
+      setError("Seleccione un tipo de costo.");
+      return;
+    }
+    const pickMode = sourceEntityPickMode(selectedChargeType.source);
+    if (pickMode !== "none") {
+      const effectiveEntityType =
+        pickMode === "employee" ? "employee" : pickMode === "resource" ? "resource" : entityType;
+      if (!entitySelectId.trim()) return;
+      setEntity(effectiveEntityType === "resource" ? "resource" : "employee");
+      setEntityId(entitySelectId.trim());
+      setType(effectiveEntityType === "resource" ? "resource_payment" : "employee_payment");
+    } else {
+      setEntity("");
+      setEntityId("");
+    }
+
     const amountNum = amountPrecise ?? Number(amount);
     if (Number.isNaN(amountNum) || amountNum < 0) return;
     setSaving(true);
     setError(null);
     try {
       const entityIdTrimmed = entityId.trim();
-      const { items } = await getTripCosts(tripId);
-      const hasDuplicateEntity = items.some(
-        (c) => c.entityId.trim() === entityIdTrimmed && c.id !== (costId ?? "")
-      );
-      if (hasDuplicateEntity) {
-        setError("Ya existe un costo registrado para esta entidad.");
-        setSaving(false);
-        return;
+      if (entityIdTrimmed) {
+        const { items } = await getTripCosts(tripId);
+        const hasDuplicateEntity = items.some(
+          (c) => c.entityId.trim() === entityIdTrimmed && c.id !== (costId ?? "")
+        );
+        if (hasDuplicateEntity) {
+          setError("Ya existe un costo registrado para esta entidad.");
+          setSaving(false);
+          return;
+        }
       }
 
       let finalCode: string;
@@ -321,18 +388,7 @@ export default function TripCostDialog({
         return;
       }
 
-      let resolvedDisplayName = "";
-      if (source === "salary_rule" && entity === "assignment" && entityIdTrimmed) {
-        try {
-          const a = await getTripAssignmentById(entityIdTrimmed);
-          resolvedDisplayName = String(a?.displayName ?? "").trim();
-        } catch {
-          resolvedDisplayName = displayName.trim();
-        }
-      }
-      if (source === "salary_rule" && !resolvedDisplayName) {
-        resolvedDisplayName = displayName.trim();
-      }
+      const resolvedDisplayName = displayName.trim();
 
       const payload = {
         code: finalCode,
@@ -340,6 +396,8 @@ export default function TripCostDialog({
         tripId,
         entity,
         entityId: entityIdTrimmed,
+        chargeTypeId: chargeTypeId.trim(),
+        chargeType: selectedChargeType.name.trim() || selectedChargeType.code.trim() || selectedChargeType.id,
         type,
         source,
         amount: amountNum,
@@ -362,8 +420,9 @@ export default function TripCostDialog({
   };
 
   const valid =
-    !!entityId.trim() &&
-    (!needsAssignmentSelect || !!assignmentId.trim()) &&
+    !!chargeTypeId.trim() &&
+    !!selectedChargeType &&
+    (entityPickMode === "none" || !!entitySelectId.trim()) &&
     !Number.isNaN(Number(amount)) &&
     Number(amount) >= 0;
 
@@ -378,29 +437,67 @@ export default function TripCostDialog({
       saveDisabled={!valid || isNavigating}
       visible={visible}
       onHide={onHide}
-      showLoading={loading || (initialAssignmentsPending && assignmentsLoading)}
+      showLoading={loading || listsLoading}
       showError={!!error}
       errorMessage={error ?? ""}
     >
       <div className="flex flex-col gap-4 pt-2">
           <DpCodeInput entity="trip-cost" label="Código" name="code" value={code} onChange={setCode} />
-          <DpInput type="select" label="Tipo" name="type" value={type} onChange={(v) => handleTypeChange(v as TripCostType)} options={TYPE_OPTIONS} />
+          <DpInput
+            type="select"
+            label="Tipo"
+            name="chargeTypeId"
+            value={chargeTypeId}
+            onChange={(v) => onChargeTypeChange(String(v ?? ""))}
+            options={chargeTypeOptions}
+            placeholder={listsLoading ? "Cargando..." : "Seleccionar"}
+            disabled={listsLoading}
+            filter
+          />
 
-          {needsAssignmentSelect ? (
+          {entityPickMode === "choose" ? (
             <DpInput
               type="select"
-              label={isEmployeePayment ? "Asignación (Empleado)" : "Asignación (Recurso)"}
-              name="tripAssignmentId"
-              value={assignmentId}
-              onChange={(v) => setAssignmentId(String(v ?? ""))}
-              options={assignmentOptions}
-              placeholder={assignmentsLoading ? "Cargando..." : "Seleccionar"}
-              disabled={assignmentsLoading || (source === "salary_rule" && loadingAssignmentCost)}
+              label="Tipo entidad"
+              name="entityType"
+              value={entityType}
+              onChange={(v) => onEntityTypeChange(v as "employee" | "resource")}
+              options={[
+                { label: "Empleado", value: "employee" },
+                { label: "Recurso", value: "resource" },
+              ]}
+            />
+          ) : null}
+
+          {(entityPickMode === "employee" || (entityPickMode === "choose" && entityType === "employee")) ? (
+            <DpInput
+              type="select"
+              label="Empleado"
+              name="employeeId"
+              value={entitySelectId}
+              onChange={(v) => onEmployeeSelect(String(v ?? ""))}
+              options={employeeOptions}
+              placeholder={listsLoading ? "Cargando..." : "Seleccionar"}
+              disabled={listsLoading || (source === "salary_rule" && loadingComputedCost)}
               filter
             />
           ) : null}
 
-          {needsAssignmentSelect ? (
+          {(entityPickMode === "resource" || (entityPickMode === "choose" && entityType === "resource")) ? (
+            <DpInput
+              type="select"
+              label="Recurso"
+              name="resourceId"
+              value={entitySelectId}
+              onChange={(v) => onResourceSelect(String(v ?? ""))}
+              options={resourceOptions}
+              placeholder={listsLoading ? "Cargando..." : "Seleccionar"}
+              disabled={listsLoading || (source === "salary_rule" && loadingComputedCost)}
+              filter
+            />
+          ) : null}
+
+          {entityPickMode !== "none" ? (
             <DpInput
               type="select"
               label="Origen"
@@ -420,9 +517,9 @@ export default function TripCostDialog({
               setAmount(v);
               setAmountPrecise(null);
             }}
-            placeholder={loadingAssignmentCost ? "Calculando..." : "0"}
+            placeholder={loadingComputedCost ? "Calculando..." : "0"}
             disabled={
-              loadingAssignmentCost || (needsAssignmentSelect && source === "salary_rule")
+              loadingComputedCost || (entityPickMode !== "none" && source === "salary_rule")
             }
           />
           <DpInput
@@ -432,7 +529,7 @@ export default function TripCostDialog({
             value={currency}
             onChange={(v) => setCurrency(String(v ?? ""))}
             options={CURRENCY_OPTIONS}
-            disabled={loadingAssignmentCost && needsAssignmentSelect && source === "salary_rule"}
+            disabled={loadingComputedCost && entityPickMode !== "none" && source === "salary_rule"}
           />
           <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as TripCostStatus)} options={STATUS_OPTIONS} />
       </div>

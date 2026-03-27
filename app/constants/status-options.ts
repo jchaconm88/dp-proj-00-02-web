@@ -301,12 +301,6 @@ export const TRIP_CHARGE_STATUS: Record<string, StatusOption> = {
   cancelled: { label: "Anulado", severity: "danger" },
 };
 
-/** Entidad del costo de viaje. */
-export const TRIP_COST_ENTITY: Record<string, StatusOption> = {
-  assignment: { label: "Asignación", severity: "info" },
-  company: { label: "Empresa", severity: "info" },
-};
-
 /** Tipo de costo de viaje. */
 export const TRIP_COST_TYPE: Record<string, StatusOption> = {
   employee_payment: { label: "Pago a empleado", severity: "info" },

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigation } from "react-router";
 import { Button } from "primereact/button";
+import { MultiSelect } from "primereact/multiselect";
 import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
@@ -140,9 +141,11 @@ export default function TripAssignmentDialog({
   const [chargeTypeId, setChargeTypeId] = useState("");
   const [chargeTypes, setChargeTypes] = useState<ChargeTypeRecord[]>([]);
   const [entityType, setEntityType] = useState<AssignmentEntityType>("employee");
-  /** ID del empleado o recurso (valor del select; se persiste como entityId). */
+  /** IDs seleccionados de empleados/recursos (alta múltiple). */
+  const [entitySelectIds, setEntitySelectIds] = useState<string[]>([]);
+  /** Modo edición (un solo ID en el documento existente). */
   const [entitySelectId, setEntitySelectId] = useState("");
-  /** Nombre a mostrar persistido; se actualiza al elegir empleado/recurso o al cargar edición. */
+  /** Nombre a mostrar persistido; en creación múltiple se calcula por cada entidad. */
   const [displayName, setDisplayName] = useState("");
   const [positionId, setPositionId] = useState("");
   /** Texto del cargo si hay positionId que ya no está en catálogo (solo edición). */
@@ -173,27 +176,37 @@ export default function TripAssignmentDialog({
 
   const employeeOptions = useMemo(() => {
     const active = employees.filter((e) => e.status === "active");
-    const opts = active.map((e) => ({
+    const opts: { label: string; value: string | number }[] = active.map((e) => ({
       label: `${formatEmployeeDisplay(e)}${e.code ? ` · ${e.code}` : ""}`,
       value: e.id,
     }));
-    if (entitySelectId && entityType === "employee" && !active.some((e) => e.id === entitySelectId)) {
-      return [{ label: displayName.trim() || entitySelectId, value: entitySelectId }, ...opts];
+    if (entityType !== "employee") return opts;
+    const selected = isEdit ? [entitySelectId] : entitySelectIds;
+    const missing = selected
+      .filter((id) => id && !active.some((e) => e.id === id))
+      .map((id) => ({ label: id, value: id }));
+    if (missing.length) {
+      return [...missing, ...opts];
     }
-    return [{ label: "— Seleccionar empleado —", value: "" }, ...opts];
-  }, [employees, entitySelectId, entityType, displayName]);
+    return opts;
+  }, [employees, entitySelectId, entitySelectIds, entityType, isEdit]);
 
   const resourceOptions = useMemo(() => {
     const active = resources.filter((r) => r.status === "active");
-    const opts = active.map((r) => ({
+    const opts: { label: string; value: string | number }[] = active.map((r) => ({
       label: `${formatResourceDisplay(r)}${r.code ? ` · ${r.code}` : ""}`,
       value: r.id,
     }));
-    if (entitySelectId && entityType === "resource" && !active.some((r) => r.id === entitySelectId)) {
-      return [{ label: displayName.trim() || entitySelectId, value: entitySelectId }, ...opts];
+    if (entityType !== "resource") return opts;
+    const selected = isEdit ? [entitySelectId] : entitySelectIds;
+    const missing = selected
+      .filter((id) => id && !active.some((r) => r.id === id))
+      .map((id) => ({ label: id, value: id }));
+    if (missing.length) {
+      return [...missing, ...opts];
     }
-    return [{ label: "— Seleccionar recurso —", value: "" }, ...opts];
-  }, [resources, entitySelectId, entityType, displayName]);
+    return opts;
+  }, [resources, entitySelectId, entitySelectIds, entityType, isEdit]);
 
   const positionOptions = useMemo(() => {
     const list = positions.filter((p) => p.active !== false);
@@ -282,6 +295,7 @@ export default function TripAssignmentDialog({
       setCode("");
       setChargeTypeId("");
       setEntityType("employee");
+      setEntitySelectIds([]);
       setEntitySelectId("");
       setDisplayName("");
       setPositionId("");
@@ -303,6 +317,7 @@ export default function TripAssignmentDialog({
         setCode(data.code ?? "");
         setChargeTypeId(data.chargeTypeId ?? "");
         setEntityType(data.entityType ?? "employee");
+        setEntitySelectIds(data.entityId ? [data.entityId] : []);
         setEntitySelectId(data.entityId ?? "");
         setDisplayName(data.displayName ?? "");
         const sc = data.scope;
@@ -355,6 +370,7 @@ export default function TripAssignmentDialog({
 
   const onEntityTypeChange = (v: AssignmentEntityType) => {
     setEntityType(v);
+    setEntitySelectIds([]);
     setEntitySelectId("");
     setDisplayName("");
     pendingPositionFromEntityRef.current = null;
@@ -363,6 +379,7 @@ export default function TripAssignmentDialog({
   const onChargeTypeChange = (id: string) => {
     setChargeTypeId(id);
     const ct = chargeTypes.find((c) => c.id === id);
+    setEntitySelectIds([]);
     setEntitySelectId("");
     setDisplayName("");
     pendingPositionFromEntityRef.current = null;
@@ -392,6 +409,18 @@ export default function TripAssignmentDialog({
     }
   };
 
+  const onEmployeesMultiSelect = (ids: string[]) => {
+    const clean = ids.map((x) => String(x).trim()).filter(Boolean);
+    setEntitySelectIds(clean);
+    if (clean.length === 1) {
+      onEmployeeSelect(clean[0]);
+      return;
+    }
+    setEntitySelectId("");
+    setDisplayName("");
+    pendingPositionFromEntityRef.current = null;
+  };
+
   const onResourceSelect = (id: string) => {
     setEntitySelectId(id);
     if (!id.trim()) {
@@ -412,6 +441,18 @@ export default function TripAssignmentDialog({
     }
   };
 
+  const onResourcesMultiSelect = (ids: string[]) => {
+    const clean = ids.map((x) => String(x).trim()).filter(Boolean);
+    setEntitySelectIds(clean);
+    if (clean.length === 1) {
+      onResourceSelect(clean[0]);
+      return;
+    }
+    setEntitySelectId("");
+    setDisplayName("");
+    pendingPositionFromEntityRef.current = null;
+  };
+
   const onPositionSelect = (id: string) => {
     setPositionId(id);
     setOrphanPositionLabel("");
@@ -423,7 +464,11 @@ export default function TripAssignmentDialog({
       setError("Seleccione un tipo de asignación (tipo de cargo).");
       return;
     }
-    if (!entitySelectId.trim() || !displayName.trim() || !positionId.trim() || !scopeValid) return;
+    const selectedIds =
+      isEdit
+        ? [entitySelectId.trim()].filter(Boolean)
+        : entitySelectIds.map((x) => x.trim()).filter(Boolean);
+    if (!selectedIds.length || !positionId.trim() || !scopeValid) return;
     if (scopeType === "stop" || scopeType === "segment") {
       if (!stops.length) {
         setError("Defina paradas del viaje antes de usar alcance por parada o tramo.");
@@ -450,22 +495,49 @@ export default function TripAssignmentDialog({
       }
       const scope = buildScopePayload(scopeType, scopeStopId, scopeFromStopId, scopeToStopId, stops);
       const assignmentType = chargeTypeKindToAssignmentType(selectedChargeType.type);
-      const payload = {
-        chargeTypeId: chargeTypeId.trim(),
-        type: assignmentType,
-        code: finalCode,
-        tripId,
-        entityType,
-        entityId: entitySelectId.trim(),
-        position: positionName,
-        positionId: positionId.trim(),
-        displayName: displayName.trim(),
-        scope,
-      };
       if (assignmentId) {
+        const payload = {
+          chargeTypeId: chargeTypeId.trim(),
+          chargeType: selectedChargeType.name.trim() || selectedChargeType.code.trim() || selectedChargeType.id,
+          type: assignmentType,
+          code: finalCode,
+          tripId,
+          entityType,
+          entityId: entitySelectId.trim(),
+          position: positionName,
+          positionId: positionId.trim(),
+          displayName: displayName.trim(),
+          scope,
+        };
         await updateTripAssignment(assignmentId, payload);
       } else {
-        await addTripAssignment(payload);
+        for (let i = 0; i < selectedIds.length; i += 1) {
+          const entityId = selectedIds[i];
+          const codeForRow = i === 0 ? finalCode : await generateSequenceCode("", "trip-assignment");
+          const employee = employees.find((x) => x.id === entityId);
+          const resource = resources.find((x) => x.id === entityId);
+          const entityDisplay =
+            entityType === "employee"
+              ? employee
+                ? formatEmployeeDisplay(employee)
+                : entityId
+              : resource
+                ? formatResourceDisplay(resource)
+                : entityId;
+          await addTripAssignment({
+            chargeTypeId: chargeTypeId.trim(),
+            chargeType: selectedChargeType.name.trim() || selectedChargeType.code.trim() || selectedChargeType.id,
+            type: assignmentType,
+            code: codeForRow,
+            tripId,
+            entityType,
+            entityId,
+            position: positionName,
+            positionId: positionId.trim(),
+            displayName: entityDisplay || entityId,
+            scope,
+          });
+        }
       }
       onSuccess?.();
       onHide();
@@ -479,8 +551,8 @@ export default function TripAssignmentDialog({
   const valid =
     !!chargeTypeId.trim() &&
     !!selectedChargeType &&
-    !!entitySelectId.trim() &&
-    !!displayName.trim() &&
+    (isEdit ? !!entitySelectId.trim() : entitySelectIds.length > 0) &&
+    (isEdit ? !!displayName.trim() : true) &&
     !!positionId.trim() &&
     scopeValid;
 
@@ -523,30 +595,72 @@ export default function TripAssignmentDialog({
           />
         )}
         {(entityPickMode === "employee" || (entityPickMode === "choose" && entityType === "employee")) && (
-          <DpInput
-            type="select"
-            label="Empleado"
-            name="employeeId"
-            value={entitySelectId}
-            onChange={(v) => onEmployeeSelect(String(v))}
-            options={employeeOptions}
-            placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleado"}
-            disabled={listsLoading}
-            filter
-          />
+          isEdit ? (
+            <DpInput
+              type="select"
+              label="Empleado"
+              name="employeeId"
+              value={entitySelectId}
+              onChange={(v) => onEmployeeSelect(String(v))}
+              options={[{ label: "— Seleccionar empleado —", value: "" }, ...employeeOptions]}
+              placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleado"}
+              disabled={listsLoading}
+              filter
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="employeeIds" className="font-medium text-zinc-700 dark:text-zinc-300">
+                Empleados
+              </label>
+              <MultiSelect
+                inputId="employeeIds"
+                value={entitySelectIds}
+                options={employeeOptions}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => onEmployeesMultiSelect((e.value as string[]) ?? [])}
+                placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleados"}
+                disabled={listsLoading}
+                filter
+                className="w-full"
+                display="chip"
+              />
+            </div>
+          )
         )}
         {(entityPickMode === "resource" || (entityPickMode === "choose" && entityType === "resource")) && (
-          <DpInput
-            type="select"
-            label="Recurso"
-            name="resourceId"
-            value={entitySelectId}
-            onChange={(v) => onResourceSelect(String(v))}
-            options={resourceOptions}
-            placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recurso"}
-            disabled={listsLoading}
-            filter
-          />
+          isEdit ? (
+            <DpInput
+              type="select"
+              label="Recurso"
+              name="resourceId"
+              value={entitySelectId}
+              onChange={(v) => onResourceSelect(String(v))}
+              options={[{ label: "— Seleccionar recurso —", value: "" }, ...resourceOptions]}
+              placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recurso"}
+              disabled={listsLoading}
+              filter
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="resourceIds" className="font-medium text-zinc-700 dark:text-zinc-300">
+                Recursos
+              </label>
+              <MultiSelect
+                inputId="resourceIds"
+                value={entitySelectIds}
+                options={resourceOptions}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => onResourcesMultiSelect((e.value as string[]) ?? [])}
+                placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recursos"}
+                disabled={listsLoading}
+                filter
+                className="w-full"
+                display="chip"
+              />
+            </div>
+          )
         )}
         <DpInput
           type="select"
