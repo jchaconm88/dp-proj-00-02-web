@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { StatusSeverity } from "~/constants/status-options";
 
 /** Tipo de formato de celda: status (chip con color), label (texto desde typeOptions), bool (checkbox no editable), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm). */
 export type DpTableDefColumnType = "status" | "label" | "bool" | "date" | "datetime";
@@ -25,7 +26,7 @@ export interface DpTableDefColumn {
   /** Formato de visualización: status (chip), label (texto), bool (checkbox), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm) */
   type?: DpTableDefColumnType;
   /** Para type="status" o "label": mapa valor -> etiqueta (string) o { label, severity }. En "label" solo se usa `label`. */
-  typeOptions?: Record<string, string | { label: string; severity?: "success" | "info" | "warning" | "danger" | "secondary" }>;
+  typeOptions?: Record<string, string | { label: string; severity?: StatusSeverity }>;
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   getSettlements,
   deleteSettlement,
   deleteSettlements,
+  buildSettlementPeriodLabel,
   type Settlement,
 } from "~/features/transport/settlements";
 import type { Route } from "./+types/SettlementsPage";
@@ -93,7 +94,10 @@ export default function SettlementsPage({ loaderData }: Route.ComponentProps) {
       loaderData.items.map((s) => ({
         ...s,
         entityDisplay: `${s.entity.name}`.trim(),
-        periodLabel: s.period.label || `${s.period.start} → ${s.period.end}`,
+        periodLabel:
+          (s.period.start?.trim() || s.period.end?.trim())
+            ? buildSettlementPeriodLabel(s.period.start, s.period.end)
+            : s.period.label || "",
         grossFormatted: formatAmountWithSymbol(s.totals.grossAmount, s.totals.currency),
       })),
     [loaderData.items]

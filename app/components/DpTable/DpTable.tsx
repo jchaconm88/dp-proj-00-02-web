@@ -13,10 +13,9 @@ import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
 import { format, isValid } from "date-fns";
+import { isPrimeStatusSeverity, type StatusSeverity } from "~/constants/status-options";
 import type { DpTableDefColumn, DpTableFooterTotals, DpTableRef, DpTableRow } from "./types";
 import DpTColumn from "./DpTColumn";
-
-type TagSeverity = "success" | "info" | "warning" | "danger" | "secondary";
 
 const DEFAULT_PAGE_SIZES = [5, 10, 25];
 
@@ -120,19 +119,33 @@ function formatDateTimeValue(value: unknown): string {
 function getStatusLabelAndSeverity(
   typeOptions: DpTableDefColumn["typeOptions"],
   value: string
-): { label: string; severity: TagSeverity } {
+): { label: string; severity: StatusSeverity } {
   const opt = typeOptions?.[value];
   const label = typeof opt === "string" ? opt : (opt as { label?: string })?.label ?? value;
-  const severity: TagSeverity =
-    (typeof opt === "object" && opt && "severity" in opt && (opt.severity as TagSeverity)) || "secondary";
+  const raw =
+    typeof opt === "object" && opt && "severity" in opt && opt.severity != null
+      ? String(opt.severity)
+      : "secondary";
+  const severity: StatusSeverity = isPrimeStatusSeverity(raw)
+    ? raw
+    : raw === "accent" || raw === "teal"
+      ? raw
+      : "secondary";
   return { label, severity };
+}
+
+function renderStatusTag(label: string, severity: StatusSeverity) {
+  if (isPrimeStatusSeverity(severity)) {
+    return <Tag value={label} severity={severity} />;
+  }
+  return <Tag value={label} severity={null} className={`dp-status-tag--${severity}`} />;
 }
 
 function renderTypedCell(col: DpTableDefColumn, value: unknown): React.ReactNode {
   if (col.type === "status") {
     const str = value != null ? String(value) : "";
     const { label, severity } = getStatusLabelAndSeverity(col.typeOptions, str);
-    return <Tag value={label} severity={severity} />;
+    return renderStatusTag(label, severity);
   }
   if (col.type === "label") {
     const str = value != null ? String(value) : "";

@@ -44,11 +44,19 @@ function normalizeCategory(raw: unknown): Settlement["category"] {
   return parseStatus(s, SETTLEMENT_CATEGORY, "customer") as Settlement["category"];
 }
 
+/** Presentación: YYYY-MM-DD (o ISO con prefijo fecha) → dd/MM/yyyy. */
+export function formatSettlementPeriodDateForDisplay(raw: string): string {
+  const s = String(raw ?? "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return s;
+}
+
 /** Etiqueta de periodo derivada (sin campo en mantenimiento). */
 export function buildSettlementPeriodLabel(start: string, end: string): string {
-  const a = start.trim();
-  const b = end.trim();
-  if (a && b) return `${a} — ${b}`;
+  const a = formatSettlementPeriodDateForDisplay(start);
+  const b = formatSettlementPeriodDateForDisplay(end);
+  if (a && b) return `${a} - ${b}`;
   return a || b || "";
 }
 

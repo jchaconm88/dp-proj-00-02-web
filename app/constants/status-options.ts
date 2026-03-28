@@ -4,7 +4,29 @@
  * - Selects en pantallas Set (options con label + value)
  */
 
-export type StatusSeverity = "success" | "info" | "warning" | "danger" | "secondary";
+/** Severidades que PrimeReact `Tag` pinta con la prop `severity`. */
+export const PRIME_STATUS_SEVERITIES = [
+  "success",
+  "info",
+  "warning",
+  "danger",
+  "secondary",
+  "contrast",
+] as const;
+
+export type PrimeStatusSeverity = (typeof PRIME_STATUS_SEVERITIES)[number];
+
+/**
+ * Severidades con color propio (no vienen del tema Prime): clases `dp-status-tag--accent` / `dp-status-tag--teal` en `app.css`.
+ */
+export type CustomStatusSeverity = "accent" | "teal";
+
+/** Valores permitidos en `StatusOption.severity` (mínimo 8 variantes visuales). */
+export type StatusSeverity = PrimeStatusSeverity | CustomStatusSeverity;
+
+export function isPrimeStatusSeverity(s: string): s is PrimeStatusSeverity {
+  return (PRIME_STATUS_SEVERITIES as readonly string[]).includes(s);
+}
 
 export interface StatusOption {
   label: string;
@@ -302,8 +324,8 @@ export const TRIP_STATUS = {
   in_progress: { label: "En curso", severity: "warning" },
   completed: { label: "Completado", severity: "success" },
   cancelled: { label: "Cancelado", severity: "danger" },
-  pre_settled: { label: "Preliquidado", severity: "danger" },
-  settled: { label: "Liquidado", severity: "success" },
+  pre_settled: { label: "Preliquidado", severity: "secondary" },
+  settled: { label: "Liquidado", severity: "teal" },
 } as const satisfies Record<string, StatusOption>;
 
 export type TripStatus = keyof typeof TRIP_STATUS;
