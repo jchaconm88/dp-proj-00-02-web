@@ -163,6 +163,7 @@ export default function TripAssignmentDialog({
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [positions, setPositions] = useState<PositionRecord[]>([]);
   const [listsLoading, setListsLoading] = useState(false);
+  const [refreshingResources, setRefreshingResources] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -257,6 +258,18 @@ export default function TripAssignmentDialog({
       .catch(() => setStops([]))
       .finally(() => setStopsLoading(false));
   }, [visible, tripId]);
+
+  const loadResources = useCallback(async () => {
+    setRefreshingResources(true);
+    try {
+      const { items } = await getResources();
+      setResources(items);
+    } catch {
+      setResources([]);
+    } finally {
+      setRefreshingResources(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -638,27 +651,42 @@ export default function TripAssignmentDialog({
               onChange={(v) => onResourceSelect(String(v))}
               options={[{ label: "— Seleccionar recurso —", value: "" }, ...resourceOptions]}
               placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recurso"}
-              disabled={listsLoading}
+              disabled={listsLoading || refreshingResources}
               filter
+              onRefresh={() => void loadResources()}
+              refreshing={refreshingResources}
+              refreshAriaLabel="Refrescar recursos"
             />
           ) : (
             <div className="flex flex-col gap-2">
               <label htmlFor="resourceIds" className="font-medium text-zinc-700 dark:text-zinc-300">
                 Recursos
               </label>
-              <MultiSelect
-                inputId="resourceIds"
-                value={entitySelectIds}
-                options={resourceOptions}
-                optionLabel="label"
-                optionValue="value"
-                onChange={(e) => onResourcesMultiSelect((e.value as string[]) ?? [])}
-                placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recursos"}
-                disabled={listsLoading}
-                filter
-                className="w-full"
-                display="chip"
-              />
+              <div className="flex items-stretch gap-2">
+                <MultiSelect
+                  inputId="resourceIds"
+                  value={entitySelectIds}
+                  options={resourceOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  onChange={(e) => onResourcesMultiSelect((e.value as string[]) ?? [])}
+                  placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recursos"}
+                  disabled={listsLoading || refreshingResources}
+                  filter
+                  className="min-w-0 flex-1"
+                  display="chip"
+                />
+                <Button
+                  type="button"
+                  icon="pi pi-refresh"
+                  outlined
+                  onClick={() => void loadResources()}
+                  loading={refreshingResources}
+                  disabled={listsLoading || refreshingResources}
+                  aria-label="Refrescar recursos"
+                  title="Refrescar recursos"
+                />
+              </div>
             </div>
           )
         )}

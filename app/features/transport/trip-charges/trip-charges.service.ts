@@ -7,7 +7,13 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
-import { TRIP_CHARGE_TYPE, TRIP_CHARGE_SOURCE, TRIP_CHARGE_STATUS } from "~/constants/status-options";
+import {
+  parseStatus,
+  TRIP_CHARGE_ENTITY_TYPE,
+  TRIP_CHARGE_SOURCE,
+  TRIP_CHARGE_STATUS,
+  TRIP_CHARGE_TYPE,
+} from "~/constants/status-options";
 import type {
   TripChargeRecord,
   TripChargeAddInput,
@@ -20,24 +26,6 @@ import type {
 
 const COLLECTION = "trip-charges";
 
-function toType(s: string): TripChargeType {
-  return Object.prototype.hasOwnProperty.call(TRIP_CHARGE_TYPE, s) ? (s as TripChargeType) : "freight";
-}
-function toSource(s: string): TripChargeSource {
-  return Object.prototype.hasOwnProperty.call(TRIP_CHARGE_SOURCE, s) ? (s as TripChargeSource) : "manual";
-}
-function toStatus(s: string): TripChargeStatus {
-  return Object.prototype.hasOwnProperty.call(TRIP_CHARGE_STATUS, s) ? (s as TripChargeStatus) : "open";
-}
-
-function toEntityType(raw: unknown): TripChargeEntityType {
-  const s = String(raw ?? "").trim().toLowerCase();
-  if (s === "transportservice") return "transportService";
-  if (s === "employee") return "employee";
-  if (s === "resource") return "resource";
-  return "";
-}
-
 function toSyncMeta(raw: unknown): TripChargeRecord["sync"] {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -49,9 +37,9 @@ function toSyncMeta(raw: unknown): TripChargeRecord["sync"] {
 }
 
 function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeRecord {
-  const chargeType = toType(String(doc.type ?? "freight"));
+  const chargeType = parseStatus(doc.type ?? "freight", TRIP_CHARGE_TYPE) as TripChargeType;
   const legacyTransportServiceId = String(doc.transportServiceId ?? "").trim();
-  let entityType = toEntityType(doc.entityType);
+  let entityType = parseStatus(doc.entityType, TRIP_CHARGE_ENTITY_TYPE) as TripChargeEntityType;
   let entityId = String(doc.entityId ?? "").trim();
   /** Documentos antiguos con `transportServiceId` o flete con `entityId` sin tipo explícito. */
   if (chargeType === "freight") {
@@ -66,12 +54,12 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeReco
     chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
     chargeType: String(doc.chargeType ?? "").trim(),
     type: chargeType,
-    source: toSource(String(doc.source ?? "manual")),
+    source: parseStatus(doc.source ?? "manual", TRIP_CHARGE_SOURCE, "manual") as TripChargeSource,
     entityType,
     entityId,
     amount: Number(doc.amount) ?? 0,
     currency: String(doc.currency ?? "PEN"),
-    status: toStatus(String(doc.status ?? "open")),
+    status: parseStatus(doc.status ?? "open", TRIP_CHARGE_STATUS) as TripChargeStatus,
     settlementId: doc.settlementId != null ? String(doc.settlementId) : null,
     settlement: String(doc.settlement ?? ""),
     sync: toSyncMeta(doc.sync),

@@ -6,6 +6,7 @@ import {
     deleteDocument,
     deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { DRIVER_RELATIONSHIP, DRIVER_STATUS, parseStatus } from "~/constants/status-options";
 import type {
     DriverRecord,
     DriverRelationshipType,
@@ -17,14 +18,12 @@ import type {
 const COLLECTION = "drivers";
 
 function toRecord(doc: { id: string } & Record<string, unknown>): DriverRecord {
-    const relStr = doc.relationshipType as string;
-    const relationshipType: DriverRelationshipType =
-        relStr === "employee" ? "employee" : "resource";
-
-    const stStr = doc.status as string;
-    const status: DriverStatus =
-        stStr === "assigned" ? "assigned" :
-            stStr === "inactive" ? "inactive" : "available";
+    const relationshipType = parseStatus(
+      doc.relationshipType,
+      DRIVER_RELATIONSHIP,
+      "resource"
+    ) as DriverRelationshipType;
+    const status = parseStatus(doc.status, DRIVER_STATUS) as DriverStatus;
 
     return {
         id: doc.id,

@@ -6,14 +6,10 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { parseStatus, VEHICLE_STATUS } from "~/constants/status-options";
 import type { VehicleRecord, VehicleAddInput, VehicleEditInput, VehicleStatus } from "./vehicles.types";
 
 const COLLECTION = "vehicles";
-
-function toVehicleStatus(v: unknown): VehicleStatus {
-  if (v === "available" || v === "assigned" || v === "inactive") return v as VehicleStatus;
-  return "available";
-}
 
 function toVehicleRecord(doc: { id: string } & Record<string, unknown>): VehicleRecord {
   return {
@@ -23,7 +19,7 @@ function toVehicleRecord(doc: { id: string } & Record<string, unknown>): Vehicle
     brand: String(doc.brand ?? ""),
     model: String(doc.model ?? ""),
     capacityKg: Number(doc.capacityKg) || 0,
-    status: toVehicleStatus(doc.status),
+    status: parseStatus(doc.status, VEHICLE_STATUS) as VehicleStatus,
     currentTripId: String(doc.currentTripId ?? ""),
     active: doc.active === true,
     createdAt: doc.createdAt as string | undefined,

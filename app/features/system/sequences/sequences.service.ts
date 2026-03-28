@@ -1,4 +1,5 @@
 import { getDocument, getCollection, getFirst, addDocument, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import { parseStatus, RESET_PERIOD } from "~/constants/status-options";
 import { callHttpsFunction } from "~/lib/functions.service";
 import type {
   ResetPeriod,
@@ -14,9 +15,7 @@ const COLLECTION = "sequences";
 type SequenceDoc = Record<string, unknown>;
 
 function toSequenceRecord(id: string, data: SequenceDoc): SequenceRecord {
-  const rp = data.resetPeriod as string;
-  const resetPeriod: ResetPeriod =
-    rp === "yearly" || rp === "monthly" || rp === "daily" ? rp : "never";
+  const resetPeriod = parseStatus(data.resetPeriod, RESET_PERIOD) as ResetPeriod;
   return {
     id,
     entity: String(data.entity ?? ""),

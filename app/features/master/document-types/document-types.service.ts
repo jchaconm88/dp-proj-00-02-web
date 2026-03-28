@@ -6,21 +6,17 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { DOCUMENT_TYPE_CATEGORY, parseStatus } from "~/constants/status-options";
 import type { DocumentTypeRecord, DocumentTypeAddInput, DocumentTypeEditInput, DocumentTypeCategory } from "./document-types.types";
 
 const COLLECTION = "document-types";
-
-function toDocumentTypeCategory(v: unknown): DocumentTypeCategory {
-  if (v === "identity" || v === "transport" || v === "vehicle") return v as DocumentTypeCategory;
-  return "identity";
-}
 
 function toDocumentTypeRecord(doc: { id: string } & Record<string, unknown>): DocumentTypeRecord {
   return {
     id: doc.id,
     name: String(doc.name ?? ""),
     description: String(doc.description ?? ""),
-    type: toDocumentTypeCategory(doc.type),
+    type: parseStatus(doc.type, DOCUMENT_TYPE_CATEGORY) as DocumentTypeCategory,
     createdAt: doc.createdAt as string | undefined,
     updatedAt: doc.updatedAt as string | undefined,
   };

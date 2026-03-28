@@ -52,6 +52,10 @@ export interface SettlementItemMovement {
 export interface SettlementItemTrip {
   id: string;
   code: string;
+  /** Denormalizado desde el viaje (ruta legible). */
+  route: string;
+  /** Solo fecha `YYYY-MM-DD` (inicio programado del viaje). */
+  scheduledStart: string;
 }
 
 /** Documento en subcolección `settlements/{id}/items`. */
@@ -59,6 +63,10 @@ export interface SettlementItem {
   id: string;
   movement: SettlementItemMovement;
   trip: SettlementItemTrip;
+  /** Etiqueta o código de tipo de cargo/costo (catálogo). */
+  chargeType: string;
+  /** Id del documento en `charge-types` cuando aplica. */
+  chargeTypeId: string;
   concept: string;
   amount: number;
   settledAmount: number;
@@ -86,6 +94,11 @@ export interface SettlementItemFormValues {
   movementId: string;
   tripId: string;
   tripCode: string;
+  tripRoute: string;
+  /** `YYYY-MM-DD` */
+  tripScheduledStart: string;
+  chargeType: string;
+  chargeTypeId: string;
   concept: string;
   amount: number;
   settledAmount: number;

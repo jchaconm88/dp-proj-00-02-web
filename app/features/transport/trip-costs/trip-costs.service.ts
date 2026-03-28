@@ -7,7 +7,13 @@ import {
   deleteManyDocuments,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
-import { TRIP_COST_TYPE, TRIP_COST_SOURCE, TRIP_COST_STATUS } from "~/constants/status-options";
+import {
+  parseStatus,
+  TRIP_COST_ENTITY_TYPE,
+  TRIP_COST_SOURCE,
+  TRIP_COST_STATUS,
+  TRIP_COST_TYPE,
+} from "~/constants/status-options";
 import type {
   TripCostRecord,
   TripCostAddInput,
@@ -23,22 +29,6 @@ import type {
 } from "./trip-costs.types";
 
 const COLLECTION = "trip-costs";
-
-function toEntity(s: string): TripCostEntity {
-  const v = String(s ?? "").trim().toLowerCase();
-  if (v === "employee") return "employee";
-  if (v === "resource") return "resource";
-  return "";
-}
-function toType(s: string): TripCostType {
-  return Object.prototype.hasOwnProperty.call(TRIP_COST_TYPE, s) ? (s as TripCostType) : ("employee_payment" as TripCostType);
-}
-function toSource(s: string): TripCostSource {
-  return Object.prototype.hasOwnProperty.call(TRIP_COST_SOURCE, s) ? (s as TripCostSource) : ("manual" as TripCostSource);
-}
-function toStatus(s: string): TripCostStatus {
-  return Object.prototype.hasOwnProperty.call(TRIP_COST_STATUS, s) ? (s as TripCostStatus) : ("open" as TripCostStatus);
-}
 
 function toSyncMeta(raw: unknown): TripCostRecord["sync"] {
   if (!raw || typeof raw !== "object") return null;
@@ -56,15 +46,15 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord
     code: String(doc.code ?? ""),
     displayName: String(doc.displayName ?? "").trim(),
     tripId: String(doc.tripId ?? ""),
-    entity: toEntity(String(doc.entity ?? "assignment")),
+    entity: parseStatus(doc.entity ?? "", TRIP_COST_ENTITY_TYPE) as TripCostEntity,
     entityId: String(doc.entityId ?? ""),
     chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
     chargeType: String(doc.chargeType ?? "").trim(),
-    type: toType(String(doc.type ?? "employee_payment")),
-    source: toSource(String(doc.source ?? "manual")),
+    type: parseStatus(doc.type ?? "employee_payment", TRIP_COST_TYPE) as TripCostType,
+    source: parseStatus(doc.source ?? "manual", TRIP_COST_SOURCE, "manual") as TripCostSource,
     amount: Number(doc.amount) ?? 0,
     currency: String(doc.currency ?? "PEN"),
-    status: toStatus(String(doc.status ?? "open")),
+    status: parseStatus(doc.status ?? "open", TRIP_COST_STATUS) as TripCostStatus,
     settlementId: doc.settlementId != null ? String(doc.settlementId) : null,
     sync: toSyncMeta(doc.sync),
   };

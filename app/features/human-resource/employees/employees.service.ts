@@ -1,4 +1,5 @@
 import { getDocument, getCollection, addDocument, updateDocument, deleteDocument, deleteManyDocuments } from "~/lib/firestore.service";
+import { EMPLOYEE_STATUS, parseStatus, SALARY_TYPE, statusDefaultKey } from "~/constants/status-options";
 import type {
   EmployeeRecord,
   EmployeeAddInput,
@@ -18,8 +19,7 @@ type EmployeeDoc = Record<string, unknown>;
 function toPayroll(v: unknown): EmployeePayroll {
   if (v && typeof v === "object" && !Array.isArray(v)) {
     const o = v as Record<string, unknown>;
-    const st = (o.salaryType as string) || "monthly";
-    const salaryType: SalaryType = st === "weekly" || st === "daily" ? st : "monthly";
+    const salaryType: SalaryType = parseStatus(o.salaryType, SALARY_TYPE) as SalaryType;
     return {
       salaryType,
       baseSalary: Number(o.baseSalary) || 0,
@@ -27,7 +27,12 @@ function toPayroll(v: unknown): EmployeePayroll {
       currency: String(o.currency ?? "PEN"),
     };
   }
-  return { salaryType: "monthly", baseSalary: 0, workingDays: 26, currency: "PEN" };
+  return {
+    salaryType: statusDefaultKey(SALARY_TYPE) as SalaryType,
+    baseSalary: 0,
+    workingDays: 26,
+    currency: "PEN",
+  };
 }
 
 function toBenefits(v: unknown): EmployeeBenefits {
@@ -40,12 +45,6 @@ function toBenefits(v: unknown): EmployeeBenefits {
     };
   }
   return { cts: true, gratification: true, vacationDays: 30 };
-}
-
-function toStatus(s: string): EmployeeStatus {
-  const t = (s || "").toLowerCase();
-  if (t === "inactive" || t === "suspended") return t;
-  return "active";
 }
 
 function toEmployeeRecord(id: string, data: EmployeeDoc): EmployeeRecord {
@@ -62,7 +61,7 @@ function toEmployeeRecord(id: string, data: EmployeeDoc): EmployeeRecord {
     positionId: String(data.positionId ?? ""),
     position: String(data.position ?? ""),
     hireDate: String(data.hireDate ?? ""),
-    status: toStatus(data.status as string),
+    status: parseStatus(data.status, EMPLOYEE_STATUS) as EmployeeStatus,
     payroll: toPayroll(data.payroll),
     benefits: toBenefits(data.benefits),
   };

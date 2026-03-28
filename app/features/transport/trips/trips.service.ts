@@ -13,6 +13,7 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { deleteField } from "firebase/firestore";
+import { parseStatus, STOP_STATUS, STOP_TYPE, TRIP_STATUS } from "~/constants/status-options";
 import type {
   TripRecord,
   TripAddInput,
@@ -29,14 +30,78 @@ import type {
 const COLLECTION = "trips";
 const TRIP_STOPS_SUB = "tripStops";
 
-function toTripStatus(v: unknown): TripStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "in_progress" || s === "completed" || s === "cancelled") return s;
-  return "scheduled";
+/**
+ * Parte el valor guardado en `scheduledStart` (fecha sola, `YYYY-MM-DDTHH:mm` o ISO) para el formulario.
+ */
+export function splitTripScheduledStart(raw: unknown): { date: string; time: string } {
+  if (raw != null && typeof raw === "object" && "toDate" in raw && typeof (raw as { toDate: () => Date }).toDate === "function") {
+    try {
+      const d = (raw as { toDate: () => Date }).toDate();
+      if (d instanceof Date && !Number.isNaN(d.getTime())) {
+        return splitDateIntoDateAndTime(d);
+      }
+    } catch {
+      /* continuar */
+    }
+  }
+  const s = String(raw ?? "").trim();
+  if (!s) return { date: "", time: "" };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { date: s, time: "" };
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{1,2}):(\d{2})/);
+  if (m) {
+    const h = m[2].padStart(2, "0");
+    const min = m[3].padStart(2, "0");
+    return { date: m[1], time: `${h}:${min}` };
+  }
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return splitDateIntoDateAndTime(d);
+  return { date: "", time: "" };
+}
+
+function splitDateIntoDateAndTime(d: Date): { date: string; time: string } {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const sec = d.getSeconds() + d.getMilliseconds() / 1000;
+  const time = h === "00" && min === "00" && sec === 0 ? "" : `${h}:${min}`;
+  return { date: `${y}-${mo}-${day}`, time };
+}
+
+/**
+ * Combina fecha obligatoria y hora opcional en el string persistido (`YYYY-MM-DD` o `YYYY-MM-DDTHH:mm`).
+ */
+export function joinTripScheduledStart(date: string, time: string): string {
+  const d = date.trim();
+  const t = time.trim();
+  if (!d) return "";
+  if (!t) return d;
+  const m = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return d;
+  const h = m[1].padStart(2, "0");
+  const min = m[2].padStart(2, "0");
+  return `${d}T${h}:${min}`;
+}
+
+function scheduledStartFromDoc(v: unknown): string {
+  if (v == null || v === "") return "";
+  if (typeof v === "object" && v !== null && "toDate" in v && typeof (v as { toDate: () => Date }).toDate === "function") {
+    try {
+      const d = (v as { toDate: () => Date }).toDate();
+      if (d instanceof Date && !Number.isNaN(d.getTime())) {
+        const { date, time } = splitDateIntoDateAndTime(d);
+        return joinTripScheduledStart(date, time);
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return String(v);
 }
 
 function toTripRecord(doc: { id: string } & Record<string, unknown>): TripRecord {
-  const scheduledStart = doc.scheduledStart != null ? String(doc.scheduledStart) : "";
+  const scheduledStart = scheduledStartFromDoc(doc.scheduledStart);
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
@@ -50,21 +115,9 @@ function toTripRecord(doc: { id: string } & Record<string, unknown>): TripRecord
     vehicleId: String(doc.vehicleId ?? ""),
     vehicle: String(doc.vehicle ?? ""),
     transportGuide: String(doc.transportGuide ?? ""),
-    status: toTripStatus(doc.status),
+    status: parseStatus(doc.status, TRIP_STATUS),
     scheduledStart,
   };
-}
-
-function toTripStopType(v: unknown): TripStopType {
-  const t = String(v ?? "").toLowerCase();
-  if (t === "origin" || t === "pickup" || t === "delivery" || t === "rest") return t;
-  return "checkpoint";
-}
-
-function toTripStopStatus(v: unknown): TripStopStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "arrived" || s === "completed" || s === "skipped") return s;
-  return "pending";
 }
 
 function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripStopRecord {
@@ -73,7 +126,7 @@ function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripSt
     id: doc.id,
     code: String(doc.code ?? "").trim(),
     order: Number(doc.order) || 0,
-    type: toTripStopType(doc.type),
+    type: parseStatus(doc.type, STOP_TYPE, "checkpoint") as TripStopType,
     name: String(doc.name ?? ""),
     externalDocument: String(doc.externalDocument ?? "").trim(),
     districtId: String(doc.districtId ?? "").trim(),
@@ -81,7 +134,7 @@ function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripSt
     observations: String(doc.observations ?? ""),
     lat: Number(doc.lat) || 0,
     lng: Number(doc.lng) || 0,
-    status: toTripStopStatus(doc.status),
+    status: parseStatus(doc.status, STOP_STATUS) as TripStopStatus,
     plannedArrival: toStr(doc.plannedArrival),
     actualArrival: doc.actualArrival != null && doc.actualArrival !== "" ? toStr(doc.actualArrival) : null,
     actualDeparture: doc.actualDeparture != null && doc.actualDeparture !== "" ? toStr(doc.actualDeparture) : null,

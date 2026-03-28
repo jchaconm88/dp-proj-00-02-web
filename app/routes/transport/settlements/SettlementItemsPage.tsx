@@ -29,6 +29,9 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 type ItemRow = SettlementItem & {
+  tripCode: string;
+  tripRouteDisplay: string;
+  tripStartDate: string;
   movementDisplay: string;
   amountFormatted: string;
   settledFormatted: string;
@@ -37,17 +40,27 @@ type ItemRow = SettlementItem & {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Viaje", column: "tripCode", order: 1, display: true, filter: true },
+  { header: "Ruta", column: "tripRouteDisplay", order: 2, display: true, filter: true },
+  {
+    header: "Fecha",
+    column: "tripStartDate",
+    order: 3,
+    display: true,
+    filter: true,
+    type: "date",
+  },
   {
     header: "Tipo de movimiento",
     column: "movementDisplay",
-    order: 2,
+    order: 4,
     display: true,
     filter: true,
   },
-  { header: "Concepto", column: "concept", order: 3, display: true, filter: true },
-  { header: "Monto", column: "amountFormatted", order: 4, display: true, filter: true },
-  { header: "Liquidado", column: "settledFormatted", order: 5, display: true, filter: true },
-  { header: "Pendiente", column: "pendingFormatted", order: 6, display: true, filter: true },
+  { header: "Tipo cargo", column: "chargeType", order: 5, display: true, filter: true },
+  { header: "Concepto", column: "concept", order: 6, display: true, filter: true },
+  { header: "Monto", column: "amountFormatted", order: 7, display: true, filter: true },
+  { header: "Liquidado", column: "settledFormatted", order: 8, display: true, filter: true },
+  { header: "Pendiente", column: "pendingFormatted", order: 9, display: true, filter: true },
 ];
 
 const FOOTER: DpTableFooterTotals = {
@@ -84,6 +97,8 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
         return {
           ...it,
           tripCode: it.trip.code || it.trip.id,
+          tripRouteDisplay: it.trip.route.trim() || "—",
+          tripStartDate: it.trip.scheduledStart.trim(),
           movementDisplay: `${typeLabel}`,
           amountFormatted: formatAmountWithSymbol(it.amount, it.currency),
           settledFormatted: formatAmountWithSymbol(it.settledAmount, it.currency),

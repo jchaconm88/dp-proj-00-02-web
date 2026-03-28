@@ -6,6 +6,7 @@ import {
     deleteDocument,
     deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { CALCULATION_TYPE, parseStatus, SERVICE_TYPE_CATEGORY } from "~/constants/status-options";
 import type {
     TransportServiceRecord,
     TransportServiceAddInput,
@@ -16,35 +17,15 @@ import type {
 
 const COLLECTION = "transport-services";
 
-function toCalculationType(v: unknown): CalculationType {
-    const s = String(v ?? "").toLowerCase();
-    if (
-        s === "zone" ||
-        s === "per_km" ||
-        s === "per_weight" ||
-        s === "per_volume" ||
-        s === "percentage" ||
-        s === "formula"
-    )
-        return s as CalculationType;
-    return "fixed";
-}
-
-function toServiceTypeCategory(v: unknown): ServiceTypeCategory {
-    const s = String(v ?? "").toLowerCase();
-    if (s === "express" || s === "dedicated") return s as ServiceTypeCategory;
-    return "distribution";
-}
-
 function toRecord(doc: { id: string } & Record<string, unknown>): TransportServiceRecord {
     return {
         id: doc.id,
         code: String(doc.code ?? ""),
         name: String(doc.name ?? ""),
         description: String(doc.description ?? ""),
-        category: toServiceTypeCategory(doc.category),
+        category: parseStatus(doc.category, SERVICE_TYPE_CATEGORY) as ServiceTypeCategory,
         defaultServiceTimeMin: Number(doc.defaultServiceTimeMin) || 0,
-        calculationType: toCalculationType(doc.calculationType),
+        calculationType: parseStatus(doc.calculationType, CALCULATION_TYPE) as CalculationType,
         requiresAppointment: !!doc.requiresAppointment,
         allowConsolidation: doc.allowConsolidation !== false, // Defaults to true in old system if undefined? Actually, we'll just cast boolean
         active: doc.active !== false,

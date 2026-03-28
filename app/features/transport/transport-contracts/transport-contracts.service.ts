@@ -11,6 +11,13 @@ import {
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import {
+  BILLING_CYCLE,
+  CALCULATION_TYPE,
+  CONTRACT_STATUS,
+  parseStatus,
+  RATE_RULE_TYPE,
+} from "~/constants/status-options";
 import type {
   ContractRecord,
   ContractAddInput,
@@ -30,18 +37,6 @@ const COLLECTION = "transport-contracts";
 const RATE_RULES_SUB = "transport-rate-rules";
 
 // -- Mapper helpers --
-function toContractStatus(v: unknown): ContractStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "active" || s === "expired" || s === "cancelled") return s as ContractStatus;
-  return "draft";
-}
-
-function toBillingCycle(v: unknown): BillingCycle {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "weekly" || s === "per_trip") return s as BillingCycle;
-  return "monthly";
-}
-
 function toContractRecord(doc: { id: string } & Record<string, unknown>): ContractRecord {
   return {
     id: doc.id,
@@ -52,9 +47,9 @@ function toContractRecord(doc: { id: string } & Record<string, unknown>): Contra
     currency: String(doc.currency ?? "PEN"),
     validFrom: String(doc.validFrom ?? ""),
     validTo: String(doc.validTo ?? ""),
-    billingCycle: toBillingCycle(doc.billingCycle),
+    billingCycle: parseStatus(doc.billingCycle, BILLING_CYCLE) as BillingCycle,
     paymentTermsDays: Number(doc.paymentTermsDays) || 30,
-    status: toContractStatus(doc.status),
+    status: parseStatus(doc.status, CONTRACT_STATUS) as ContractStatus,
   };
 }
 
@@ -85,26 +80,6 @@ function toCalculation(v: unknown): RateRuleCalculation {
   };
 }
 
-function toRuleType(v: unknown): RateRuleType {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "extra_charge" || s === "penalty" || s === "discount") return s as RateRuleType;
-  return "base";
-}
-
-function toCalculationType(v: unknown): CalculationType {
-  const s = String(v ?? "").toLowerCase();
-  if (
-    s === "zone" ||
-    s === "per_km" ||
-    s === "per_weight" ||
-    s === "per_volume" ||
-    s === "percentage" ||
-    s === "formula"
-  )
-    return s as CalculationType;
-  return "fixed";
-}
-
 function toRateRuleRecord(doc: { id: string } & Record<string, unknown>): RateRuleRecord {
   return {
     id: doc.id,
@@ -112,8 +87,8 @@ function toRateRuleRecord(doc: { id: string } & Record<string, unknown>): RateRu
     name: String(doc.name ?? ""),
     active: doc.active === true,
     priority: Number(doc.priority) || 0,
-    ruleType: toRuleType(doc.ruleType),
-    calculationType: toCalculationType(doc.calculationType),
+    ruleType: parseStatus(doc.ruleType, RATE_RULE_TYPE) as RateRuleType,
+    calculationType: parseStatus(doc.calculationType, CALCULATION_TYPE) as CalculationType,
     transportServiceId: String(doc.transportServiceId ?? ""),
     transportService: String(doc.transportService ?? ""),
     vehicleType: String(doc.vehicleType ?? ""),

@@ -6,6 +6,7 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { parseStatus, PLAN_STATUS } from "~/constants/status-options";
 import type {
   PlanRecord,
   PlanAddInput,
@@ -14,18 +15,6 @@ import type {
 } from "./plans.types";
 
 const COLLECTION = "plans";
-
-function toPlanStatus(v: unknown): PlanStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (
-    s === "confirmed" ||
-    s === "in_progress" ||
-    s === "completed" ||
-    s === "cancelled"
-  )
-    return s;
-  return "draft";
-}
 
 function toOrderIds(v: unknown): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x)).filter(Boolean);
@@ -40,7 +29,7 @@ function toPlanRecord(doc: { id: string } & Record<string, unknown>): PlanRecord
     zone: String(doc.zone ?? ""),
     vehicleType: String(doc.vehicleType ?? ""),
     orderIds: toOrderIds(doc.orderIds),
-    status: toPlanStatus(doc.status),
+    status: parseStatus(doc.status, PLAN_STATUS) as PlanStatus,
   };
 }
 

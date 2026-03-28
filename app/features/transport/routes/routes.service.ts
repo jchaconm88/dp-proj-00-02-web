@@ -11,6 +11,7 @@ import {
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import { parseStatus, STOP_STATUS, STOP_TYPE } from "~/constants/status-options";
 import type {
   RouteRecord,
   RouteAddInput,
@@ -84,18 +85,6 @@ export async function deleteRoutes(ids: string[]): Promise<void> {
 
 // --- Stops (subcollection routes/{routeId}/stops) ---
 
-function toStopType(v: unknown): StopType {
-  const t = String(v ?? "").toLowerCase();
-  if (t === "origin" || t === "pickup" || t === "delivery" || t === "rest") return t;
-  return "checkpoint";
-}
-
-function toStopStatus(v: unknown): StopStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "arrived" || s === "completed" || s === "skipped") return s;
-  return "pending";
-}
-
 function toStopRecord(doc: { id: string } & Record<string, unknown>): StopRecord {
   const sequence = Number(doc.sequence ?? doc.order) || 0;
   return {
@@ -105,9 +94,9 @@ function toStopRecord(doc: { id: string } & Record<string, unknown>): StopRecord
     eta: String(doc.eta ?? ""),
     arrivalWindowStart: String(doc.arrivalWindowStart ?? ""),
     arrivalWindowEnd: String(doc.arrivalWindowEnd ?? ""),
-    status: toStopStatus(doc.status),
+    status: parseStatus(doc.status, STOP_STATUS) as StopStatus,
     order: Number(doc.order ?? sequence) || 0,
-    type: toStopType(doc.type),
+    type: parseStatus(doc.type, STOP_TYPE, "checkpoint") as StopType,
     name: String(doc.name ?? ""),
     address: String(doc.address ?? ""),
     lat: Number(doc.lat) || 0,

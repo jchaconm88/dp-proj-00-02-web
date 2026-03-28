@@ -6,6 +6,13 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import {
+  CHARGE_TYPE_CATEGORY,
+  CHARGE_TYPE_KIND,
+  CHARGE_TYPE_SOURCE,
+  CHARGE_TYPE_SOURCE_TRIP_ASSIGNMENT,
+  parseStatus,
+} from "~/constants/status-options";
 import type {
   ChargeTypeRecord,
   ChargeTypeAddInput,
@@ -17,34 +24,14 @@ import type {
 
 const COLLECTION = "charge-types";
 
-function toKind(v: unknown): ChargeTypeKind {
-  const s = String(v ?? "").toLowerCase();
-  return s === "cost" ? "cost" : "charge";
-}
-
-function toSource(v: unknown): ChargeTypeSource {
-  const s = String(v ?? "").toLowerCase();
-  if (!s.trim()) return "";
-  if (s === "service" || s === "employee" || s === "resource" || s === "employee_resource") {
-    return s as ChargeTypeSource;
-  }
-  return "";
-}
-
-function toCategory(v: unknown): ChargeTypeCategory {
-  const s = String(v ?? "").toLowerCase();
-  if (s === "base" || s === "extra" || s === "variable") return s as ChargeTypeCategory;
-  return "extra";
-}
-
 function toRecord(doc: { id: string } & Record<string, unknown>): ChargeTypeRecord {
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
-    type: toKind(doc.type),
-    source: toSource(doc.source),
+    type: parseStatus(doc.type, CHARGE_TYPE_KIND) as ChargeTypeKind,
+    source: parseStatus(doc.source, CHARGE_TYPE_SOURCE) as ChargeTypeSource,
     name: String(doc.name ?? ""),
-    category: toCategory(doc.category),
+    category: parseStatus(doc.category, CHARGE_TYPE_CATEGORY, "extra") as ChargeTypeCategory,
     active: doc.active !== false,
   };
 }
@@ -60,17 +47,14 @@ export async function getChargeTypes(): Promise<{ items: ChargeTypeRecord[]; tot
   return { items, total: items.length };
 }
 
-/** Tipos de cargo aplicables a asignaciones de viaje (origen empleado/recurso). */
-const CHARGE_TYPE_SOURCES_FOR_TRIP_ASSIGNMENT = new Set<ChargeTypeSource>([
-  "employee",
-  "resource",
-  "employee_resource",
-]);
+const TRIP_ASSIGNMENT_CHARGE_SOURCE_KEYS = Object.keys(
+  CHARGE_TYPE_SOURCE_TRIP_ASSIGNMENT
+) as ChargeTypeSource[];
 
 export async function getChargeTypesForTripAssignments(): Promise<ChargeTypeRecord[]> {
   const { items } = await getChargeTypes();
   return items.filter(
-    (ct) => ct.active !== false && CHARGE_TYPE_SOURCES_FOR_TRIP_ASSIGNMENT.has(ct.source)
+    (ct) => ct.active !== false && TRIP_ASSIGNMENT_CHARGE_SOURCE_KEYS.includes(ct.source)
   );
 }
 
@@ -79,16 +63,15 @@ export async function getChargeTypesForTripCosts(): Promise<ChargeTypeRecord[]> 
   return items.filter((ct) => ct.active !== false && ct.type === "cost");
 }
 
+const CHARGE_TYPE_SOURCE_KEYS_NON_EMPTY = Object.keys(CHARGE_TYPE_SOURCE).filter(Boolean) as ChargeTypeSource[];
+
 export async function getChargeTypesForTripCharges(): Promise<ChargeTypeRecord[]> {
   const { items } = await getChargeTypes();
   return items.filter(
     (ct) =>
       ct.active !== false &&
       ct.type === "charge" &&
-      (ct.source === "service" ||
-        ct.source === "employee" ||
-        ct.source === "resource" ||
-        ct.source === "employee_resource")
+      CHARGE_TYPE_SOURCE_KEYS_NON_EMPTY.includes(ct.source)
   );
 }
 

@@ -10,8 +10,10 @@ import {
   getSettlementById,
   createSettlement,
   updateSettlement,
+  deleteSettlement,
   settlementToFormValues,
   syncSettlementItemsFromTrips,
+  type Settlement,
   type SettlementFormValues,
 } from "~/features/transport/settlements";
 import {
@@ -295,6 +297,10 @@ export default function SettlementDialog({
         return;
       }
       const values = { ...buildFormValues(), code: finalCode };
+      let previous: Settlement | null = null;
+      if (settlementId) {
+        previous = await getSettlementById(settlementId);
+      }
       let targetId: string;
       if (settlementId) {
         await updateSettlement(settlementId, values);
@@ -302,8 +308,22 @@ export default function SettlementDialog({
       } else {
         targetId = await createSettlement(values);
       }
-      if (category === "customer" || category === "resource") {
-        await syncSettlementItemsFromTrips(targetId);
+      const syncItems =
+        values.category === "customer" || values.category === "resource";
+      if (syncItems) {
+        const syncResult = await syncSettlementItemsFromTrips(targetId);
+        if (syncResult.itemCount === 0) {
+          const msg =
+            "No hay cargos ni costos que incluir en ítems para el periodo y entidad seleccionados. No se guardaron los cambios.";
+          if (!settlementId) {
+            await deleteSettlement(targetId);
+          } else if (previous) {
+            await updateSettlement(settlementId, settlementToFormValues(previous));
+            await syncSettlementItemsFromTrips(settlementId);
+          }
+          setError(msg);
+          return;
+        }
       }
       onSuccess?.();
     } catch (err) {

@@ -342,7 +342,25 @@ import { DpContentHeader, DpContentHeaderAction } from "~/components/DpContent";
 
 ---
 
-## 7. Reglas Generales
+## 7. Estados y claves: fuente única (`app/constants/status-options.ts`)
+
+Los asistentes y el código deben tratar este archivo como **la única fuente** de verdad para:
+
+- Catálogos de **estado** (y similares) usados en **`DpTable`** (`type: "status"`, `typeOptions: …`) y en formularios.
+- **Etiqueta + severidad** (`StatusOption`: `label`, `severity`) para chips y selects coherentes en toda la app.
+
+### Reglas para agentes
+
+1. **No duplicar** las mismas claves o listas en otro sitio: ni uniones TypeScript paralelas (`type X = "a" | "b"`), ni `if (s === "foo" || s === "bar")` en servicios, ni literales repetidos en componentes para el mismo dominio. Si hace falta un tipo para las claves de un mapa, **derivarlo del mapa** (`export type MiEstado = keyof typeof MI_MAPA` en `status-options.ts` y reexportar/importar donde corresponda) o importar el tipo ya exportado desde `status-options.ts`.
+2. **Leer valores desconocidos** (p. ej. campo `status` en documentos Firestore): usar **`parseStatus(valor, MAPA, defaultKeyOpcional?)`**, definido junto a `statusToSelectOptions` en `status-options.ts`. Normaliza a una clave existente en `MAPA` (coincidencia exacta o sin distinguir mayúsculas/minúsculas); si no aplica, usa `defaultKey` o la primera clave del objeto.
+3. **Valor por defecto en formularios / reset**: usar **`statusDefaultKey(MAPA)`** en lugar de escribir a mano una clave literal que ya existe en el mapa.
+4. **Opciones de select**: **`statusToSelectOptions(MAPA)`** — no armar a mano arrays `{ label, value }` que dupliquen los mismos pares.
+
+**Ejemplo de referencia:** `TRIP_STATUS` + `TripStatus` + `TRIP_STATUS_DEFAULT` + `parseStatus(doc.status, TRIP_STATUS)` en el servicio de viajes; selects y tabla con `TRIP_STATUS` / `statusToSelectOptions(TRIP_STATUS)`.
+
+---
+
+## 8. Reglas Generales
 
 - **Alias `~/`** apunta a `app/` — usar siempre paths con `~/` en imports
 - **`useNavigation` en todos los diálogos** — `saving={saving || isNavigating}`
@@ -353,7 +371,7 @@ import { DpContentHeader, DpContentHeaderAction } from "~/components/DpContent";
 - **Páginas de Detalle / Sub-módulos** — Si la ruta es una página anidada (ej. `/:id/locations`, `/:id/costs`), utiliza OBLIGATORIAMENTE `<DpContentInfo>` (con prop `onBack`) en lugar de `<DpContent>` para proveer navegación de retroceso estándar.
 - **Firestore Service** — NUNCA importar `firebase/firestore` directamente en los .service.ts. Se deben usar OBLIGATORIAMENTE las funciones expuestas en `~/lib/firestore.service.ts` (`getDocument`, `addDocument`, `updateDocument`, etc.) ya que éstas inyectan campos de auditoría automáticamente de forma segura.
 - **Cloud Functions (callable)** — No usar `httpsCallable` directamente en features: usar `callHttpsFunction` y `mapCallableError` desde `~/lib/functions.service.ts`. Los DTO request/response de cada callable viven en el `*.types.ts` del feature correspondiente (mantenerlos alineados con `dp-proj-00-02-functions`).
-- **Diccionarios de Constantes y Opciones** — Todas las listas estáticas de selección (ej. Tipos de Vehículo, Estados de Contrato, Monedas) DEBEN ser extraídas y exportadas desde `app/constants/status-options.ts`. Luego, inyectarlas en los `<DpTable>` (como `type="status"`) y en los formularios usarlas con `statusToSelectOptions(CONSTANTE)` para evitar arrays *hardcodeados* en los componentes.
+- **Diccionarios de constantes y opciones** — Ver **§7. Estados y claves (`status-options.ts`)**; allí vive la política de fuente única, `parseStatus` y `statusDefaultKey`. En tablas y formularios usar el mapa correspondiente con `typeOptions` / `statusToSelectOptions(MAPA)`.
 - **Nomenclatura de Colecciones en Firestore** — El nombre de las colecciones OMITIRÁ SIEMPRE el prefijo del módulo en el que se encuentran. Solo deben llevar el nombre de su entidad representativa en kebab-case pluralizado (Ej. usar `const COLLECTION = "document-types"` en vez de `master-document-types` y `const COLLECTION = "vehicles"` en vez de `transport-vehicles`). Esto asegura el desacoplamiento Front-Back.
 - **Servicio Agnóstico por Feature** — Cada feature debe exponer una única superficie en `*.service.ts` (más `*.types.ts` + `index.ts`). Evitar separar infraestructura por proveedor en archivos públicos como `*.functions.ts` o `*.api.ts` consumidos por UI. Los componentes/rutas deben importar únicamente desde el servicio de la feature; cualquier cambio de backend (Firestore, Cloud Functions, REST, etc.) se resuelve internamente en el `*.service.ts` conservando las mismas firmas públicas.
 - **Confirmar borrado en UI** — En listados con eliminación masiva, usar siempre `DpConfirmDialog`; nunca `confirm()` del navegador (ver sección 6 y `.cursor/rules/dp-confirm-dialog.mdc`).

@@ -11,6 +11,13 @@ import {
     updateDocumentInSubcollection,
     deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import {
+  CLIENT_LOCATION_TYPE,
+  CLIENT_STATUS,
+  parseStatus,
+  PAYMENT_CONDITION,
+  statusDefaultKey,
+} from "~/constants/status-options";
 import type {
     ClientRecord,
     ClientStatus,
@@ -35,7 +42,12 @@ function defaultContact(): ClientContact {
 }
 
 function defaultBilling(): ClientBilling {
-    return { creditDays: 0, creditLimit: 0, currency: "PEN", paymentCondition: "transfer" };
+    return {
+        creditDays: 0,
+        creditLimit: 0,
+        currency: "PEN",
+        paymentCondition: statusDefaultKey(PAYMENT_CONDITION) as PaymentCondition,
+    };
 }
 
 function defaultLogistics(): ClientLogistics {
@@ -57,9 +69,7 @@ function toContact(v: unknown): ClientContact {
 function toBilling(v: unknown): ClientBilling {
     if (v && typeof v === "object" && !Array.isArray(v)) {
         const o = v as Record<string, unknown>;
-        const pay = o.paymentCondition as string;
-        const paymentCondition: PaymentCondition =
-            pay === "cash" || pay === "credit" || pay === "check" ? pay : "transfer";
+        const paymentCondition = parseStatus(o.paymentCondition, PAYMENT_CONDITION) as PaymentCondition;
         return {
             creditDays: Number(o.creditDays) || 0,
             creditLimit: Number(o.creditLimit) || 0,
@@ -83,8 +93,7 @@ function toLogistics(v: unknown): ClientLogistics {
 }
 
 function toRecord(doc: { id: string } & Record<string, unknown>): ClientRecord {
-    const st = doc.status as string;
-    const status: ClientStatus = st === "inactive" || st === "suspended" ? st : "active";
+    const status = parseStatus(doc.status, CLIENT_STATUS) as ClientStatus;
     return {
         id: doc.id,
         code: String(doc.code ?? ""),
@@ -190,8 +199,7 @@ function toDeliveryWindow(v: unknown): ClientLocationDeliveryWindow {
 }
 
 function toLocationRecord(doc: { id: string } & Record<string, unknown>): ClientLocationRecord {
-    const t = doc.type as string;
-    const type: LocationType = t === "store" || t === "office" || t === "plant" ? t as LocationType : "warehouse";
+    const type = parseStatus(doc.type, CLIENT_LOCATION_TYPE) as LocationType;
     const geo = toGeo(doc.geo ?? doc.geoPoint);
     return {
         id: doc.id,

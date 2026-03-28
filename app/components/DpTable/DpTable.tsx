@@ -81,7 +81,20 @@ function getCellValue(row: Record<string, unknown>, columnKey: string): unknown 
 
 function parseDate(value: unknown): Date | null {
   if (value == null || value === "") return null;
-  if (typeof value === "string" || typeof value === "number") {
+  if (typeof value === "string") {
+    const s = value.trim();
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (dateOnly) {
+      const y = Number(dateOnly[1]);
+      const m = Number(dateOnly[2]);
+      const d = Number(dateOnly[3]);
+      const local = new Date(y, m - 1, d);
+      return isValid(local) ? local : null;
+    }
+    const d = new Date(s);
+    return isValid(d) ? d : null;
+  }
+  if (typeof value === "number") {
     const d = new Date(value);
     return isValid(d) ? d : null;
   }
@@ -95,9 +108,13 @@ function formatDateValue(value: unknown): string {
 }
 
 function formatDateTimeValue(value: unknown): string {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    const d = parseDate(value);
+    if (d) return format(d, "dd/MM/yyyy");
+  }
   const d = parseDate(value);
   if (!d) return value != null && value !== "" ? String(value) : "-";
-  return format(d, "dd/MM/yyyy HH:mm:ss");
+  return format(d, "dd/MM/yyyy HH:mm");
 }
 
 function getStatusLabelAndSeverity(
@@ -200,6 +217,11 @@ function DpTableInner<T extends DpTableRow>(
         .filter((c) => c.display)
         .sort((a, b) => a.order - b.order),
     [tableDef]
+  );
+
+  const sortableColumnCount = useMemo(
+    () => columns.filter((c) => c.sort === true).length,
+    [columns]
   );
 
   const filterColumns = useMemo(() => columns.filter((c) => c.filter !== false), [columns]);
@@ -419,6 +441,7 @@ function DpTableInner<T extends DpTableRow>(
         onSelectionChange={(e) => setSelection(e.value ?? [])}
         selectionMode="multiple"
         metaKeySelection={false}
+        sortMode={sortableColumnCount > 1 ? "multiple" : "single"}
         reorderableColumns
         reorderableRows
         onRowReorder={onRowReorder}
@@ -468,13 +491,17 @@ function DpTableInner<T extends DpTableRow>(
         {columns.map((col) => {
           const hasCustomBody = !!columnRenderers[col.column];
           const isLinkCol = !hasCustomBody && linkColumn === col.column && onDetail;
+          const isSortable = col.sort === true;
+          const sortFieldProp =
+            isSortable && (hasCustomBody || isLinkCol) ? { sortField: col.column } : {};
           const footerNode = footerTotals?.sumColumns?.length ? renderColumnFooter(col) : null;
           return (
             <Column
               key={col.column}
               field={hasCustomBody || isLinkCol ? undefined : col.column}
               columnKey={hasCustomBody || isLinkCol ? col.column : undefined}
-              sortField={col.column}
+              sortable={isSortable}
+              {...sortFieldProp}
               header={col.header}
               body={(arg: T | { rowData: T }) => {
                 const rowData =

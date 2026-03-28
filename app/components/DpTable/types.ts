@@ -17,6 +17,11 @@ export interface DpTableDefColumn {
   display: boolean;
   /** Si la columna participa en el filtro global */
   filter?: boolean;
+  /**
+   * Si es `true`, la columna es ordenable en el encabezado.
+   * Con una sola columna en `true`, la tabla usa orden simple; con varias, orden múltiple (`sort-multiple`).
+   */
+  sort?: boolean;
   /** Formato de visualización: status (chip), label (texto), bool (checkbox), date (DD/MM/YYYY), datetime (DD/MM/YYYY HH:mm) */
   type?: DpTableDefColumnType;
   /** Para type="status" o "label": mapa valor -> etiqueta (string) o { label, severity }. En "label" solo se usa `label`. */

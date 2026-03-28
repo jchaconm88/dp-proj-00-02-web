@@ -11,6 +11,12 @@ import {
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import {
+  parseStatus,
+  RESOURCE_COST_TYPE,
+  RESOURCE_ENGAGEMENT_TYPE,
+  RESOURCE_STATUS,
+} from "~/constants/status-options";
 import type {
   ResourceRecord,
   ResourceAddInput,
@@ -27,12 +33,8 @@ const COLLECTION = "resources";
 const RESOURCE_COSTS_SUB = "resourceCosts";
 
 function toResourceRecord(doc: { id: string } & Record<string, unknown>): ResourceRecord {
-  const e = (doc.engagementType as string) || "sporadic";
-  const engagementType: ResourceEngagementType =
-    e === "permanent" || e === "contract" ? e : "sporadic";
-  const s = (doc.status as string) || "active";
-  const status: ResourceStatus =
-    s === "inactive" || s === "suspended" ? s : "active";
+  const engagementType = parseStatus(doc.engagementType, RESOURCE_ENGAGEMENT_TYPE) as ResourceEngagementType;
+  const status = parseStatus(doc.status, RESOURCE_STATUS) as ResourceStatus;
   return {
     id: doc.id,
     code: String(doc.code ?? ""),
@@ -52,9 +54,7 @@ function toResourceRecord(doc: { id: string } & Record<string, unknown>): Resour
 }
 
 function toResourceCostRecord(doc: { id: string } & Record<string, unknown>): ResourceCostRecord {
-  const t = (doc.type as string) || "per_trip";
-  const type: ResourceCostType =
-    t === "per_hour" || t === "per_day" || t === "fixed" ? t : "per_trip";
+  const type = parseStatus(doc.type, RESOURCE_COST_TYPE) as ResourceCostType;
   return {
     id: doc.id,
     code: String(doc.code ?? ""),

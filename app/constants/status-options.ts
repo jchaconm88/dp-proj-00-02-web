@@ -18,6 +18,36 @@ export function statusToSelectOptions(
   return Object.entries(obj).map(([value, { label }]) => ({ label, value }));
 }
 
+/**
+ * Primera clave declarada en `options` (p. ej. valor inicial de selects).
+ * Solo usar con mapas no vacíos.
+ */
+export function statusDefaultKey<O extends Record<string, StatusOption>>(options: O): keyof O & string {
+  return Object.keys(options)[0] as keyof O & string;
+}
+
+/**
+ * Normaliza un valor persistido a una clave de `options` (mismo esquema que `statusToSelectOptions`).
+ * Acepta clave exacta o igual ignorando mayúsculas/minúsculas. Si no coincide, `defaultKey` o la primera clave.
+ */
+export function parseStatus<O extends Record<string, StatusOption>>(
+  value: unknown,
+  options: O,
+  defaultKey?: keyof O & string
+): keyof O & string {
+  type K = keyof O & string;
+  const keys = Object.keys(options) as K[];
+  const fallback = (defaultKey ?? keys[0]) as K;
+  const raw = String(value ?? "").trim();
+  if (raw && (keys as string[]).includes(raw)) {
+    return raw as K;
+  }
+  const lower = raw.toLowerCase();
+  const found = keys.find((k) => k.toLowerCase() === lower);
+  if (found !== undefined) return found;
+  return fallback;
+}
+
 /** Periodo de reinicio de secuencias. */
 export const RESET_PERIOD: Record<string, StatusOption> = {
   never: { label: "Nunca", severity: "secondary" },
@@ -75,6 +105,14 @@ export const CLIENT_STATUS: Record<string, StatusOption> = {
   suspended: { label: 'Suspendido', severity: 'warning' },
 };
 
+/** Tipo de ubicación de cliente (`clients/{id}/locations`). */
+export const CLIENT_LOCATION_TYPE: Record<string, StatusOption> = {
+  warehouse: { label: "Almacén", severity: "info" },
+  store: { label: "Tienda", severity: "info" },
+  office: { label: "Oficina", severity: "info" },
+  plant: { label: "Planta", severity: "info" },
+};
+
 /** Tipos de cobro/costo (catálogo `charge-types`). */
 export const CHARGE_TYPE_KIND: Record<string, StatusOption> = {
   charge: { label: "Cobro", severity: "info" },
@@ -88,6 +126,13 @@ export const CHARGE_TYPE_SOURCE: Record<string, StatusOption> = {
   employee: { label: "Empleado", severity: "info" },
   resource: { label: "Recurso", severity: "info" },
   employee_resource: { label: "Empleado/Recurso", severity: "info" },
+};
+
+/** Subconjunto de `CHARGE_TYPE_SOURCE` para asignaciones de viaje (mismas claves, sin duplicar labels). */
+export const CHARGE_TYPE_SOURCE_TRIP_ASSIGNMENT: Record<string, StatusOption> = {
+  employee: CHARGE_TYPE_SOURCE.employee,
+  resource: CHARGE_TYPE_SOURCE.resource,
+  employee_resource: CHARGE_TYPE_SOURCE.employee_resource,
 };
 
 /** Categoría del cobro/costo (catálogo `charge-types`). */
@@ -251,13 +296,20 @@ export const SETTLEMENT_MOVEMENT_TYPE: Record<string, StatusOption> = {
   adjustment: { label: "Ajuste", severity: "secondary" },
 };
 
-/** Estado de viaje. */
-export const TRIP_STATUS: Record<string, StatusOption> = {
+/** Estado de viaje (única fuente de claves válidas en cliente). */
+export const TRIP_STATUS = {
   scheduled: { label: "Programado", severity: "info" },
   in_progress: { label: "En curso", severity: "warning" },
   completed: { label: "Completado", severity: "success" },
   cancelled: { label: "Cancelado", severity: "danger" },
-};
+  pre_settled: { label: "Preliquidado", severity: "danger" },
+  settled: { label: "Liquidado", severity: "success" },
+} as const satisfies Record<string, StatusOption>;
+
+export type TripStatus = keyof typeof TRIP_STATUS;
+
+/** Primera clave de `TRIP_STATUS` (p. ej. select / valores por defecto en formularios). */
+export const TRIP_STATUS_DEFAULT: TripStatus = statusDefaultKey(TRIP_STATUS);
 
 /** Tipo de asignación de viaje (operativa / facturable). Campo `type` en trip-assignments. */
 export const TRIP_ASSIGNMENT_TYPE: Record<string, StatusOption> = {
@@ -273,6 +325,14 @@ export const TRIP_ASSIGNMENT_SCOPE_TYPE: Record<string, StatusOption> = {
 };
 
 export const TRIP_ASSIGNMENT_ENTITY_TYPE: Record<string, StatusOption> = {
+  employee: { label: "Empleado", severity: "info" },
+  resource: { label: "Recurso", severity: "warning" },
+};
+
+/** Entidad vinculada en cargo de viaje (`entityType`). */
+export const TRIP_CHARGE_ENTITY_TYPE: Record<string, StatusOption> = {
+  "": { label: "(Sin entidad)", severity: "secondary" },
+  transportService: { label: "Servicio de transporte", severity: "info" },
   employee: { label: "Empleado", severity: "info" },
   resource: { label: "Recurso", severity: "warning" },
 };
@@ -299,6 +359,13 @@ export const TRIP_CHARGE_STATUS: Record<string, StatusOption> = {
   open: { label: "Abierto", severity: "warning" },
   paid: { label: "Pagado", severity: "success" },
   cancelled: { label: "Anulado", severity: "danger" },
+};
+
+/** Entidad vinculada en costo de viaje (`entityType`). */
+export const TRIP_COST_ENTITY_TYPE: Record<string, StatusOption> = {
+  "": { label: "(Sin entidad)", severity: "secondary" },
+  employee: { label: "Empleado", severity: "info" },
+  resource: { label: "Recurso", severity: "warning" },
 };
 
 /** Tipo de costo de viaje. */

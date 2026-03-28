@@ -37,6 +37,10 @@ function emptyItemForm(): SettlementItemFormValues {
     movementId: "",
     tripId: "",
     tripCode: "",
+    tripRoute: "",
+    tripScheduledStart: "",
+    chargeType: "",
+    chargeTypeId: "",
     concept: "",
     amount: 0,
     settledAmount: 0,
@@ -60,10 +64,13 @@ export default function SettlementItemDialog({
   const [movementId, setMovementId] = useState("");
   const [tripId, setTripId] = useState("");
   const [tripCode, setTripCode] = useState("");
+  const [tripRoute, setTripRoute] = useState("");
+  const [tripScheduledStart, setTripScheduledStart] = useState("");
+  const [chargeType, setChargeType] = useState("");
+  const [chargeTypeId, setChargeTypeId] = useState("");
   const [concept, setConcept] = useState("");
   const [amountStr, setAmountStr] = useState("0");
   const [settledStr, setSettledStr] = useState("0");
-  const [pendingStr, setPendingStr] = useState("0");
   const [currency, setCurrency] = useState("PEN");
 
   const [saving, setSaving] = useState(false);
@@ -79,10 +86,13 @@ export default function SettlementItemDialog({
       setMovementId(f.movementId);
       setTripId(f.tripId);
       setTripCode(f.tripCode);
+      setTripRoute(f.tripRoute);
+      setTripScheduledStart(f.tripScheduledStart);
+      setChargeType(f.chargeType);
+      setChargeTypeId(f.chargeTypeId);
       setConcept(f.concept);
       setAmountStr("0");
       setSettledStr("0");
-      setPendingStr("0");
       setCurrency(f.currency);
       setLoading(false);
       return;
@@ -99,10 +109,13 @@ export default function SettlementItemDialog({
         setMovementId(f.movementId);
         setTripId(f.tripId);
         setTripCode(f.tripCode);
+        setTripRoute(f.tripRoute);
+        setTripScheduledStart(f.tripScheduledStart);
+        setChargeType(f.chargeType);
+        setChargeTypeId(f.chargeTypeId);
         setConcept(f.concept);
         setAmountStr(String(f.amount));
         setSettledStr(String(f.settledAmount));
-        setPendingStr(String(f.pendingAmount));
         setCurrency(f.currency);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))
@@ -114,10 +127,14 @@ export default function SettlementItemDialog({
     movementId,
     tripId,
     tripCode,
+    tripRoute,
+    tripScheduledStart,
+    chargeType,
+    chargeTypeId,
     concept,
     amount: parseDecimal(amountStr),
     settledAmount: parseDecimal(settledStr),
-    pendingAmount: parseDecimal(pendingStr),
+    pendingAmount: parseDecimal(amountStr),
     currency,
   });
 
@@ -176,6 +193,26 @@ export default function SettlementItemDialog({
         <DpInput type="input" label="Código viaje" value={tripCode} onChange={setTripCode} />
         <DpInput
           type="input"
+          label="Ruta (viaje)"
+          value={tripRoute}
+          onChange={setTripRoute}
+          className="md:col-span-2"
+        />
+        <DpInput
+          type="date"
+          label="Inicio programado viaje (solo fecha)"
+          value={tripScheduledStart}
+          onChange={setTripScheduledStart}
+        />
+        <DpInput type="input" label="Tipo cargo (texto)" value={chargeType} onChange={setChargeType} />
+        <DpInput
+          type="input"
+          label="ID tipo cargo (charge-types)"
+          value={chargeTypeId}
+          onChange={setChargeTypeId}
+        />
+        <DpInput
+          type="input"
           label="Concepto"
           value={concept}
           onChange={setConcept}
@@ -187,12 +224,6 @@ export default function SettlementItemDialog({
           label="Liquidado"
           value={settledStr}
           onChange={setSettledStr}
-        />
-        <DpInput
-          type="input-decimal"
-          label="Pendiente"
-          value={pendingStr}
-          onChange={setPendingStr}
         />
         <DpInput
           type="select"

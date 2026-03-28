@@ -22,7 +22,7 @@ import { DpInput } from "~/components/DpInput";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import DpTColumn from "~/components/DpTable/DpTColumn";
-import { TRIP_STATUS, statusToSelectOptions } from "~/constants/status-options";
+import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/constants/status-options";
 import TripDialog from "./TripDialog";
 
 const TRIP_STATUS_SELECT_OPTIONS = statusToSelectOptions(TRIP_STATUS);
@@ -42,7 +42,7 @@ type TripRow = TripRecord & {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Ruta", column: "routeDisplay", order: 2, display: true, filter: true },
+  { header: "Ruta", column: "routeDisplay", order: 2, display: true, filter: true, sort: true },
   { header: "Servicio", column: "transportServiceDisplay", order: 3, display: true, filter: true },
   { header: "Cliente", column: "clientDisplay", order: 4, display: true, filter: true },
   { header: "Guía", column: "transportGuide", order: 5, display: true, filter: true },
@@ -62,6 +62,7 @@ const TABLE_DEF: DpTableDefColumn[] = [
     order: 8,
     display: true,
     filter: true,
+    sort: true,
     type: "datetime",
   },
   { header: "Paradas", column: "tripStops", order: 9, display: true, filter: false },
@@ -104,7 +105,7 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const [deleteImpactError, setDeleteImpactError] = useState<string | null>(null);
   const deleteImpactRequestId = useRef(0);
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
-  const [bulkStatus, setBulkStatus] = useState<TripStatus>("scheduled");
+  const [bulkStatus, setBulkStatus] = useState<TripStatus>(TRIP_STATUS_DEFAULT);
   const [bulkTargetCount, setBulkTargetCount] = useState(0);
   /** IDs fijados al abrir el modal (no cambian si el usuario altera la selección en la tabla). */
   const [bulkTripIds, setBulkTripIds] = useState<string[]>([]);
@@ -213,8 +214,12 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
-  const handleSuccess = () => {
-    navigate("/transport/trips");
+  const handleSuccess = (createdTripId?: string) => {
+    if (createdTripId?.trim()) {
+      navigate(`/transport/trips/${encodeURIComponent(createdTripId.trim())}/trip-assignments`);
+    } else {
+      navigate("/transport/trips");
+    }
     revalidator.revalidate();
   };
   const handleHide = () => navigate("/transport/trips");

@@ -9,18 +9,25 @@ import {
   getTripById,
   addTrip,
   updateTrip,
+  splitTripScheduledStart,
+  joinTripScheduledStart,
   type TripStatus,
 } from "~/features/transport/trips";
 import { getRoutes } from "~/features/transport/routes";
 import { getTransportServices } from "~/features/transport/transport-services";
 import { getClients } from "~/features/master/clients";
 import { getVehicles } from "~/features/transport/vehicles";
-import { TRIP_STATUS, statusToSelectOptions } from "~/constants/status-options";
+import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/constants/status-options";
 
 export interface TripDialogProps {
   visible: boolean;
   tripId: string | null;
-  onSuccess?: () => void;
+  /**
+   * Tras crear viaje recibe el `id` del documento; en edición no se pasa argumento.
+   * Si se define, el padre debe navegar o cerrar el flujo; no se invoca `onHide` tras guardar
+   * (evita pisar la URL de destino).
+   */
+  onSuccess?: (createdTripId?: string) => void;
   onHide: () => void;
 }
 
@@ -48,8 +55,9 @@ export default function TripDialog({
   const [vehicleId, setVehicleId] = useState("");
   const [vehicle, setVehicle] = useState("");
   const [transportGuide, setTransportGuide] = useState("");
-  const [status, setStatus] = useState<TripStatus>("scheduled");
-  const [scheduledStart, setScheduledStart] = useState("");
+  const [status, setStatus] = useState<TripStatus>(TRIP_STATUS_DEFAULT);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
   const [routeOptions, setRouteOptions] = useState<{ label: string; value: string }[]>([]);
   const [serviceOptions, setServiceOptions] = useState<{ label: string; value: string }[]>([]);
@@ -141,8 +149,9 @@ export default function TripDialog({
       setVehicleId("");
       setVehicle("");
       setTransportGuide("");
-      setStatus("scheduled");
-      setScheduledStart("");
+      setStatus(TRIP_STATUS_DEFAULT);
+      setScheduledDate("");
+      setScheduledTime("");
       setLoading(false);
       return;
     }
@@ -165,8 +174,10 @@ export default function TripDialog({
         setVehicleId(data.vehicleId ?? "");
         setVehicle(data.vehicle ?? "");
         setTransportGuide(data.transportGuide ?? "");
-        setStatus(data.status ?? "scheduled");
-        setScheduledStart(data.scheduledStart ? data.scheduledStart.slice(0, 16) : "");
+        setStatus(data.status ?? TRIP_STATUS_DEFAULT);
+        const { date, time } = splitTripScheduledStart(data.scheduledStart);
+        setScheduledDate(date);
+        setScheduledTime(time);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
@@ -212,6 +223,10 @@ export default function TripDialog({
   const save = async () => {
     const routeOk = isExternalRoute ? !!route.trim() : !!routeId;
     if (!routeOk || !vehicleId) return;
+    if (!scheduledDate.trim()) {
+      setError("Indique la fecha de inicio programado.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -236,15 +251,20 @@ export default function TripDialog({
         vehicle: vehicle.trim(),
         transportGuide: transportGuide.trim(),
         status,
-        scheduledStart: scheduledStart.trim() || "",
+        scheduledStart: joinTripScheduledStart(scheduledDate, scheduledTime),
       };
       if (tripId) {
         await updateTrip(tripId, payload);
+        onSuccess?.();
       } else {
-        await addTrip(payload);
+        const newId = await addTrip(payload);
+        onSuccess?.(newId);
       }
-      onSuccess?.();
-      onHide();
+      // No llamar onHide tras guardar si hay onSuccess: TripsPage navega (p. ej. asignaciones)
+      // y onHide haría navigate("/transport/trips"), anulando esa URL.
+      if (!onSuccess) {
+        onHide();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar.");
     } finally {
@@ -252,7 +272,8 @@ export default function TripDialog({
     }
   };
 
-  const valid = (isExternalRoute ? !!route.trim() : !!routeId) && !!vehicleId;
+  const valid =
+    (isExternalRoute ? !!route.trim() : !!routeId) && !!vehicleId && !!scheduledDate.trim();
 
   return (
     <DpContentSet
@@ -357,13 +378,23 @@ export default function TripDialog({
             onChange={(v) => setStatus(v as TripStatus)}
             options={STATUS_OPTIONS}
           />
-          <DpInput
-            type="datetime"
-            label="Inicio programado"
-            name="scheduledStart"
-            value={scheduledStart}
-            onChange={setScheduledStart}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DpInput
+              type="date"
+              label="Fecha inicio programado"
+              name="scheduledDate"
+              value={scheduledDate}
+              onChange={setScheduledDate}
+            />
+            <DpInput
+              type="input"
+              label="Hora inicio programado (opcional)"
+              name="scheduledTime"
+              value={scheduledTime}
+              onChange={setScheduledTime}
+              inputType="time"
+            />
+          </div>
           {isEdit && tripId && (
             <Button
               label="Gestionar paradas del viaje"

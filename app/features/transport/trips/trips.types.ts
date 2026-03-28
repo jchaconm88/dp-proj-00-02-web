@@ -1,4 +1,6 @@
-export type TripStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+import type { TripStatus } from "~/constants/status-options";
+
+export type { TripStatus };
 
 export interface TripRecord {
   id: string;

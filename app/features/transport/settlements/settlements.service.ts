@@ -12,6 +12,13 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
+import {
+  parseStatus,
+  SETTLEMENT_CATEGORY,
+  SETTLEMENT_PAYMENT_STATUS,
+  SETTLEMENT_STATUS,
+  SETTLEMENT_TYPE,
+} from "~/constants/status-options";
 import type {
   Settlement,
   SettlementItem,
@@ -33,10 +40,8 @@ function num(v: unknown, fallback = 0): number {
 
 function normalizeCategory(raw: unknown): Settlement["category"] {
   const s = String(raw ?? "").trim();
-  if (s === "customer" || s === "carrier" || s === "provider" || s === "resource") return s;
-  /** Legado: conductor → recurso */
-  if (s === "driver") return "resource";
-  return "customer";
+  if (s.toLowerCase() === "driver") return "resource";
+  return parseStatus(s, SETTLEMENT_CATEGORY, "customer") as Settlement["category"];
 }
 
 /** Etiqueta de periodo derivada (sin campo en mantenimiento). */
@@ -55,7 +60,7 @@ function mapSettlementDoc(id: string, data: Record<string, unknown>): Settlement
   return {
     id,
     code: String(data.code ?? ""),
-    type: (data.type as Settlement["type"]) ?? "payable",
+    type: parseStatus(data.type, SETTLEMENT_TYPE) as Settlement["type"],
     category: normalizeCategory(data.category),
     entity: {
       type: String(entity.type ?? ""),
@@ -73,9 +78,18 @@ function mapSettlementDoc(id: string, data: Record<string, unknown>): Settlement
       pendingAmount: num(totals.pendingAmount),
       currency: String(totals.currency ?? "PEN"),
     },
-    status: (data.status as Settlement["status"]) ?? "draft",
-    paymentStatus: (data.paymentStatus as Settlement["paymentStatus"]) ?? "pending",
+    status: parseStatus(data.status, SETTLEMENT_STATUS) as Settlement["status"],
+    paymentStatus: parseStatus(data.paymentStatus, SETTLEMENT_PAYMENT_STATUS) as Settlement["paymentStatus"],
   };
+}
+
+/** Deja `scheduledStart` del ítem como solo fecha YYYY-MM-DD si venía con hora. */
+function tripScheduledStartDateOnly(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1] : s.slice(0, 10);
 }
 
 function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
@@ -90,11 +104,15 @@ function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
     trip: {
       id: String(trip.id ?? ""),
       code: String(trip.code ?? ""),
+      route: String(trip.route ?? "").trim(),
+      scheduledStart: tripScheduledStartDateOnly(trip.scheduledStart),
     },
+    chargeType: String(data.chargeType ?? "").trim(),
+    chargeTypeId: String(data.chargeTypeId ?? "").trim(),
     concept: String(data.concept ?? ""),
     amount: num(data.amount),
     settledAmount: num(data.settledAmount),
-    pendingAmount: num(data.pendingAmount),
+    pendingAmount: num(data.amount),
     currency: String(data.currency ?? "PEN"),
   };
 }
@@ -251,6 +269,10 @@ export function itemToFormValues(i: SettlementItem): SettlementItemFormValues {
     movementId: i.movement.id,
     tripId: i.trip.id,
     tripCode: i.trip.code,
+    tripRoute: i.trip.route,
+    tripScheduledStart: i.trip.scheduledStart,
+    chargeType: i.chargeType,
+    chargeTypeId: i.chargeTypeId,
     concept: i.concept,
     amount: i.amount,
     settledAmount: i.settledAmount,
@@ -262,11 +284,18 @@ export function itemToFormValues(i: SettlementItem): SettlementItemFormValues {
 export function formValuesToItemPayload(v: SettlementItemFormValues): Omit<SettlementItem, "id"> {
   return {
     movement: { type: v.movementType.trim(), id: v.movementId.trim() },
-    trip: { id: v.tripId.trim(), code: v.tripCode.trim() },
+    trip: {
+      id: v.tripId.trim(),
+      code: v.tripCode.trim(),
+      route: v.tripRoute.trim(),
+      scheduledStart: tripScheduledStartDateOnly(v.tripScheduledStart),
+    },
+    chargeType: v.chargeType.trim(),
+    chargeTypeId: v.chargeTypeId.trim(),
     concept: v.concept.trim(),
     amount: v.amount,
     settledAmount: v.settledAmount,
-    pendingAmount: v.pendingAmount,
+    pendingAmount: v.amount,
     currency: v.currency,
   };
 }

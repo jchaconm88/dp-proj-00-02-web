@@ -6,6 +6,7 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { parseStatus, ORDER_STATUS } from "~/constants/status-options";
 import type {
   OrderRecord,
   OrderAddInput,
@@ -15,18 +16,6 @@ import type {
 } from "./orders.types";
 
 const COLLECTION = "orders";
-
-function toOrderStatus(v: unknown): OrderStatus {
-  const s = String(v ?? "").toLowerCase();
-  if (
-    s === "confirmed" ||
-    s === "in_progress" ||
-    s === "delivered" ||
-    s === "cancelled"
-  )
-    return s;
-  return "pending";
-}
 
 function toLocation(v: unknown): OrderLocation {
   if (v && typeof v === "object" && "latitude" in v && "longitude" in v) {
@@ -51,7 +40,7 @@ function toOrderRecord(doc: { id: string } & Record<string, unknown>): OrderReco
     deliveryWindowEnd: String(doc.deliveryWindowEnd ?? "12:00"),
     weight: Number(doc.weight) || 0,
     volume: Number(doc.volume) || 0,
-    status: toOrderStatus(doc.status),
+    status: parseStatus(doc.status, ORDER_STATUS) as OrderStatus,
   };
 }
 

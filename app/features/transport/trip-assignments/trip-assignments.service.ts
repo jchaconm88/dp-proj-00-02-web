@@ -6,6 +6,12 @@ import {
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import {
+  parseStatus,
+  TRIP_ASSIGNMENT_ENTITY_TYPE,
+  TRIP_ASSIGNMENT_SCOPE_TYPE,
+  TRIP_ASSIGNMENT_TYPE,
+} from "~/constants/status-options";
 import type {
   TripAssignmentRecord,
   TripAssignmentAddInput,
@@ -18,26 +24,10 @@ import type {
 
 const COLLECTION = "trip-assignments";
 
-function toEntityType(s: string): AssignmentEntityType {
-  return (s || "").toLowerCase() === "resource" ? "resource" : "employee";
-}
-
-function toAssignmentKind(v: unknown): TripAssignmentKind {
-  const t = String(v ?? "").trim().toLowerCase();
-  if (t === "billable") return "billable";
-  return "operational";
-}
-
-function toScopeType(s: string): TripAssignmentScopeType {
-  const t = String(s ?? "").trim().toLowerCase();
-  if (t === "stop" || t === "segment") return t;
-  return "trip";
-}
-
 function parseScope(raw: unknown): TripAssignmentScope {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
-    type: toScopeType(String(o.type ?? "trip")),
+    type: parseStatus(o.type ?? "trip", TRIP_ASSIGNMENT_SCOPE_TYPE) as TripAssignmentScopeType,
     stopId: String(o.stopId ?? "").trim(),
     fromStopId: String(o.fromStopId ?? "").trim(),
     toStopId: String(o.toStopId ?? "").trim(),
@@ -52,8 +42,8 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripAssignment
     tripId: String(doc.tripId ?? ""),
     chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
     chargeType: String(doc.chargeType ?? "").trim(),
-    type: toAssignmentKind(doc.type),
-    entityType: toEntityType(String(doc.entityType ?? "employee")),
+    type: parseStatus(doc.type, TRIP_ASSIGNMENT_TYPE) as TripAssignmentKind,
+    entityType: parseStatus(doc.entityType ?? "employee", TRIP_ASSIGNMENT_ENTITY_TYPE) as AssignmentEntityType,
     entityId: String(doc.entityId ?? ""),
     position: String(doc.position ?? ""),
     positionId: String(doc.positionId ?? ""),
