@@ -11,6 +11,8 @@ export default [
   route("registro", "routes/Registro.tsx"),
   layout("routes/Dashboard.tsx", [
     route("home", "routes/DashboardHome.tsx"),
+    route("reports", "routes/reports/ReportDefinitionsPage.tsx"),
+    route("reports/:definitionId/runs", "routes/reports/ReportRunsPage.tsx"),
     route("system/users", "routes/system/users/UsersPage.tsx"),
     route("system/roles", "routes/system/roles/RolesPage.tsx"),
     route("system/roles/:id", "routes/system/roles/RolesDetail.tsx"),

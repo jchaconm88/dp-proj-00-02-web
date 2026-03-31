@@ -17,6 +17,15 @@
     ]
   },
   {
+    "title": "Reportes",
+    "icon": "chart-line",
+    "link": "/reports",
+    "permission": [
+      "view",
+      "report"
+    ]
+  },
+  {
     "title": "FEATURES",
     "enabled": true,
     "group": true,

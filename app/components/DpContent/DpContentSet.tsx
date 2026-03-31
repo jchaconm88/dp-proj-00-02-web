@@ -22,11 +22,18 @@ export interface DpContentSetProps {
   onHide?: () => void;
   /** Para un segundo `Dialog` encima de otro (p. ej. modal dentro de modal). */
   dialogBaseZIndex?: number;
+  /** Ancho del `Dialog` cuando `visible` está definido (p. ej. `min(56rem, 96vw)`). Por defecto `36rem`. */
+  dialogWidth?: string;
   showLoading?: boolean;
   loadingMessage?: string;
   showError?: boolean;
   errorMessage?: string;
   dismissibleError?: boolean;
+  /**
+   * Solo en modo diálogo (`visible`): contenido fijo encima del área con scroll.
+   * Útil cuando `position: sticky` no aplica (p. ej. por `transform` en el `Dialog` de PrimeReact).
+   */
+  dialogBodyHeader?: ReactNode;
   children: ReactNode;
 }
 
@@ -77,11 +84,13 @@ export default function DpContentSet({
   visible,
   onHide,
   dialogBaseZIndex,
+  dialogWidth,
   showLoading = false,
   loadingMessage = "Cargando...",
   showError = false,
   errorMessage = "",
   dismissibleError = true,
+  dialogBodyHeader,
   children,
 }: DpContentSetProps) {
   const [errorClosed, setErrorClosed] = useState(false);
@@ -167,7 +176,7 @@ export default function DpContentSet({
         visible={visible}
         onHide={onHide ?? onCancel}
         baseZIndex={dialogBaseZIndex}
-        style={{ width: "36rem", maxHeight: "90vh" }}
+        style={{ width: dialogWidth ?? "36rem", maxHeight: "90vh" }}
         contentStyle={{ overflow: "hidden", display: "flex", flexDirection: "column", padding: 0 }}
         pt={{
           header: { className: "border-b border-zinc-200 dark:border-zinc-700" },
@@ -180,6 +189,11 @@ export default function DpContentSet({
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {errorBannerDialog}
+          {dialogBodyHeader != null ? (
+            <div className="flex-shrink-0 border-b border-zinc-200 bg-white px-6 pt-3 dark:border-zinc-700 dark:bg-zinc-950">
+              {dialogBodyHeader}
+            </div>
+          ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-4">
             <div className="flex flex-col gap-4">{scrollBody}</div>
           </div>

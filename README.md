@@ -76,6 +76,34 @@ Crea manualmente en Firestore las siguientes colecciones:
 | `modules` | Módulos del sistema. Cada doc: `{ description, permissions: [], columns: [] }` |
 | `profiles` | Perfiles de usuario. Se crea automáticamente al registrarse |
 
+### 4. Cuenta de servicio e IAM (descarga de reportes desde Storage)
+
+La app invoca la Cloud Callable **`getReportRunDownloadUrl`**, que genera una **URL firmada** de Cloud Storage con el Admin SDK. En **Firebase Functions v2** (Cloud Run), el runtime no tiene clave privada en memoria: el SDK usa la API **IAM Credentials** (`signBlob`). Si falta permiso, verás un error del tipo:
+
+`Permission 'iam.serviceAccounts.signBlob' denied on resource (or it may not exist).`
+
+**Qué hacer en Google Cloud**
+
+1. Identifica la **cuenta de servicio de ejecución** del servicio Cloud Run que corresponde a la función `getReportRunDownloadUrl` (Consola → **Cloud Run** → servicio de la función → detalle / seguridad → correo `…@…iam.gserviceaccount.com`).
+2. Concede a **esa misma cuenta** el rol **Creador de tokens de cuenta de servicio** (`roles/iam.serviceAccountTokenCreator`) **sobre el recurso de esa cuenta de servicio** (principal y recurso: la misma SA).
+
+   En consola: **IAM y administración** → **Cuentas de servicio** → selecciona esa SA → **Permisos** → **Conceder acceso**: miembro = el correo de la SA, rol = **Service Account Token Creator**.
+
+   Equivalente con `gcloud` (sustituye proyecto y email):
+
+   ```bash
+   gcloud iam service-accounts add-iam-policy-binding NOMBRE_SA@PROYECTO.iam.gserviceaccount.com \
+     --member="serviceAccount:NOMBRE_SA@PROYECTO.iam.gserviceaccount.com" \
+     --role="roles/iam.serviceAccountTokenCreator" \
+     --project=PROYECTO
+   ```
+
+3. Comprueba que la API **IAM Service Account Credentials** esté **habilitada** en el proyecto.
+
+> **Nota:** Es fácil asignar el rol a otra cuenta distinta (p. ej. la predeterminada de App Engine en lugar de la de Compute/Cloud Run). La SA que debe poder firmar es **la que ejecuta** esa función en Cloud Run.
+
+Las **reglas de Firebase Storage** (`firebase.storage`) no sustituyen este permiso: las URLs firmadas las firma la cuenta de servicio del backend vía IAM.
+
 ---
 
 ## Desarrollo local

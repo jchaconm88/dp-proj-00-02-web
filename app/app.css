@@ -114,3 +114,25 @@ html.dark .p-tag.dp-status-tag--teal {
   background: #0f766e;
   color: #ccfbf1;
 }
+
+/* Quill (PrimeReact Editor) — notificación de reportes */
+html.dark .notify-email-editor .ql-toolbar.ql-snow {
+  background: rgb(30 41 59);
+  border-color: rgb(71 85 105);
+}
+html.dark .notify-email-editor .ql-container.ql-snow {
+  border-color: rgb(71 85 105);
+}
+html.dark .notify-email-editor .ql-editor {
+  background: rgb(2 6 23);
+  color: rgb(241 245 249);
+}
+html.dark .notify-email-editor .ql-stroke {
+  stroke: rgb(203 213 225);
+}
+html.dark .notify-email-editor .ql-fill {
+  fill: rgb(203 213 225);
+}
+html.dark .notify-email-editor .ql-picker-label {
+  color: rgb(203 213 225);
+}
