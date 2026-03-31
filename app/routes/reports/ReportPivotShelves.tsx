@@ -114,7 +114,7 @@ function PaletteChip({
       }`}
     >
       <span className="font-medium text-slate-800 dark:text-slate-100">{meta.label}</span>
-      <span className="ml-1 text-slate-500 dark:text-slate-400">({meta.outputKey})</span>
+      <span className="ml-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">({meta.id})</span>
     </button>
   );
 }
@@ -183,7 +183,7 @@ function SortableAxisCard({
       <div className="min-w-0 flex-1 space-y-1">
         <p className="text-xs font-medium text-slate-800 dark:text-slate-100">
           {meta?.label ?? item.field}{" "}
-          <code className="rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-800">{item.field}</code>
+          <code className="rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-800">{item.bindingId}</code>
         </p>
         <DpInput
           type="input"
@@ -244,7 +244,7 @@ function SortableValueCard({
       <div className="min-w-0 flex-1 space-y-1">
         <p className="text-xs font-medium text-slate-800 dark:text-slate-100">
           {meta?.label ?? item.field}{" "}
-          <code className="rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-800">{item.field}</code>
+          <code className="rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-800">{item.bindingId}</code>
         </p>
         <div className="flex flex-wrap gap-2">
           <DpInput

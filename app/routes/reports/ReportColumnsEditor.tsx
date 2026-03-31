@@ -64,7 +64,7 @@ function ColumnPaletteChip({
       } ${isDragging ? "opacity-60" : ""}`}
     >
       <span className="font-medium text-slate-800 dark:text-slate-100">{meta.label}</span>
-      <span className="ml-1 text-slate-500 dark:text-slate-400">({meta.outputKey})</span>
+      <span className="ml-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">({meta.id})</span>
     </button>
   );
 }
@@ -112,7 +112,7 @@ function SortableColumnRow({
   const bindingSelectOptions = useMemo(() => {
     const opts = bindings.map((b) => ({
       value: b.id,
-      label: `${b.group} — ${b.label}`,
+      label: `${b.group} — ${b.label} (${b.id})`,
     }));
     if (bid && !opts.some((o) => o.value === bid)) {
       opts.unshift({
