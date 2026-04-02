@@ -5,8 +5,10 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { DOCUMENT_TYPE_CATEGORY, parseStatus } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { DocumentTypeRecord, DocumentTypeAddInput, DocumentTypeEditInput, DocumentTypeCategory } from "./document-types.types";
 
 const COLLECTION = "document-types";
@@ -23,7 +25,8 @@ function toDocumentTypeRecord(doc: { id: string } & Record<string, unknown>): Do
 }
 
 export async function getDocumentTypes(): Promise<{ items: DocumentTypeRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toDocumentTypeRecord) };
 }
 
@@ -33,7 +36,9 @@ export async function getDocumentTypeById(id: string): Promise<DocumentTypeRecor
 }
 
 export async function addDocumentType(data: DocumentTypeAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     name: data.name?.trim(),
     description: data.description?.trim(),
     type: data.type,

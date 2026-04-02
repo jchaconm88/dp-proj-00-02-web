@@ -9,6 +9,7 @@ import {
 
 import type { Route } from "./+types/root";
 import { AuthProvider } from "./lib/auth-context";
+import { CompanyProvider } from "./lib/company-context";
 import { ThemeProvider } from "./lib/theme-context";
 import { LoadingProvider } from "./lib/loading-context";
 import PaceLoader from "./components/PaceLoader";
@@ -60,8 +61,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <ThemeProvider>
             <LoadingProvider>
               <AuthProvider>
-                <PaceLoader />
-                {children}
+                <CompanyProvider>
+                  <PaceLoader />
+                  {children}
+                </CompanyProvider>
               </AuthProvider>
             </LoadingProvider>
           </ThemeProvider>

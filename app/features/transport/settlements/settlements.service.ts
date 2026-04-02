@@ -5,6 +5,7 @@ import {
   deleteDocument,
   getCollection,
   getDocument,
+  getCollectionWithFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   addDocumentToSubcollection,
@@ -12,6 +13,7 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   parseStatus,
   SETTLEMENT_CATEGORY,
@@ -126,7 +128,8 @@ function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
 }
 
 export async function getSettlements(): Promise<Settlement[]> {
-  const rows = await getCollection(SETTLEMENTS_COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const rows = await getCollectionWithFilter(SETTLEMENTS_COLLECTION, "companyId", companyId);
   return rows.map((r) => mapSettlementDoc(r.id, r as Record<string, unknown>));
 }
 
@@ -191,8 +194,9 @@ export function formValuesToSettlementPayload(
 }
 
 export async function createSettlement(v: SettlementFormValues): Promise<string> {
+  const companyId = requireActiveCompanyId();
   const payload = formValuesToSettlementPayload(v, null);
-  return addDocument(SETTLEMENTS_COLLECTION, payload);
+  return addDocument(SETTLEMENTS_COLLECTION, { companyId, ...(payload as any) });
 }
 
 export async function updateSettlement(id: string, v: SettlementFormValues): Promise<void> {
@@ -220,9 +224,10 @@ export interface SyncSettlementItemsResult {
 export async function syncSettlementItemsFromTrips(
   settlementId: string
 ): Promise<SyncSettlementItemsResult> {
+  const companyId = requireActiveCompanyId();
   return callHttpsFunction<{ settlementId: string }, SyncSettlementItemsResult>(
     "syncSettlementItems",
-    { settlementId },
+    { settlementId, companyId } as any,
     { errorFallback: "No se pudieron sincronizar los ítems de la liquidación." }
   );
 }
@@ -312,11 +317,12 @@ export async function createSettlementItem(
   settlementId: string,
   v: SettlementItemFormValues
 ): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocumentToSubcollection(
     SETTLEMENTS_COLLECTION,
     settlementId,
     SETTLEMENT_ITEMS_SUBCOLLECTION,
-    formValuesToItemPayload(v)
+    { companyId, ...(formValuesToItemPayload(v) as any) }
   );
 }
 

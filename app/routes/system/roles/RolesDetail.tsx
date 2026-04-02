@@ -212,6 +212,7 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
         <RoleDialog
           visible={editRoleOpen}
           roleId={roleId}
+          companyId={role.companyId ?? null}
           onSuccess={() => { setEditRoleOpen(false); revalidator.revalidate(); }}
           onHide={() => setEditRoleOpen(false)}
         />

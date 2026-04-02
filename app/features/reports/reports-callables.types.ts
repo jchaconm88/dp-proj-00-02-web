@@ -18,6 +18,7 @@ export interface CreateReportRunParams {
 export interface CreateReportRunRequest {
   reportDefinitionId: string;
   params: CreateReportRunParams;
+  companyId: string;
 }
 
 export interface CreateReportRunResponse {

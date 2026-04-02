@@ -5,6 +5,7 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   addDocumentToSubcollection,
@@ -17,6 +18,7 @@ import {
   RESOURCE_ENGAGEMENT_TYPE,
   RESOURCE_STATUS,
 } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   ResourceRecord,
   ResourceAddInput,
@@ -74,12 +76,15 @@ export async function getResource(id: string): Promise<ResourceRecord | null> {
 }
 
 export async function getResources(): Promise<{ items: ResourceRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map((d) => toResourceRecord(d)) };
 }
 
 export async function addResource(data: ResourceAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     firstName: data.firstName.trim(),
     lastName: data.lastName.trim(),
@@ -150,11 +155,13 @@ export async function addResourceCost(
   resourceId: string,
   data: ResourceCostAddInput
 ): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocumentToSubcollection(
     COLLECTION,
     resourceId,
     RESOURCE_COSTS_SUB,
     {
+      companyId,
       code: data.code.trim(),
       type: data.type,
       amount: Number(data.amount) ?? 0,

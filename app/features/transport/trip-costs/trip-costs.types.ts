@@ -54,6 +54,7 @@ export type TripCostEditInput = Partial<Omit<TripCostRecord, "id">>;
 /** Callable Cloud Function `getResourcePerTripCost` — alinear con `dp-proj-00-02-functions`. */
 export interface GetResourcePerTripCostRequest {
   tripAssignmentId: string;
+  companyId: string;
 }
 
 export interface GetResourcePerTripCostResponse {
@@ -67,6 +68,7 @@ export interface GetResourcePerTripCostResponse {
 export interface GetPerTripCostByEntityRequest {
   entityType: "employee" | "resource";
   entityId: string;
+  companyId: string;
 }
 
 export type GetPerTripCostByEntityResponse = GetResourcePerTripCostResponse;

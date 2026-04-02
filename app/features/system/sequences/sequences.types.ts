@@ -29,6 +29,7 @@ export type SequenceEditInput = Partial<Omit<SequenceRecord, "id">>;
 export interface GenerateSequenceCodeRequest {
   currentCode: string;
   entity: string;
+  companyId: string;
 }
 
 export interface GenerateSequenceCodeResponse {

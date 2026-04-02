@@ -14,14 +14,18 @@ import {
   createUserWithEmailAndPassword,
   type User,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { createDocumentWithId } from "./firestore.service";
 
 export type UserProfile = {
-  uid: string;
+  /** UID de Firebase Auth (sesión actual). */
+  authUid: string;
+  /** ID del documento en `users` (puede no coincidir con Auth en datos legacy). */
+  usersDocId: string;
   email: string;
   displayName: string;
+  /** @deprecated En multiempresa, roles viven en companyUsers.roleIds */
   roleIds: string[];
 };
 
@@ -38,20 +42,44 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const PROFILES_COLLECTION = "users";
 const ROLES_COLLECTION = "roles";
+const COMPANIES_COLLECTION = "companies";
+const COMPANY_USERS_COLLECTION = "companyUsers";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (uid: string) => {
-    const ref = doc(db, PROFILES_COLLECTION, uid);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
+  const loadProfile = useCallback(async (u: User) => {
+    const authUid = u.uid;
+    const byAuth = await getDoc(doc(db, PROFILES_COLLECTION, authUid));
+    let snap = byAuth.exists() ? byAuth : null;
+
+    if (!snap) {
+      const raw = u.email?.trim();
+      if (raw) {
+        const variants = raw.toLowerCase() === raw ? [raw] : [raw, raw.toLowerCase()];
+        for (const em of variants) {
+          const q = query(
+            collection(db, PROFILES_COLLECTION),
+            where("email", "==", em),
+            limit(1)
+          );
+          const qs = await getDocs(q);
+          if (!qs.empty) {
+            snap = qs.docs[0];
+            break;
+          }
+        }
+      }
+    }
+
+    if (snap) {
       const d = snap.data();
       setProfile({
-        uid: snap.id,
-        email: d.email ?? "",
+        authUid,
+        usersDocId: snap.id,
+        email: d.email ?? u.email ?? "",
         displayName: d.displayName ?? "",
         roleIds: d.roleIds ?? [],
       });
@@ -72,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(u);
         try {
           if (u) {
-            await loadProfile(u.uid);
+            await loadProfile(u);
           } else {
             setProfile(null);
           }
@@ -112,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         u.uid,
         { email, displayName, roleIds: ["user"] }
       );
-      await loadProfile(u.uid);
+      await loadProfile(u);
     },
     [loadProfile]
   );
@@ -132,3 +160,4 @@ export function useAuth() {
 }
 
 export { PROFILES_COLLECTION, ROLES_COLLECTION };
+export { COMPANIES_COLLECTION, COMPANY_USERS_COLLECTION };

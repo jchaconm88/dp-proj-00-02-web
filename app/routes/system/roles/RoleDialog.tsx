@@ -8,6 +8,8 @@ export interface RoleDialogProps {
   visible: boolean;
   /** Si viene un id, se edita; si es null, se crea */
   roleId: string | null;
+  /** Empresa del rol; obligatorio al crear (roleId null). */
+  companyId: string | null;
   onSuccess?: () => void;
   onHide: () => void;
 }
@@ -15,6 +17,7 @@ export interface RoleDialogProps {
 export default function RoleDialog({
   visible,
   roleId,
+  companyId,
   onSuccess,
   onHide,
 }: RoleDialogProps) {
@@ -57,7 +60,13 @@ export default function RoleDialog({
           description: description.trim(),
         });
       } else {
+        const cid = companyId?.trim();
+        if (!cid) {
+          setError("Selecciona una empresa activa para crear el rol.");
+          return;
+        }
         await addRole({
+          companyId: cid,
           name: name.trim(),
           description: description.trim() || null,
         });

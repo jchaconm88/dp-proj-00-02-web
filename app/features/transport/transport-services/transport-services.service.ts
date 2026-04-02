@@ -5,8 +5,10 @@ import {
     updateDocument,
     deleteDocument,
     deleteManyDocuments,
+    getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { CALCULATION_TYPE, parseStatus, SERVICE_TYPE_CATEGORY } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
     TransportServiceRecord,
     TransportServiceAddInput,
@@ -38,13 +40,16 @@ export async function getTransportService(id: string): Promise<TransportServiceR
 }
 
 export async function getTransportServices(): Promise<{ items: TransportServiceRecord[]; total: number }> {
-    const list = await getCollection<Record<string, unknown>>(COLLECTION);
+    const companyId = requireActiveCompanyId();
+    const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
     const items = list.map(toRecord);
     return { items, total: items.length };
 }
 
 export async function addTransportService(data: TransportServiceAddInput): Promise<string> {
+    const companyId = requireActiveCompanyId();
     return addDocument(COLLECTION, {
+        companyId,
         code: data.code.trim(),
         name: data.name.trim(),
         description: (data.description ?? "").trim(),

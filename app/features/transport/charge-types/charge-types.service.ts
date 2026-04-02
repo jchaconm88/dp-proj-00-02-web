@@ -5,6 +5,7 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import {
   CHARGE_TYPE_CATEGORY,
@@ -21,6 +22,7 @@ import type {
   ChargeTypeSource,
   ChargeTypeCategory,
 } from "./charge-types.types";
+import { requireActiveCompanyId } from "~/lib/tenant";
 
 const COLLECTION = "charge-types";
 
@@ -42,7 +44,8 @@ export async function getChargeType(id: string): Promise<ChargeTypeRecord | null
 }
 
 export async function getChargeTypes(): Promise<{ items: ChargeTypeRecord[]; total: number }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   const items = list.map(toRecord);
   return { items, total: items.length };
 }
@@ -76,7 +79,9 @@ export async function getChargeTypesForTripCharges(): Promise<ChargeTypeRecord[]
 }
 
 export async function addChargeType(data: ChargeTypeAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     type: data.type,
     source: data.source,

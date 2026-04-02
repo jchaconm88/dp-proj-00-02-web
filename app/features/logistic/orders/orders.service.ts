@@ -5,8 +5,10 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, ORDER_STATUS } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   OrderRecord,
   OrderAddInput,
@@ -45,7 +47,8 @@ function toOrderRecord(doc: { id: string } & Record<string, unknown>): OrderReco
 }
 
 export async function getOrders(): Promise<{ items: OrderRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toOrderRecord) };
 }
 
@@ -55,7 +58,9 @@ export async function getOrderById(id: string): Promise<OrderRecord | null> {
 }
 
 export async function addOrder(data: OrderAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     clientId: data.clientId.trim(),
     client: data.client.trim(),

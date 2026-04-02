@@ -5,8 +5,10 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, PLAN_STATUS } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   PlanRecord,
   PlanAddInput,
@@ -34,7 +36,8 @@ function toPlanRecord(doc: { id: string } & Record<string, unknown>): PlanRecord
 }
 
 export async function getPlans(): Promise<{ items: PlanRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toPlanRecord) };
 }
 
@@ -44,7 +47,9 @@ export async function getPlanById(id: string): Promise<PlanRecord | null> {
 }
 
 export async function addPlan(data: PlanAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     date: data.date.trim(),
     zone: data.zone.trim(),

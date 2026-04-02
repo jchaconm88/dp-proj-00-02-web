@@ -1,5 +1,12 @@
-import { getDocument, getCollection, getCollectionWithFilter, createDocumentWithId, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import {
+  getDocument,
+  getCollectionWithFilter,
+  createDocumentWithId,
+  updateDocument,
+  deleteDocument,
+} from "~/lib/firestore.service";
 import { makeCounterId } from "~/features/system/sequences/sequences.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { CounterRecord, CounterAddInput, CounterEditInput } from "./counters.types";
 
 const COLLECTION = "counters";
@@ -26,20 +33,26 @@ export async function getCounterById(id: string): Promise<CounterRecord | null> 
 }
 
 export async function getCounters(): Promise<{ items: CounterRecord[]; last: null }> {
-  const rows = await getCollection<CounterDoc>(COLLECTION, 200);
+  const companyId = requireActiveCompanyId();
+  const rows = await getCollectionWithFilter<CounterDoc>(COLLECTION, "companyId", companyId);
   const items = rows.map((d) => toCounterRecord(d.id, d));
   items.sort((a, b) => a.sequence.localeCompare(b.sequence) || a.period.localeCompare(b.period));
   return { items, last: null };
 }
 
 export async function getCountersBySequenceId(sequenceId: string): Promise<CounterRecord[]> {
+  const companyId = requireActiveCompanyId();
   const rows = await getCollectionWithFilter<CounterDoc>(COLLECTION, "sequenceId", sequenceId);
-  return rows.map((d) => toCounterRecord(d.id, d));
+  return rows
+    .filter((d) => String((d as any).companyId ?? "") === companyId)
+    .map((d) => toCounterRecord(d.id, d));
 }
 
 export async function addCounter(data: CounterAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   const id = makeCounterId(data.sequenceId.trim(), data.period.trim());
   await createDocumentWithId(COLLECTION, id, {
+    companyId,
     sequenceId: data.sequenceId.trim(),
     sequence: data.sequence.trim(),
     period: data.period.trim(),

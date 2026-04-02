@@ -1,8 +1,16 @@
 import { ROLES_COLLECTION } from "~/lib/auth-context";
-import { getDocument, getCollection, addDocument, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import {
+  getDocument,
+  getCollection,
+  addDocument,
+  updateDocument,
+  deleteDocument,
+  getCollectionWithFilter,
+} from "~/lib/firestore.service";
 import type { RoleRecord, RolePermissions } from "./roles.types";
 
 type RoleDoc = {
+  companyId?: string;
   name?: string;
   description?: string;
   permissions?: unknown;
@@ -28,6 +36,7 @@ function normalizePermissions(raw: unknown): RolePermissions {
 function toRoleRecord(id: string, data: RoleDoc): RoleRecord {
   return {
     id,
+    companyId: data.companyId,
     name: data.name ?? "",
     description: data.description ?? "",
     permissions: normalizePermissions(data.permissions),
@@ -47,26 +56,35 @@ export async function getRoleById(id: string): Promise<RoleRecord | null> {
 }
 
 export async function getRoles(opts?: {
+  companyId?: string | null;
   pageSize?: number;
   last?: unknown;
 }): Promise<{ items: RoleRecord[]; last: null }> {
-  const rows = await getCollection<RoleDoc>(ROLES_COLLECTION, opts?.pageSize ?? 200);
+  const rows = opts?.companyId
+    ? await getCollectionWithFilter<RoleDoc>(ROLES_COLLECTION, "companyId", opts.companyId)
+    : await getCollection<RoleDoc>(ROLES_COLLECTION, opts?.pageSize ?? 200);
   const items = rows.map((r) => toRoleRecord(r.id, r));
   items.sort((a, b) => a.name.localeCompare(b.name));
   return { items, last: null };
 }
 
 /** Obtiene todos los roles para resolver permisos del usuario. */
-export async function getAllRoles(): Promise<RoleRecord[]> {
-  const rows = await getCollection<RoleDoc>(ROLES_COLLECTION, 100);
+export async function getAllRoles(companyId: string): Promise<RoleRecord[]> {
+  const rows = await getCollectionWithFilter<RoleDoc>(ROLES_COLLECTION, "companyId", companyId);
   const items = rows.map((r) => toRoleRecord(r.id, r));
   items.sort((a, b) => a.name.localeCompare(b.name));
   return items;
 }
 
-/** Crea un rol nuevo. */
-export async function addRole(data: { name: string; description: string | null }): Promise<string> {
+/** Crea un rol nuevo (requiere empresa activa / companyId). */
+export async function addRole(data: {
+  companyId: string;
+  name: string;
+  description: string | null;
+}): Promise<string> {
+  if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
   return addDocument(ROLES_COLLECTION, {
+    companyId: data.companyId.trim(),
     name: data.name,
     description: data.description ?? "",
     permissions: {},
@@ -81,11 +99,18 @@ export async function updateRole(id: string, data: Partial<Omit<RoleRecord, "id"
 /** @deprecated Usar addRole/updateRole */
 export async function saveRole(id: string, data: Omit<RoleRecord, "id">): Promise<string> {
   const payload = {
+    companyId: data.companyId,
     name: data.name,
     description: data.description,
     permissions: data.permissions ?? {},
   };
-  if (!id) return addDocument(ROLES_COLLECTION, payload);
+  if (!id) {
+    if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
+    return addDocument(ROLES_COLLECTION, {
+      ...payload,
+      companyId: data.companyId!.trim(),
+    });
+  }
   await updateDocument(ROLES_COLLECTION, id, payload);
   return id;
 }

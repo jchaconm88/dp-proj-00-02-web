@@ -1,11 +1,13 @@
 import {
   getDocument,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { where } from "firebase/firestore";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   parseStatus,
   TRIP_ASSIGNMENT_ENTITY_TYPE,
@@ -53,7 +55,11 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripAssignment
 }
 
 export async function getTripAssignments(tripId: string): Promise<{ items: TripAssignmentRecord[] }> {
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "tripId", tripId);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("tripId", "==", tripId),
+  ]);
   return { items: list.map(toRecord) };
 }
 
@@ -63,7 +69,9 @@ export async function getTripAssignmentById(id: string): Promise<TripAssignmentR
 }
 
 export async function addTripAssignment(data: TripAssignmentAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {
+    companyId,
     chargeTypeId: data.chargeTypeId.trim(),
     chargeType: data.chargeType.trim(),
     type: data.type,

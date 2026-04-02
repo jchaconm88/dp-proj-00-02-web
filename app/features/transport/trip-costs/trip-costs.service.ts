@@ -1,12 +1,14 @@
 import {
   getDocument,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
+import { where } from "firebase/firestore";
 import {
   parseStatus,
   TRIP_COST_ENTITY_TYPE,
@@ -61,7 +63,11 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord
 }
 
 export async function getTripCosts(tripId: string): Promise<{ items: TripCostRecord[] }> {
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "tripId", tripId);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("tripId", "==", tripId),
+  ]);
   return { items: list.map(toRecord) };
 }
 
@@ -71,7 +77,9 @@ export async function getTripCostById(id: string): Promise<TripCostRecord | null
 }
 
 export async function addTripCost(data: TripCostAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     displayName: String(data.displayName ?? "").trim(),
     tripId: data.tripId.trim(),
@@ -123,7 +131,7 @@ export async function getTripCostByAssignment(
   }
   return callHttpsFunction<GetResourcePerTripCostRequest, GetResourcePerTripCostResponse>(
     "getResourcePerTripCost",
-    { tripAssignmentId: id },
+    { tripAssignmentId: id, companyId: requireActiveCompanyId() },
     { errorFallback: "No se pudo obtener el costo calculado para la asignación." }
   );
 }
@@ -145,7 +153,7 @@ export async function getPerTripCostByEntity(
   }
   return callHttpsFunction<GetPerTripCostByEntityRequest, GetPerTripCostByEntityResponse>(
     "getPerTripCostByEntity",
-    { entityType: t as "employee" | "resource", entityId: id },
+    { entityType: t as "employee" | "resource", entityId: id, companyId: requireActiveCompanyId() },
     { errorFallback: "No se pudo obtener el costo calculado para la entidad." }
   );
 }

@@ -10,6 +10,7 @@ import {
   addDocumentToSubcollection,
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import {
   BILLING_CYCLE,
@@ -32,6 +33,7 @@ import type {
   RateRuleConditions,
   RateRuleCalculation,
 } from "./transport-contracts.types";
+import { requireActiveCompanyId } from "~/lib/tenant";
 
 const COLLECTION = "transport-contracts";
 const RATE_RULES_SUB = "transport-rate-rules";
@@ -107,13 +109,16 @@ export async function getContract(id: string): Promise<ContractRecord | null> {
 }
 
 export async function getContracts(): Promise<{ items: ContractRecord[]; total: number }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   const items = list.map(toContractRecord);
   return { items, total: items.length };
 }
 
 export async function addContract(data: ContractAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     clientId: data.clientId.trim(),
     client: data.client.trim(),
     contractCode: data.contractCode.trim(),
@@ -168,7 +173,9 @@ export async function getRateRule(contractId: string, ruleId: string): Promise<R
 }
 
 export async function addRateRule(contractId: string, data: RateRuleAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocumentToSubcollection(COLLECTION, contractId, RATE_RULES_SUB, {
+    companyId,
     code: data.code.trim(),
     name: data.name.trim(),
     active: data.active,

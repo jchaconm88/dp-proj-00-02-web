@@ -10,8 +10,10 @@ import {
   setDocumentWithIdInSubcollection,
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, STOP_STATUS, STOP_TYPE } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   RouteRecord,
   RouteAddInput,
@@ -40,7 +42,8 @@ function toRouteRecord(doc: { id: string } & Record<string, unknown>): RouteReco
 }
 
 export async function getRoutes(): Promise<{ items: RouteRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toRouteRecord) };
 }
 
@@ -50,7 +53,9 @@ export async function getRouteById(id: string): Promise<RouteRecord | null> {
 }
 
 export async function addRoute(data: RouteAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     name: data.name.trim(),
     code: data.code.trim(),
     planId: data.planId.trim(),
@@ -131,12 +136,14 @@ export async function getRouteStop(
 export async function addRouteStop(routeId: string, data: StopAddInput): Promise<void> {
   const stopId = data.id.trim().toLowerCase().replace(/\s+/g, "-");
   const sequence = Number(data.sequence ?? data.order) || 0;
+  const companyId = requireActiveCompanyId();
   await setDocumentWithIdInSubcollection(
     COLLECTION,
     routeId,
     STOPS_SUBCOLLECTION,
     stopId,
     {
+      companyId,
       orderId: data.orderId.trim(),
       sequence,
       eta: data.eta.trim() || "",

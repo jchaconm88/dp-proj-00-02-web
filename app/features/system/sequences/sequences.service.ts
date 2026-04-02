@@ -1,6 +1,16 @@
-import { getDocument, getCollection, getFirst, addDocument, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import {
+  getDocument,
+  getCollection,
+  addDocument,
+  updateDocument,
+  deleteDocument,
+  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
+} from "~/lib/firestore.service";
+import { where } from "firebase/firestore";
 import { parseStatus, RESET_PERIOD } from "~/constants/status-options";
 import { callHttpsFunction } from "~/lib/functions.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   ResetPeriod,
   SequenceRecord,
@@ -36,19 +46,27 @@ export async function getSequenceById(id: string): Promise<SequenceRecord | null
 }
 
 export async function getSequences(): Promise<{ items: SequenceRecord[]; last: null }> {
-  const rows = await getCollection<SequenceDoc>(COLLECTION, 200);
+  const companyId = requireActiveCompanyId();
+  const rows = await getCollectionWithFilter<SequenceDoc>(COLLECTION, "companyId", companyId);
   const items = rows.map((d) => toSequenceRecord(d.id, d));
   items.sort((a, b) => a.entity.localeCompare(b.entity));
   return { items, last: null };
 }
 
 export async function getActiveSequenceByEntity(entity: string): Promise<SequenceRecord | null> {
-  const snap = await getFirst<SequenceDoc>(COLLECTION, "entity", entity);
+  const companyId = requireActiveCompanyId();
+  const rows = await getCollectionWithMultiFilter<SequenceDoc>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("entity", "==", entity),
+  ]);
+  const snap = rows[0];
   return snap && snap.active !== false ? toSequenceRecord(snap.id, snap) : null;
 }
 
 export async function addSequence(data: SequenceAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     entity: data.entity.trim(),
     prefix: (data.prefix ?? "").trim(),
     digits: Number(data.digits) || 6,
@@ -93,9 +111,10 @@ export async function generateSequenceCode(currentCode: string, entity: string):
   if (!entityTrim) {
     throw new Error("La entidad de secuencia es obligatoria.");
   }
+  const companyId = requireActiveCompanyId();
   const res = await callHttpsFunction<GenerateSequenceCodeRequest, GenerateSequenceCodeResponse>(
     "generateSequenceCode",
-    { currentCode: String(currentCode ?? ""), entity: entityTrim },
+    { currentCode: String(currentCode ?? ""), entity: entityTrim, companyId },
     { errorFallback: "Error al resolver el código." }
   );
   if (typeof res.code !== "string" || !res.code.trim()) {

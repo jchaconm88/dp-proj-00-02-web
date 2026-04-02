@@ -1,12 +1,14 @@
 import { deleteField } from "firebase/firestore";
 import {
   getDocument,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
 } from "~/lib/firestore.service";
+import { where } from "firebase/firestore";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   parseStatus,
   TRIP_CHARGE_ENTITY_TYPE,
@@ -67,7 +69,11 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripChargeReco
 }
 
 export async function getTripCharges(tripId: string): Promise<{ items: TripChargeRecord[] }> {
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "tripId", tripId);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("tripId", "==", tripId),
+  ]);
   return { items: list.map(toRecord) };
 }
 
@@ -77,7 +83,9 @@ export async function getTripChargeById(id: string): Promise<TripChargeRecord | 
 }
 
 export async function addTripCharge(data: TripChargeAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     tripId: data.tripId.trim(),
     name: data.name.trim(),

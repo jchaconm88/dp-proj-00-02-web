@@ -1,5 +1,14 @@
-import { getDocument, getCollection, addDocument, updateDocument, deleteDocument, deleteManyDocuments } from "~/lib/firestore.service";
+import {
+  getDocument,
+  getCollection,
+  addDocument,
+  updateDocument,
+  deleteDocument,
+  deleteManyDocuments,
+  getCollectionWithFilter,
+} from "~/lib/firestore.service";
 import { EMPLOYEE_STATUS, parseStatus, SALARY_TYPE, statusDefaultKey } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   EmployeeRecord,
   EmployeeAddInput,
@@ -74,7 +83,8 @@ export async function getEmployeeById(id: string): Promise<EmployeeRecord | null
 }
 
 export async function getEmployees(): Promise<{ items: EmployeeRecord[]; last: null }> {
-  const rows = await getCollection<EmployeeDoc>(COLLECTION, 200);
+  const companyId = requireActiveCompanyId();
+  const rows = await getCollectionWithFilter<EmployeeDoc>(COLLECTION, "companyId", companyId);
   const items = rows.map((d) => toEmployeeRecord(d.id, d));
   items.sort((a, b) =>
     `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`)
@@ -83,7 +93,9 @@ export async function getEmployees(): Promise<{ items: EmployeeRecord[]; last: n
 }
 
 export async function addEmployee(data: EmployeeAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     firstName: data.firstName.trim(),
     lastName: data.lastName.trim(),

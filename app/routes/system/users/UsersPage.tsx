@@ -107,6 +107,12 @@ export default function Users({ loaderData }: Route.ComponentProps) {
         filterPlaceholder="Filtrar por nombre o correo..."
       />
 
+      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+        Los roles mostrados son los del documento <code className="rounded bg-zinc-100 px-1 dark:bg-navy-800">users</code>{" "}
+        (plataforma / legacy). Los permisos y roles por empresa se gestionan en{" "}
+        <span className="font-medium">Miembros por empresa</span>.
+      </p>
+
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
           {error}

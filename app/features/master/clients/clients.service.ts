@@ -5,12 +5,14 @@ import {
     updateDocument,
     deleteDocument,
     deleteManyDocuments,
+    getCollectionWithFilter,
     getSubcollection,
     getDocumentFromSubcollection,
     addDocumentToSubcollection,
     updateDocumentInSubcollection,
     deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   CLIENT_LOCATION_TYPE,
   CLIENT_STATUS,
@@ -115,13 +117,16 @@ export async function getClient(id: string): Promise<ClientRecord | null> {
 }
 
 export async function getClients(): Promise<{ items: ClientRecord[]; total: number }> {
-    const list = await getCollection<Record<string, unknown>>(COLLECTION);
+    const companyId = requireActiveCompanyId();
+    const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
     const items = list.map(toRecord);
     return { items, total: items.length };
 }
 
 export async function addClient(data: ClientAddInput): Promise<string> {
+    const companyId = requireActiveCompanyId();
     return addDocument(COLLECTION, {
+        companyId,
         code: data.code.trim(),
         businessName: data.businessName.trim(),
         commercialName: data.commercialName.trim(),
@@ -230,7 +235,9 @@ export async function getClientLocation(clientId: string, locationId: string): P
 export async function addClientLocation(clientId: string, data: ClientLocationAddInput): Promise<string> {
     const lat = Number(data.geo.latitude) || 0;
     const lng = Number(data.geo.longitude) || 0;
+    const companyId = requireActiveCompanyId();
     return addDocumentToSubcollection(COLLECTION, clientId, SUBCOLLECTION, {
+        companyId,
         name: data.name.trim(),
         type: data.type,
         address: data.address.trim(),

@@ -1,9 +1,11 @@
 import { useMemo, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate, redirect } from "react-router";
 import { useAuth } from "~/lib/auth-context";
+import { useCompany } from "~/lib/company-context";
 import { useTheme } from "~/lib/theme-context";
 import type { Route } from "./+types/Dashboard";
 import menuData from "~/data/menu.json";
+import { COMPANY_ADMIN_ROLE_MARKER } from "~/features/system/company-users";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
 import { isGranted } from "~/lib/accessService";
 import { Dropdown } from "primereact/dropdown";
@@ -44,25 +46,43 @@ function primeIconClass(name?: string, className = "h-5 w-5 shrink-0"): string {
 
 const HEADER_HEIGHT = 75;
 
-/** Permisos efectivos del usuario (unión de permission de sus roles). Si algún rol tiene "*", tiene acceso a todo. */
-function getEffectivePermissions(roleIds: string[], roles: RoleRecord[]): string[] {
+/**
+ * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
+ * - Admin de plataforma (`users.roleIds` → admin): acceso total al menú.
+ * - Membresía con slug legacy `"admin"` (p. ej. migración que copia roleIds desde `users` sin ID de rol Firestore): acceso total si no hay roles resueltos.
+ */
+function getEffectivePermissions(
+  membershipRoleIds: string[],
+  roles: RoleRecord[],
+  platformRoleIds: string[] | undefined
+): string[] {
+  const platform = (platformRoleIds ?? []).map((r) => String(r).toLowerCase());
+  if (platform.includes("admin")) return ["*"];
+
   const roleMap = new Map(roles.map((r) => [r.id, r]));
   const byName = new Map(roles.map((r) => [r.name.toLowerCase(), r]));
   let hasWildcard = false;
   const set = new Set<string>();
-  for (const rid of roleIds) {
+  for (const rid of membershipRoleIds) {
+    if (rid === COMPANY_ADMIN_ROLE_MARKER) continue;
     const role = roleMap.get(rid) ?? byName.get(rid.toLowerCase());
     const perms = role?.permission ?? [];
     if (perms.includes("*")) hasWildcard = true;
     perms.forEach((p) => set.add(p));
   }
-  return hasWildcard ? ["*"] : Array.from(set);
+  if (hasWildcard) return ["*"];
+  const resolved = Array.from(set);
+  if (resolved.length === 0) {
+    const mem = membershipRoleIds.map((r) => String(r).toLowerCase());
+    if (mem.includes("admin")) return ["*"];
+  }
+  return resolved;
 }
 
 function canShowItem(permission: string[] | undefined, effectivePermissions: string[]): boolean {
   if (effectivePermissions.includes("*")) return true;
   if (!permission?.length) return true;
-  if (effectivePermissions.length === 0) return true;
+  if (effectivePermissions.length === 0) return false;
   if (permission.length >= 2) {
     return isGranted(effectivePermissions, permission[0], permission[1]);
   }
@@ -98,22 +118,50 @@ export function meta({ }: Route.MetaArgs) {
 export async function clientLoader({ }: Route.ClientLoaderArgs) {
   const user = await getAuthUser();
   if (!user) throw redirect("/login");
-  const roles = await getAllRoles();
-  return { roles };
+  return {};
 }
 
-export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
+export default function DashboardLayout({ }: Route.ComponentProps) {
   const { user, profile, signOut } = useAuth();
+  const { activeCompanyId, companies, memberships, loading: companyLoading, setActiveCompanyId } =
+    useCompany();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const roleIds = profile?.roleIds ?? ["user"];
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
-  // Roles cargados desde clientLoader - sin useEffect ni estado manual
+  const membershipRoleIds = useMemo(() => {
+    if (!activeCompanyId) return [];
+    const m = memberships.find((x) => x.companyId === activeCompanyId && x.status === "active");
+    return m?.roleIds ?? [];
+  }, [memberships, activeCompanyId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!activeCompanyId) {
+        setRoles([]);
+        return;
+      }
+      setRolesLoading(true);
+      try {
+        const next = await getAllRoles(activeCompanyId);
+        if (!cancelled) setRoles(next);
+      } finally {
+        if (!cancelled) setRolesLoading(false);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCompanyId]);
+
   const effectivePermissions = useMemo(
-    () => getEffectivePermissions(roleIds, loaderData.roles),
-    [roleIds, loaderData.roles]
+    () => getEffectivePermissions(membershipRoleIds, roles, profile?.roleIds),
+    [membershipRoleIds, roles, profile?.roleIds]
   );
   const filteredMenu = useMemo(
     () => filterMenu(menuData as MenuItemJson[], effectivePermissions),
@@ -127,6 +175,11 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
     { name: "Claro", code: "light" },
     { name: "Oscuro", code: "dark" },
   ];
+
+  const companyOptions = useMemo(
+    () => companies.map((c) => ({ name: c.name, code: c.id })),
+    [companies]
+  );
 
   const toggleExpanded = (title: string) => {
     setExpandedKeys((prev) => {
@@ -164,11 +217,63 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
 
   // clientLoader ya garantizó que hay usuario autenticado antes de renderizar.
   // Este guard cubre el breve instante inicial en que AuthProvider aún no actualizó su estado React.
-  // PaceLoader muestra el indicador visual durante el clientLoader - sin spinner propio aquí.
   if (!user) return null;
 
+  if (companyLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-navy-900">
+        <div className="flex flex-col items-center gap-3 text-zinc-600 dark:text-navy-300">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600 dark:border-navy-600 dark:border-t-navy-300" />
+          <p className="text-sm">Cargando empresas…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeCompanyId) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-100 p-6 dark:bg-navy-900">
+        <div className="max-w-md rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm dark:border-navy-600 dark:bg-navy-800">
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-navy-100">
+            Sin empresa asignada
+          </h1>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-navy-300">
+            Tu cuenta no tiene una membresía activa en ninguna empresa (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">companyUsers</code>
+            ). Si acabas de migrar, ejecuta la migración con{" "}
+            <code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">seedMemberships: true</code> o pide a un administrador que te asocie a una empresa.
+          </p>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-navy-400">
+            No hace falta “otra contraseña”: con cerrar sesión y volver a entrar no se soluciona si falta la membresía en Firestore.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if (user?.uid) {
+                    window.localStorage.removeItem(`active-company:${user.uid}`);
+                  }
+                } catch {
+                  /* ignore */
+                }
+                await signOut();
+                navigate("/login", { replace: true });
+              }}
+              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-navy-200 dark:text-navy-900 dark:hover:bg-white"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-100 dark:bg-navy-900">
+    <div
+      key={activeCompanyId}
+      className="flex min-h-screen flex-col bg-zinc-100 dark:bg-navy-900"
+    >
       {/* Header (estilo dp-proj-00-01) */}
       <header
         className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 dark:border-navy-600 dark:bg-navy-700"
@@ -198,6 +303,22 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
             <i className="pi pi-bell h-5 w-5" aria-hidden />
           </button>
           <div className="ml-2 flex items-center gap-3">
+            <Dropdown
+              value={activeCompanyId}
+              onChange={(e) => {
+                const next = String(e.value ?? "");
+                if (!next || next === activeCompanyId) return;
+                setActiveCompanyId(next);
+                // Hard reload para garantizar recarga de loaders/datos/permisos por empresa.
+                window.location.reload();
+              }}
+              options={companyOptions}
+              optionLabel="name"
+              optionValue="code"
+              placeholder="Empresa"
+              className="w-56"
+              disabled={rolesLoading || companyOptions.length <= 1}
+            />
             <Dropdown
               value={theme}
               onChange={(e) => setTheme(e.value ?? "light")}

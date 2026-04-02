@@ -6,6 +6,7 @@ import {
   deleteDocument,
   deleteManyDocuments,
   getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   setDocumentWithIdInSubcollection,
@@ -13,7 +14,9 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { deleteField } from "firebase/firestore";
+import { where } from "firebase/firestore";
 import { parseStatus, STOP_STATUS, STOP_TYPE, TRIP_STATUS } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   TripRecord,
   TripAddInput,
@@ -144,7 +147,8 @@ function toTripStopRecord(doc: { id: string } & Record<string, unknown>): TripSt
 // --- Trips ---
 
 export async function getTrips(): Promise<{ items: TripRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toTripRecord) };
 }
 
@@ -154,7 +158,9 @@ export async function getTripById(id: string): Promise<TripRecord | null> {
 }
 
 export async function addTrip(data: TripAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     code: data.code.trim(),
     routeId: data.routeId.trim(),
     route: data.route.trim(),
@@ -208,11 +214,21 @@ const TRIP_COSTS_COL = "trip-costs";
 /** Conteos por un viaje (misma lógica que la cascada en Cloud Functions). */
 export async function getTripCascadeDeleteCounts(tripId: string): Promise<TripCascadeDeleteCounts> {
   const tid = tripId.trim();
+  const companyId = requireActiveCompanyId();
   const [stops, assignments, charges, costs] = await Promise.all([
     getSubcollection(COLLECTION, tid, TRIP_STOPS_SUB).then((rows) => rows.length),
-    getCollectionWithFilter(TRIP_ASSIGNMENTS_COL, "tripId", tid).then((rows) => rows.length),
-    getCollectionWithFilter(TRIP_CHARGES_COL, "tripId", tid).then((rows) => rows.length),
-    getCollectionWithFilter(TRIP_COSTS_COL, "tripId", tid).then((rows) => rows.length),
+    getCollectionWithMultiFilter(TRIP_ASSIGNMENTS_COL, [
+      where("companyId", "==", companyId),
+      where("tripId", "==", tid),
+    ]).then((rows) => rows.length),
+    getCollectionWithMultiFilter(TRIP_CHARGES_COL, [
+      where("companyId", "==", companyId),
+      where("tripId", "==", tid),
+    ]).then((rows) => rows.length),
+    getCollectionWithMultiFilter(TRIP_COSTS_COL, [
+      where("companyId", "==", companyId),
+      where("tripId", "==", tid),
+    ]).then((rows) => rows.length),
   ]);
   return {
     tripStops: stops,
@@ -266,12 +282,14 @@ export async function getTripStop(tripId: string, stopId: string): Promise<TripS
 
 export async function addTripStop(tripId: string, data: TripStopAddInput): Promise<void> {
   const stopId = data.id.trim().toLowerCase().replace(/\s+/g, "-");
+  const companyId = requireActiveCompanyId();
   await setDocumentWithIdInSubcollection(
     COLLECTION,
     tripId,
     TRIP_STOPS_SUB,
     stopId,
     {
+      companyId,
       code: (data.code ?? "").trim(),
       order: data.order,
       type: data.type,

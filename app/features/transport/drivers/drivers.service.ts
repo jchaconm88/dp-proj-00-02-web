@@ -5,8 +5,10 @@ import {
     updateDocument,
     deleteDocument,
     deleteManyDocuments,
+    getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { DRIVER_RELATIONSHIP, DRIVER_STATUS, parseStatus } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
     DriverRecord,
     DriverRelationshipType,
@@ -50,13 +52,16 @@ export async function getDriver(id: string): Promise<DriverRecord | null> {
 }
 
 export async function getDrivers(): Promise<{ items: DriverRecord[]; total: number }> {
-    const list = await getCollection<Record<string, unknown>>(COLLECTION);
+    const companyId = requireActiveCompanyId();
+    const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
     const items = list.map(toRecord);
     return { items, total: items.length };
 }
 
 export async function addDriver(data: DriverAddInput): Promise<string> {
+    const companyId = requireActiveCompanyId();
     return addDocument(COLLECTION, {
+        companyId,
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         documentNo: data.documentNo.trim(),

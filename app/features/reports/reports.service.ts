@@ -18,6 +18,7 @@ import {
 } from "~/lib/firestore.service";
 import { db } from "~/lib/firebase";
 import { callHttpsFunction } from "~/lib/functions.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   PivotMeasureAgg,
   PivotOutputKind,
@@ -711,8 +712,10 @@ function toRunRecord(doc: { id: string } & Record<string, unknown>): ReportRunRe
 }
 
 export async function getReportDefinitions(): Promise<ReportDefinitionRecord[]> {
+  const companyId = requireActiveCompanyId();
   const items = await getCollection(COL_DEF, 500);
-  return items.map((d) => toDefinitionRecord(d as { id: string } & Record<string, unknown>));
+  const filtered = items.filter((d) => String((d as any).companyId ?? "") === companyId);
+  return filtered.map((d) => toDefinitionRecord(d as { id: string } & Record<string, unknown>));
 }
 
 export async function getReportDefinitionById(id: string): Promise<ReportDefinitionRecord | null> {
@@ -724,7 +727,13 @@ export async function getReportDefinitionById(id: string): Promise<ReportDefinit
 }
 
 export async function getReportRuns(max = 80): Promise<ReportRunRecord[]> {
-  const q = query(collection(db, COL_RUN), orderBy("createdAt", "desc"), limit(max));
+  const companyId = requireActiveCompanyId();
+  const q = query(
+    collection(db, COL_RUN),
+    where("companyId", "==", companyId),
+    orderBy("createdAt", "desc"),
+    limit(max)
+  );
   const snap = await getDocs(q);
   return snap.docs.map((d) =>
     toRunRecord({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>)
@@ -737,8 +746,10 @@ export async function getReportRunsByDefinitionId(
 ): Promise<ReportRunRecord[]> {
   const defId = String(reportDefinitionId ?? "").trim();
   if (!defId) return [];
+  const companyId = requireActiveCompanyId();
   const q = query(
     collection(db, COL_RUN),
+    where("companyId", "==", companyId),
     where("reportDefinitionId", "==", defId),
     orderBy("createdAt", "desc"),
     limit(max)
@@ -990,7 +1001,8 @@ export function validateReportDefinitionRecordTripColumns(record: ReportDefiniti
 export async function addReportDefinition(values: ReportDefinitionFormValues): Promise<string> {
   const err = validateTripsColumnsForFormValues(values);
   if (err) throw new Error(err);
-  return addDocument(COL_DEF, buildReportDefinitionPersistPayload(values));
+  const companyId = requireActiveCompanyId();
+  return addDocument(COL_DEF, { companyId, ...buildReportDefinitionPersistPayload(values) });
 }
 
 export async function updateReportDefinition(id: string, values: ReportDefinitionFormValues): Promise<void> {
@@ -1019,9 +1031,14 @@ export async function deleteReportDefinition(id: string): Promise<void> {
 }
 
 export async function createReportRunCallable(body: CreateReportRunRequest): Promise<CreateReportRunResponse> {
-  return callHttpsFunction<CreateReportRunRequest, CreateReportRunResponse>("createReportRun", body, {
+  const companyId = requireActiveCompanyId();
+  return callHttpsFunction<CreateReportRunRequest, CreateReportRunResponse>(
+    "createReportRun",
+    { ...body, companyId },
+    {
     errorFallback: "No se pudo encolar el reporte.",
-  });
+    }
+  );
 }
 
 export async function getReportRunDownloadUrlCallable(

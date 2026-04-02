@@ -40,6 +40,22 @@
     "icon": "folder",
     "children": [
       {
+        "title": "Empresas",
+        "link": "/system/companies",
+        "permission": [
+          "view",
+          "company"
+        ]
+      },
+      {
+        "title": "Miembros por empresa",
+        "link": "/system/company-members",
+        "permission": [
+          "view",
+          "companyMember"
+        ]
+      },
+      {
         "title": "Usuarios",
         "link": "/system/users",
         "permission": [

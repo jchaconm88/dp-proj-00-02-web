@@ -5,8 +5,10 @@ import {
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
+  getCollectionWithFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, VEHICLE_STATUS } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { VehicleRecord, VehicleAddInput, VehicleEditInput, VehicleStatus } from "./vehicles.types";
 
 const COLLECTION = "vehicles";
@@ -28,7 +30,8 @@ function toVehicleRecord(doc: { id: string } & Record<string, unknown>): Vehicle
 }
 
 export async function getVehicles(): Promise<{ items: VehicleRecord[] }> {
-  const list = await getCollection<Record<string, unknown>>(COLLECTION);
+  const companyId = requireActiveCompanyId();
+  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
   return { items: list.map(toVehicleRecord) };
 }
 
@@ -38,7 +41,9 @@ export async function getVehicleById(id: string): Promise<VehicleRecord | null> 
 }
 
 export async function addVehicle(data: VehicleAddInput): Promise<string> {
+  const companyId = requireActiveCompanyId();
   return addDocument(COLLECTION, {
+    companyId,
     plate: data.plate?.trim(),
     type: data.type?.trim(),
     brand: data.brand?.trim(),

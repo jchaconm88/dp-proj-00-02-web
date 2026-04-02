@@ -3,6 +3,8 @@ export type RolePermissions = Record<string, string[]>;
 
 export type RoleRecord = {
   id: string;
+  /** Empresa a la que pertenece el rol (multiempresa). */
+  companyId?: string;
   name: string;
   description: string;
   /** Permisos estructurados por módulo: { moduleId: string[] } */
