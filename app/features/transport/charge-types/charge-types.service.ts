@@ -1,11 +1,11 @@
+import { where } from "firebase/firestore";
 import {
   getDocument,
-  getCollection,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import {
   CHARGE_TYPE_CATEGORY,
@@ -22,7 +22,7 @@ import type {
   ChargeTypeSource,
   ChargeTypeCategory,
 } from "./charge-types.types";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 
 const COLLECTION = "charge-types";
 
@@ -45,7 +45,11 @@ export async function getChargeType(id: string): Promise<ChargeTypeRecord | null
 
 export async function getChargeTypes(): Promise<{ items: ChargeTypeRecord[]; total: number }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = list.map(toRecord);
   return { items, total: items.length };
 }
@@ -80,8 +84,10 @@ export async function getChargeTypesForTripCharges(): Promise<ChargeTypeRecord[]
 
 export async function addChargeType(data: ChargeTypeAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     type: data.type,
     source: data.source,

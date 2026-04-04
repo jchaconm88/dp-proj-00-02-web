@@ -1,4 +1,12 @@
-import { getDocument, getCollection, createDocumentWithId, updateDocument, deleteDocument } from "~/lib/firestore.service";
+import { where } from "firebase/firestore";
+import {
+  getDocument,
+  createDocumentWithId,
+  updateDocument,
+  deleteDocument,
+  getCollectionWithMultiFilter,
+} from "~/lib/firestore.service";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { ModuleRecord, ModuleEditInput } from "./modules.types";
 
 const COLLECTION = "modules";
@@ -48,7 +56,12 @@ export async function getModule(id: string): Promise<ModuleRecord | null> {
 
 /** Lista todos los módulos. */
 export async function getModules(): Promise<{ items: ModuleRecord[] }> {
-  const rows = await getCollection<ModuleDoc>(COLLECTION, 200);
+  const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter<ModuleDoc>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = rows.map((r) => normalizeRecord(r.id, r as unknown as Record<string, unknown>));
   items.sort((a, b) => a.id.localeCompare(b.id));
   return { items };
@@ -56,7 +69,11 @@ export async function getModules(): Promise<{ items: ModuleRecord[] }> {
 
 /** Crea un módulo con id = name. */
 export async function addModule(data: { name: string; description: string }): Promise<void> {
+  const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   await createDocumentWithId(COLLECTION, data.name.trim(), {
+    companyId,
+    accountId,
     description: data.description.trim(),
     permissions: [],
     columns: [],

@@ -190,7 +190,7 @@ export default function DpContentSet({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {errorBannerDialog}
           {dialogBodyHeader != null ? (
-            <div className="flex-shrink-0 border-b border-zinc-200 bg-white px-6 pt-3 dark:border-zinc-700 dark:bg-zinc-950">
+            <div className="flex-shrink-0 border-b border-zinc-200 bg-white px-6 pt-3 dark:border-zinc-700 dark:bg-slate-950/40">
               {dialogBodyHeader}
             </div>
           ) : null}

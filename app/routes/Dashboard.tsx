@@ -48,15 +48,11 @@ const HEADER_HEIGHT = 75;
 
 /**
  * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
- * - Admin de plataforma (`users.roleIds` → admin): acceso total al menú.
- * - Membresía con slug legacy `"admin"` (p. ej. migración que copia roleIds desde `users` sin ID de rol Firestore): acceso total si no hay roles resueltos.
+ * Fuente de roleIds: solo `company-users` de la empresa activa.
+ * Slug `"admin"` en esos ids: acceso total (admin plataforma o datos migrados desde perfil legacy).
  */
-function getEffectivePermissions(
-  membershipRoleIds: string[],
-  roles: RoleRecord[],
-  platformRoleIds: string[] | undefined
-): string[] {
-  const platform = (platformRoleIds ?? []).map((r) => String(r).toLowerCase());
+function getEffectivePermissions(membershipRoleIds: string[], roles: RoleRecord[]): string[] {
+  const platform = membershipRoleIds.map((r) => String(r).toLowerCase());
   if (platform.includes("admin")) return ["*"];
 
   const roleMap = new Map(roles.map((r) => [r.id, r]));
@@ -160,8 +156,8 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   }, [activeCompanyId]);
 
   const effectivePermissions = useMemo(
-    () => getEffectivePermissions(membershipRoleIds, roles, profile?.roleIds),
-    [membershipRoleIds, roles, profile?.roleIds]
+    () => getEffectivePermissions(membershipRoleIds, roles),
+    [membershipRoleIds, roles]
   );
   const filteredMenu = useMemo(
     () => filterMenu(menuData as MenuItemJson[], effectivePermissions),
@@ -238,7 +234,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
             Sin empresa asignada
           </h1>
           <p className="mt-3 text-sm text-zinc-600 dark:text-navy-300">
-            Tu cuenta no tiene una membresía activa en ninguna empresa (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">companyUsers</code>
+            Tu cuenta no tiene una membresía activa en ninguna empresa (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">company-users</code>
             ). Si acabas de migrar, ejecuta la migración con{" "}
             <code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">seedMemberships: true</code> o pide a un administrador que te asocie a una empresa.
           </p>

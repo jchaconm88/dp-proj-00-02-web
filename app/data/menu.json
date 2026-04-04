@@ -2,13 +2,6 @@
   {
     "title": "Inicio",
     "enabled": true,
-    "icon": "shopping-cart",
-    "link": "/home",
-    "home": true
-  },
-  {
-    "title": "IoT Dashboard",
-    "enabled": true,
     "icon": "home",
     "link": "/home",
     "permission": [
@@ -39,6 +32,14 @@
     "enabled": true,
     "icon": "folder",
     "children": [
+      {
+        "title": "Cuenta y facturación",
+        "link": "/system/billing",
+        "permission": [
+          "view",
+          "company"
+        ]
+      },
       {
         "title": "Empresas",
         "link": "/system/companies",

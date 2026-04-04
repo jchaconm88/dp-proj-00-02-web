@@ -1,14 +1,14 @@
+import { where } from "firebase/firestore";
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, ORDER_STATUS } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   OrderRecord,
   OrderAddInput,
@@ -48,7 +48,11 @@ function toOrderRecord(doc: { id: string } & Record<string, unknown>): OrderReco
 
 export async function getOrders(): Promise<{ items: OrderRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map(toOrderRecord) };
 }
 
@@ -59,8 +63,10 @@ export async function getOrderById(id: string): Promise<OrderRecord | null> {
 
 export async function addOrder(data: OrderAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     clientId: data.clientId.trim(),
     client: data.client.trim(),

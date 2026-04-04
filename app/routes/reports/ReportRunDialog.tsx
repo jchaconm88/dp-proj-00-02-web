@@ -12,6 +12,7 @@ import {
   NOTIFY_EMAIL_TEMPLATE_MAX_LEN,
   parseNotifyEmailsText,
 } from "~/features/reports/reports.service";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import NotifyEmailBodyEditor from "./NotifyEmailBodyEditor";
 
 const OUTPUT_FORMAT_OPTIONS: { label: string; value: ReportOutputFormat }[] = [
@@ -85,7 +86,9 @@ export default function ReportRunDialog({
       const bodyRun = notifyEnabled
         ? normalizeNotifyEmailBodyHtml(notifyRunBodyHtml).slice(0, NOTIFY_EMAIL_TEMPLATE_MAX_LEN)
         : "";
+      const companyId = requireActiveCompanyId();
       await createReportRunCallable({
+        companyId,
         reportDefinitionId: definition.id,
         params: {
           dateFrom: dateFrom.trim(),

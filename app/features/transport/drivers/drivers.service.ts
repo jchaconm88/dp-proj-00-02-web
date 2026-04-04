@@ -1,14 +1,14 @@
+import { where } from "firebase/firestore";
 import {
     getDocument,
-    getCollection,
     addDocument,
     updateDocument,
     deleteDocument,
     deleteManyDocuments,
-    getCollectionWithFilter,
+    getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { DRIVER_RELATIONSHIP, DRIVER_STATUS, parseStatus } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
     DriverRecord,
     DriverRelationshipType,
@@ -53,15 +53,21 @@ export async function getDriver(id: string): Promise<DriverRecord | null> {
 
 export async function getDrivers(): Promise<{ items: DriverRecord[]; total: number }> {
     const companyId = requireActiveCompanyId();
-    const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+    const accountId = await resolveActiveAccountId();
+    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+        where("companyId", "==", companyId),
+        where("accountId", "==", accountId),
+    ]);
     const items = list.map(toRecord);
     return { items, total: items.length };
 }
 
 export async function addDriver(data: DriverAddInput): Promise<string> {
     const companyId = requireActiveCompanyId();
+    const accountId = await resolveActiveAccountId();
     return addDocument(COLLECTION, {
         companyId,
+        accountId,
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         documentNo: data.documentNo.trim(),

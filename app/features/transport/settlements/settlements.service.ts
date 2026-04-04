@@ -1,11 +1,11 @@
-import { deleteField } from "firebase/firestore";
+import { deleteField, where } from "firebase/firestore";
 import {
   addDocument,
   updateDocument,
   deleteDocument,
   getCollection,
   getDocument,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   addDocumentToSubcollection,
@@ -13,7 +13,7 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import {
   parseStatus,
   SETTLEMENT_CATEGORY,
@@ -129,7 +129,11 @@ function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
 
 export async function getSettlements(): Promise<Settlement[]> {
   const companyId = requireActiveCompanyId();
-  const rows = await getCollectionWithFilter(SETTLEMENTS_COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter(SETTLEMENTS_COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return rows.map((r) => mapSettlementDoc(r.id, r as Record<string, unknown>));
 }
 
@@ -195,8 +199,9 @@ export function formValuesToSettlementPayload(
 
 export async function createSettlement(v: SettlementFormValues): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   const payload = formValuesToSettlementPayload(v, null);
-  return addDocument(SETTLEMENTS_COLLECTION, { companyId, ...(payload as any) });
+  return addDocument(SETTLEMENTS_COLLECTION, { companyId, accountId, ...(payload as any) });
 }
 
 export async function updateSettlement(id: string, v: SettlementFormValues): Promise<void> {
@@ -318,11 +323,12 @@ export async function createSettlementItem(
   v: SettlementItemFormValues
 ): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocumentToSubcollection(
     SETTLEMENTS_COLLECTION,
     settlementId,
     SETTLEMENT_ITEMS_SUBCOLLECTION,
-    { companyId, ...(formValuesToItemPayload(v) as any) }
+    { companyId, accountId, ...(formValuesToItemPayload(v) as any) }
   );
 }
 

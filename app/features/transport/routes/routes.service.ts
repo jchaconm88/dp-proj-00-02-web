@@ -1,5 +1,5 @@
+import { where } from "firebase/firestore";
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
@@ -10,10 +10,10 @@ import {
   setDocumentWithIdInSubcollection,
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, STOP_STATUS, STOP_TYPE } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   RouteRecord,
   RouteAddInput,
@@ -25,7 +25,7 @@ import type {
   StopStatus,
 } from "./routes.types";
 
-const COLLECTION = "routes";
+const COLLECTION = "trip-routes";
 const STOPS_SUBCOLLECTION = "stops";
 
 function toRouteRecord(doc: { id: string } & Record<string, unknown>): RouteRecord {
@@ -43,7 +43,11 @@ function toRouteRecord(doc: { id: string } & Record<string, unknown>): RouteReco
 
 export async function getRoutes(): Promise<{ items: RouteRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map(toRouteRecord) };
 }
 
@@ -54,8 +58,10 @@ export async function getRouteById(id: string): Promise<RouteRecord | null> {
 
 export async function addRoute(data: RouteAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     name: data.name.trim(),
     code: data.code.trim(),
     planId: data.planId.trim(),
@@ -137,6 +143,7 @@ export async function addRouteStop(routeId: string, data: StopAddInput): Promise
   const stopId = data.id.trim().toLowerCase().replace(/\s+/g, "-");
   const sequence = Number(data.sequence ?? data.order) || 0;
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   await setDocumentWithIdInSubcollection(
     COLLECTION,
     routeId,
@@ -144,6 +151,7 @@ export async function addRouteStop(routeId: string, data: StopAddInput): Promise
     stopId,
     {
       companyId,
+      accountId,
       orderId: data.orderId.trim(),
       sequence,
       eta: data.eta.trim() || "",

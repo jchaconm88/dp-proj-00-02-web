@@ -313,12 +313,14 @@ export default function ReportDefinitionDialog({
       dismissibleError
       dialogWidth="min(72rem, 96vw)"
       dialogBodyHeader={
-        <TabMenu
-          className="w-full [&_.p-tabmenu-nav]:flex-wrap"
-          model={reportDefinitionDialogTabs}
-          activeIndex={activeTabIndex}
-          onTabChange={(e) => setActiveTabIndex(e.index)}
-        />
+        <div className="rounded-t-md bg-slate-50 dark:bg-slate-800">
+          <TabMenu
+            className="w-full [&_.p-tabmenu-nav]:flex-wrap [&_.p-tabmenu-nav]:bg-transparent"
+            model={reportDefinitionDialogTabs}
+            activeIndex={activeTabIndex}
+            onTabChange={(e) => setActiveTabIndex(e.index)}
+          />
+        </div>
       }
     >
       <>

@@ -1,14 +1,14 @@
+import { where } from "firebase/firestore";
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, PLAN_STATUS } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   PlanRecord,
   PlanAddInput,
@@ -16,7 +16,7 @@ import type {
   PlanStatus,
 } from "./plans.types";
 
-const COLLECTION = "plans";
+const COLLECTION = "trip-plans";
 
 function toOrderIds(v: unknown): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x)).filter(Boolean);
@@ -37,7 +37,11 @@ function toPlanRecord(doc: { id: string } & Record<string, unknown>): PlanRecord
 
 export async function getPlans(): Promise<{ items: PlanRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map(toPlanRecord) };
 }
 
@@ -48,8 +52,10 @@ export async function getPlanById(id: string): Promise<PlanRecord | null> {
 
 export async function addPlan(data: PlanAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     date: data.date.trim(),
     zone: data.zone.trim(),

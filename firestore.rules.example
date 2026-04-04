@@ -1,4 +1,6 @@
 rules_version = '2';
+// Ejemplo ilustrativo: NO sustituye firestore.rules del proyecto.
+// Nombres de colección alineados con kebab-case (trip-plans, trip-routes, resource-costs, report-definitions, company-users, etc.).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -6,7 +8,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Perfiles: colección `users` (alineado con ~/lib/auth-context).
     match /users/{userId} {
       allow read, write: if isSignedIn()
         && (request.auth.uid == userId
@@ -19,7 +20,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roleIds.hasAny(['admin']);
     }
 
-    // --- Transporte (colecciones raíz en kebab-case donde aplica) ---
     match /trip-assignments/{docId} {
       allow read, write: if isSignedIn();
     }
@@ -61,13 +61,16 @@ service cloud.firestore {
     match /vehicles/{docId} {
       allow read, write: if isSignedIn();
     }
-    match /routes/{routeId} {
+
+    // Rutas de transporte (no confundir con colección SaaS `plans`).
+    match /trip-routes/{routeId} {
       allow read, write: if isSignedIn();
       match /stops/{stopId} {
         allow read, write: if isSignedIn();
       }
     }
-    match /plans/{docId} {
+
+    match /trip-plans/{docId} {
       allow read, write: if isSignedIn();
     }
 
@@ -93,7 +96,7 @@ service cloud.firestore {
     }
     match /resources/{resourceId} {
       allow read, write: if isSignedIn();
-      match /resourceCosts/{costId} {
+      match /resource-costs/{costId} {
         allow read, write: if isSignedIn();
       }
     }

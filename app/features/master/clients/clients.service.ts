@@ -1,18 +1,18 @@
+import { where } from "firebase/firestore";
 import {
     getDocument,
-    getCollection,
     addDocument,
     updateDocument,
     deleteDocument,
     deleteManyDocuments,
-    getCollectionWithFilter,
+    getCollectionWithMultiFilter,
     getSubcollection,
     getDocumentFromSubcollection,
     addDocumentToSubcollection,
     updateDocumentInSubcollection,
     deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import {
   CLIENT_LOCATION_TYPE,
   CLIENT_STATUS,
@@ -118,15 +118,21 @@ export async function getClient(id: string): Promise<ClientRecord | null> {
 
 export async function getClients(): Promise<{ items: ClientRecord[]; total: number }> {
     const companyId = requireActiveCompanyId();
-    const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+    const accountId = await resolveActiveAccountId();
+    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+        where("companyId", "==", companyId),
+        where("accountId", "==", accountId),
+    ]);
     const items = list.map(toRecord);
     return { items, total: items.length };
 }
 
 export async function addClient(data: ClientAddInput): Promise<string> {
     const companyId = requireActiveCompanyId();
+    const accountId = await resolveActiveAccountId();
     return addDocument(COLLECTION, {
         companyId,
+        accountId,
         code: data.code.trim(),
         businessName: data.businessName.trim(),
         commercialName: data.commercialName.trim(),
@@ -236,8 +242,10 @@ export async function addClientLocation(clientId: string, data: ClientLocationAd
     const lat = Number(data.geo.latitude) || 0;
     const lng = Number(data.geo.longitude) || 0;
     const companyId = requireActiveCompanyId();
+    const accountId = await resolveActiveAccountId();
     return addDocumentToSubcollection(COLLECTION, clientId, SUBCOLLECTION, {
         companyId,
+        accountId,
         name: data.name.trim(),
         type: data.type,
         address: data.address.trim(),

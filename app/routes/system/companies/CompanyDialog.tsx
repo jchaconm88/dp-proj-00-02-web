@@ -4,6 +4,7 @@ import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
 import { addCompany, getCompanyById, updateCompany } from "~/features/system/companies";
+import { generateSequenceCode } from "~/features/system/sequences";
 import { statusToSelectOptions, type StatusOption } from "~/constants/status-options";
 
 export type CompanyStatus = "active" | "inactive";
@@ -75,17 +76,18 @@ export default function CompanyDialog({
     setSaving(true);
     setError(null);
     try {
+      const finalCode = await generateSequenceCode(code, "company");
       if (companyId) {
         await updateCompany(companyId, {
           name: n,
-          code: code.trim() || undefined,
+          code: finalCode || undefined,
           taxId: taxId.trim() || undefined,
           status,
         });
       } else {
         await addCompany({
           name: n,
-          code: code.trim() || undefined,
+          code: finalCode || undefined,
           taxId: taxId.trim() || undefined,
         });
       }
@@ -114,7 +116,7 @@ export default function CompanyDialog({
       errorMessage={error ?? ""}
     >
       <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} />
-      <DpCodeInput label="Código" name="code" value={code} onChange={setCode} />
+      <DpCodeInput entity="company" label="Código" name="code" value={code} onChange={setCode} />
       <DpInput type="input" label="RUC / ID fiscal" name="taxId" value={taxId} onChange={setTaxId} />
       {isEdit && (
         <DpInput

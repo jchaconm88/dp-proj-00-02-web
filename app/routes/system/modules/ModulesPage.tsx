@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { getModules, deleteModule, type ModuleRecord } from "~/features/system/modules";
+import { getActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/ModulesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
@@ -16,8 +17,12 @@ export function meta({}: Route.MetaArgs) {
 
 // clientLoader: carga datos antes de renderizar el componente.
 export async function clientLoader({}: Route.ClientLoaderArgs) {
+  const companyId = getActiveCompanyId();
+  if (!companyId) {
+    return { modules: [] as ModuleRecord[], companyId: null as string | null };
+  }
   const { items } = await getModules();
-  return { modules: items };
+  return { modules: items, companyId };
 }
 
 const TABLE_DEF: DpTableDefColumn[] = [
@@ -93,7 +98,7 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        onCreate={loaderData.companyId ? openAdd : undefined}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading}
@@ -103,6 +108,12 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
           {error}
+        </div>
+      )}
+
+      {!loaderData.companyId && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          Selecciona una empresa en el encabezado para ver y gestionar módulos de esa empresa.
         </div>
       )}
 

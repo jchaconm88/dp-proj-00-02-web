@@ -124,7 +124,7 @@ export function meta({ data }: Route.MetaArgs) {
   const name = data?.definition?.name?.trim();
   return [
     { title: name ? `Corridas · ${name}` : "Corridas de reporte" },
-    { name: "description", content: "Historial de ejecuciones (reportRuns) por definición" },
+    { name: "description", content: "Historial de ejecuciones (colección report-runs) por definición" },
   ];
 }
 

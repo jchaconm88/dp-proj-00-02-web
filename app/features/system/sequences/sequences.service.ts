@@ -4,13 +4,12 @@ import {
   addDocument,
   updateDocument,
   deleteDocument,
-  getCollectionWithFilter,
   getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { where } from "firebase/firestore";
 import { parseStatus, RESET_PERIOD } from "~/constants/status-options";
 import { callHttpsFunction } from "~/lib/functions.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   ResetPeriod,
   SequenceRecord,
@@ -47,7 +46,11 @@ export async function getSequenceById(id: string): Promise<SequenceRecord | null
 
 export async function getSequences(): Promise<{ items: SequenceRecord[]; last: null }> {
   const companyId = requireActiveCompanyId();
-  const rows = await getCollectionWithFilter<SequenceDoc>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter<SequenceDoc>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = rows.map((d) => toSequenceRecord(d.id, d));
   items.sort((a, b) => a.entity.localeCompare(b.entity));
   return { items, last: null };
@@ -55,8 +58,10 @@ export async function getSequences(): Promise<{ items: SequenceRecord[]; last: n
 
 export async function getActiveSequenceByEntity(entity: string): Promise<SequenceRecord | null> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   const rows = await getCollectionWithMultiFilter<SequenceDoc>(COLLECTION, [
     where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
     where("entity", "==", entity),
   ]);
   const snap = rows[0];
@@ -65,8 +70,10 @@ export async function getActiveSequenceByEntity(entity: string): Promise<Sequenc
 
 export async function addSequence(data: SequenceAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     entity: data.entity.trim(),
     prefix: (data.prefix ?? "").trim(),
     digits: Number(data.digits) || 6,

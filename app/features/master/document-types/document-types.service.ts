@@ -1,14 +1,14 @@
+import { where } from "firebase/firestore";
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { DOCUMENT_TYPE_CATEGORY, parseStatus } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { DocumentTypeRecord, DocumentTypeAddInput, DocumentTypeEditInput, DocumentTypeCategory } from "./document-types.types";
 
 const COLLECTION = "document-types";
@@ -26,7 +26,11 @@ function toDocumentTypeRecord(doc: { id: string } & Record<string, unknown>): Do
 
 export async function getDocumentTypes(): Promise<{ items: DocumentTypeRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map(toDocumentTypeRecord) };
 }
 
@@ -37,8 +41,10 @@ export async function getDocumentTypeById(id: string): Promise<DocumentTypeRecor
 
 export async function addDocumentType(data: DocumentTypeAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     name: data.name?.trim(),
     description: data.description?.trim(),
     type: data.type,

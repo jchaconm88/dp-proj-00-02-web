@@ -412,3 +412,13 @@ export const TRIP_COST_STATUS: Record<string, StatusOption> = {
   paid: { label: "Pagado", severity: "success" },
   cancelled: { label: "Anulado", severity: "danger" },
 };
+
+/** Ciclo de vida de suscripción SaaS (`subscriptions.status`). */
+export const SUBSCRIPTION_STATUS: Record<string, StatusOption> = {
+  trial: { label: "Prueba", severity: "info" },
+  active: { label: "Activa", severity: "success" },
+  past_due: { label: "Pago pendiente", severity: "warning" },
+  canceled: { label: "Cancelada", severity: "danger" },
+};
+
+export type SubscriptionStatusKey = keyof typeof SUBSCRIPTION_STATUS;

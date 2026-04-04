@@ -26,8 +26,7 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Nombre", column: "displayName", order: 1, display: true, filter: true },
-  { header: "Correo",  column: "email",       order: 2, display: true, filter: true },
-  { header: "Roles",   column: "roleIds",     order: 3, display: true, filter: false },
+  { header: "Correo", column: "email", order: 2, display: true, filter: true },
 ];
 
 export default function Users({ loaderData }: Route.ComponentProps) {
@@ -86,7 +85,6 @@ export default function Users({ loaderData }: Route.ComponentProps) {
       await saveProfile(editing.id, {
         email: editing.email,
         displayName: editing.displayName,
-        roleIds: editing.roleIds,
       });
       setEditing(null);
       revalidator.revalidate();
@@ -108,9 +106,9 @@ export default function Users({ loaderData }: Route.ComponentProps) {
       />
 
       <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-        Los roles mostrados son los del documento <code className="rounded bg-zinc-100 px-1 dark:bg-navy-800">users</code>{" "}
-        (plataforma / legacy). Los permisos y roles por empresa se gestionan en{" "}
-        <span className="font-medium">Miembros por empresa</span>.
+        Los roles y permisos por empresa se gestionan en{" "}
+        <span className="font-medium">Sistema → Miembros por empresa</span>{" "}
+        (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-800">company-users</code>), no en esta pantalla.
       </p>
 
       {error && (

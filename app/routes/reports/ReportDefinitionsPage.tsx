@@ -17,7 +17,7 @@ import ReportDefinitionDialog from "./ReportDefinitionDialog";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Reportes" },
-    { name: "description", content: "Definiciones de reportes (reportDefinitions)" },
+    { name: "description", content: "Definiciones de reportes (colección report-definitions)" },
   ];
 }
 

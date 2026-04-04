@@ -25,7 +25,7 @@ export type UserProfile = {
   usersDocId: string;
   email: string;
   displayName: string;
-  /** @deprecated En multiempresa, roles viven en companyUsers.roleIds */
+  /** @deprecated Los roles efectivos viven en company-users.roleIds; no usar para autorización. */
   roleIds: string[];
 };
 
@@ -43,7 +43,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const PROFILES_COLLECTION = "users";
 const ROLES_COLLECTION = "roles";
 const COMPANIES_COLLECTION = "companies";
-const COMPANY_USERS_COLLECTION = "companyUsers";
+const COMPANY_USERS_COLLECTION = "company-users";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await createDocumentWithId(
         PROFILES_COLLECTION,
         u.uid,
-        { email, displayName, roleIds: ["user"] }
+        { email, displayName, roleIds: [] }
       );
       await loadProfile(u);
     },

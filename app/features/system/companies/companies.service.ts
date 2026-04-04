@@ -5,6 +5,7 @@ import type { CompanyRecord } from "./companies.types";
 type CompanyDoc = {
   name?: string;
   status?: string;
+  accountId?: string;
   code?: string;
   taxId?: string;
 };
@@ -15,6 +16,7 @@ function toCompanyRecord(id: string, d: CompanyDoc): CompanyRecord {
     id,
     name: d.name ?? "",
     status,
+    accountId: d.accountId?.trim() || undefined,
     code: d.code,
     taxId: d.taxId,
   };
@@ -35,12 +37,14 @@ export async function getCompanies(): Promise<CompanyRecord[]> {
 
 export async function addCompany(data: {
   name: string;
+  accountId?: string | null;
   code?: string | null;
   taxId?: string | null;
 }): Promise<string> {
   return addDocument(COMPANIES_COLLECTION, {
     name: data.name,
     status: "active",
+    accountId: data.accountId?.trim() || undefined,
     code: data.code ?? undefined,
     taxId: data.taxId ?? undefined,
   });

@@ -1,11 +1,11 @@
+import { where } from "firebase/firestore";
 import {
   getDocument,
-  getCollection,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   getSubcollection,
   getDocumentFromSubcollection,
   addDocumentToSubcollection,
@@ -18,7 +18,7 @@ import {
   RESOURCE_ENGAGEMENT_TYPE,
   RESOURCE_STATUS,
 } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   ResourceRecord,
   ResourceAddInput,
@@ -32,7 +32,7 @@ import type {
 } from "./resources.types";
 
 const COLLECTION = "resources";
-const RESOURCE_COSTS_SUB = "resourceCosts";
+const RESOURCE_COSTS_SUB = "resource-costs";
 
 function toResourceRecord(doc: { id: string } & Record<string, unknown>): ResourceRecord {
   const engagementType = parseStatus(doc.engagementType, RESOURCE_ENGAGEMENT_TYPE) as ResourceEngagementType;
@@ -77,14 +77,20 @@ export async function getResource(id: string): Promise<ResourceRecord | null> {
 
 export async function getResources(): Promise<{ items: ResourceRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map((d) => toResourceRecord(d)) };
 }
 
 export async function addResource(data: ResourceAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     firstName: data.firstName.trim(),
     lastName: data.lastName.trim(),
@@ -156,12 +162,14 @@ export async function addResourceCost(
   data: ResourceCostAddInput
 ): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocumentToSubcollection(
     COLLECTION,
     resourceId,
     RESOURCE_COSTS_SUB,
     {
       companyId,
+      accountId,
       code: data.code.trim(),
       type: data.type,
       amount: Number(data.amount) ?? 0,

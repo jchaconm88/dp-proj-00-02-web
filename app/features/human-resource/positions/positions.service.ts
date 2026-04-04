@@ -1,13 +1,13 @@
+import { where } from "firebase/firestore";
 import {
   getDocument,
-  getCollection,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { PositionRecord, PositionAddInput, PositionEditInput } from "./positions.types";
 
 const COLLECTION = "positions";
@@ -28,7 +28,11 @@ export async function getPosition(id: string): Promise<PositionRecord | null> {
 
 export async function getPositions(): Promise<{ items: PositionRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = list.map((d) => toPositionRecord(d.id, d));
   items.sort((a, b) => a.name.localeCompare(b.name));
   return { items };
@@ -36,8 +40,10 @@ export async function getPositions(): Promise<{ items: PositionRecord[] }> {
 
 export async function addPosition(data: PositionAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     name: data.name.trim(),
     active: data.active !== false,

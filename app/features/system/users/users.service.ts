@@ -5,7 +5,6 @@ import type { ProfileRecord } from "./users.types";
 type ProfileDoc = {
   email: string;
   displayName: string;
-  roleIds: string[];
 };
 
 function toProfileRecord(id: string, data: ProfileDoc): ProfileRecord {
@@ -13,7 +12,6 @@ function toProfileRecord(id: string, data: ProfileDoc): ProfileRecord {
     id,
     email: data.email ?? "",
     displayName: data.displayName ?? "",
-    roleIds: data.roleIds ?? [],
   };
 }
 
@@ -26,11 +24,13 @@ export async function getProfiles(): Promise<{ items: ProfileRecord[]; last: nul
   return { items, last: null };
 }
 
-export async function saveProfile(id: string, data: Omit<ProfileRecord, "id">): Promise<void> {
+export async function saveProfile(
+  id: string,
+  data: Pick<ProfileRecord, "email" | "displayName">
+): Promise<void> {
   await updateDocument(PROFILES_COLLECTION, id, {
     email: data.email,
     displayName: data.displayName,
-    roleIds: data.roleIds,
   });
 }
 

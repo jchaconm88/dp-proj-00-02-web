@@ -6,7 +6,7 @@ import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import CompanyDialog from "./CompanyDialog";
-import { statusToSelectOptions, type StatusOption } from "~/constants/status-options";
+import type { StatusOption } from "~/constants/status-options";
 
 const COMPANY_STATUS_MAP: Record<string, StatusOption> = {
   active: { label: "Activo", severity: "success" },
@@ -36,7 +36,7 @@ const TABLE_DEF: DpTableDefColumn[] = [
     display: true,
     filter: true,
     type: "status",
-    typeOptions: statusToSelectOptions(COMPANY_STATUS_MAP),
+    typeOptions: COMPANY_STATUS_MAP,
   },
 ];
 

@@ -1,6 +1,6 @@
+import { where } from "firebase/firestore";
 import {
   getDocument,
-  getCollection,
   addDocument,
   updateDocument,
   deleteDocument,
@@ -10,7 +10,7 @@ import {
   addDocumentToSubcollection,
   updateDocumentInSubcollection,
   deleteDocumentFromSubcollection,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import {
   BILLING_CYCLE,
@@ -33,7 +33,7 @@ import type {
   RateRuleConditions,
   RateRuleCalculation,
 } from "./transport-contracts.types";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 
 const COLLECTION = "transport-contracts";
 const RATE_RULES_SUB = "transport-rate-rules";
@@ -110,15 +110,21 @@ export async function getContract(id: string): Promise<ContractRecord | null> {
 
 export async function getContracts(): Promise<{ items: ContractRecord[]; total: number }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = list.map(toContractRecord);
   return { items, total: items.length };
 }
 
 export async function addContract(data: ContractAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     clientId: data.clientId.trim(),
     client: data.client.trim(),
     contractCode: data.contractCode.trim(),
@@ -174,8 +180,10 @@ export async function getRateRule(contractId: string, ruleId: string): Promise<R
 
 export async function addRateRule(contractId: string, data: RateRuleAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocumentToSubcollection(COLLECTION, contractId, RATE_RULES_SUB, {
     companyId,
+    accountId,
     code: data.code.trim(),
     name: data.name.trim(),
     active: data.active,

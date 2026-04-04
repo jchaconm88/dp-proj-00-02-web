@@ -1,4 +1,5 @@
 import { COMPANY_USERS_COLLECTION } from "~/lib/auth-context";
+import { getCompanyById } from "~/features/system/companies";
 import {
   createDocumentWithId,
   deleteDocument,
@@ -12,6 +13,7 @@ import type { CompanyUserRecord } from "./company-users.types";
 
 type CompanyUserDoc = {
   companyId?: string;
+  accountId?: string;
   uid?: string;
   roleIds?: string[];
   status?: string;
@@ -22,6 +24,7 @@ function toCompanyUserRecord(id: string, d: CompanyUserDoc): CompanyUserRecord {
   return {
     id,
     companyId: d.companyId ?? "",
+    accountId: d.accountId?.trim() || undefined,
     uid: d.uid ?? "",
     roleIds: Array.isArray(d.roleIds) ? d.roleIds : [],
     status,
@@ -74,8 +77,11 @@ export async function addCompanyUser(data: {
 }): Promise<string> {
   const id = `${data.companyId}_${data.uid}`;
   const status = data.status === "inactive" ? "inactive" : "active";
+  const comp = await getCompanyById(data.companyId);
+  const accountId = comp?.accountId?.trim() || data.companyId;
   await createDocumentWithId(COMPANY_USERS_COLLECTION, id, {
     companyId: data.companyId,
+    accountId,
     uid: data.uid,
     roleIds: data.roleIds ?? [],
     status,
@@ -93,9 +99,12 @@ export async function saveCompanyMembership(data: {
   const id = `${data.companyId}_${data.uid}`;
   const existing = await getDocument<CompanyUserDoc>(COMPANY_USERS_COLLECTION, id);
   if (existing) {
+    const comp = await getCompanyById(data.companyId);
+    const accountId = comp?.accountId?.trim() || data.companyId;
     await updateCompanyUser(id, {
       roleIds: data.roleIds,
       status: data.status,
+      accountId,
     });
     return id;
   }

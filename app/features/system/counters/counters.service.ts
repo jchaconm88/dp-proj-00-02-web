@@ -1,12 +1,13 @@
+import { where } from "firebase/firestore";
 import {
   getDocument,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
   createDocumentWithId,
   updateDocument,
   deleteDocument,
 } from "~/lib/firestore.service";
 import { makeCounterId } from "~/features/system/sequences/sequences.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { CounterRecord, CounterAddInput, CounterEditInput } from "./counters.types";
 
 const COLLECTION = "counters";
@@ -34,7 +35,11 @@ export async function getCounterById(id: string): Promise<CounterRecord | null> 
 
 export async function getCounters(): Promise<{ items: CounterRecord[]; last: null }> {
   const companyId = requireActiveCompanyId();
-  const rows = await getCollectionWithFilter<CounterDoc>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter<CounterDoc>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   const items = rows.map((d) => toCounterRecord(d.id, d));
   items.sort((a, b) => a.sequence.localeCompare(b.sequence) || a.period.localeCompare(b.period));
   return { items, last: null };
@@ -42,17 +47,22 @@ export async function getCounters(): Promise<{ items: CounterRecord[]; last: nul
 
 export async function getCountersBySequenceId(sequenceId: string): Promise<CounterRecord[]> {
   const companyId = requireActiveCompanyId();
-  const rows = await getCollectionWithFilter<CounterDoc>(COLLECTION, "sequenceId", sequenceId);
-  return rows
-    .filter((d) => String((d as any).companyId ?? "") === companyId)
-    .map((d) => toCounterRecord(d.id, d));
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter<CounterDoc>(COLLECTION, [
+    where("sequenceId", "==", sequenceId),
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
+  return rows.map((d) => toCounterRecord(d.id, d));
 }
 
 export async function addCounter(data: CounterAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   const id = makeCounterId(data.sequenceId.trim(), data.period.trim());
   await createDocumentWithId(COLLECTION, id, {
     companyId,
+    accountId,
     sequenceId: data.sequenceId.trim(),
     sequence: data.sequence.trim(),
     period: data.period.trim(),

@@ -1,14 +1,14 @@
+import { where } from "firebase/firestore";
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
   deleteDocument,
   deleteManyDocuments,
-  getCollectionWithFilter,
+  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
 import { parseStatus, VEHICLE_STATUS } from "~/constants/status-options";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { VehicleRecord, VehicleAddInput, VehicleEditInput, VehicleStatus } from "./vehicles.types";
 
 const COLLECTION = "vehicles";
@@ -31,7 +31,11 @@ function toVehicleRecord(doc: { id: string } & Record<string, unknown>): Vehicle
 
 export async function getVehicles(): Promise<{ items: VehicleRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const list = await getCollectionWithFilter<Record<string, unknown>>(COLLECTION, "companyId", companyId);
+  const accountId = await resolveActiveAccountId();
+  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
   return { items: list.map(toVehicleRecord) };
 }
 
@@ -42,8 +46,10 @@ export async function getVehicleById(id: string): Promise<VehicleRecord | null> 
 
 export async function addVehicle(data: VehicleAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     plate: data.plate?.trim(),
     type: data.type?.trim(),
     brand: data.brand?.trim(),

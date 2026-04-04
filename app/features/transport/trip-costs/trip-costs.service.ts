@@ -7,7 +7,7 @@ import {
   deleteManyDocuments,
 } from "~/lib/firestore.service";
 import { callHttpsFunction } from "~/lib/functions.service";
-import { requireActiveCompanyId } from "~/lib/tenant";
+import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import { where } from "firebase/firestore";
 import {
   parseStatus,
@@ -64,8 +64,10 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripCostRecord
 
 export async function getTripCosts(tripId: string): Promise<{ items: TripCostRecord[] }> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
     where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
     where("tripId", "==", tripId),
   ]);
   return { items: list.map(toRecord) };
@@ -78,8 +80,10 @@ export async function getTripCostById(id: string): Promise<TripCostRecord | null
 
 export async function addTripCost(data: TripCostAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
   return addDocument(COLLECTION, {
     companyId,
+    accountId,
     code: data.code.trim(),
     displayName: String(data.displayName ?? "").trim(),
     tripId: data.tripId.trim(),
