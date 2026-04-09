@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigation } from "react-router";
 import type { Route } from "./+types/BillingPage";
 import { DpContent } from "~/components/DpContent";
+import { DpInput } from "~/components/DpInput";
 import { useAccount } from "~/lib/account-context";
 import { useCompany } from "~/lib/company-context";
 import { getSubscriptionByAccountId } from "~/features/system/subscriptions";
-import { getSaasPlanById } from "~/features/system/saas-plans";
+import { getSaasPlanById, updateSaasPlanLimits } from "~/features/system/saas-plans";
 import type { SaasPlanRecord } from "~/features/system/saas-plans";
 import type { SubscriptionRecord } from "~/features/system/subscriptions";
+import { listMetricDefinitions, type MetricDefinitionRecord } from "~/features/system/dashboard-config";
 import {
   currentUsagePeriod,
   getUsageMonthForAccount,
@@ -35,7 +37,10 @@ export default function BillingPage(_props: Route.ComponentProps) {
   const [subscription, setSubscription] = useState<SubscriptionRecord | null>(null);
   const [plan, setPlan] = useState<SaasPlanRecord | null>(null);
   const [usage, setUsage] = useState<UsageMonthRecord | null>(null);
+  const [metricDefinitions, setMetricDefinitions] = useState<MetricDefinitionRecord[]>([]);
+  const [limitsDraft, setLimitsDraft] = useState<Record<string, string>>({});
   const [detailLoading, setDetailLoading] = useState(false);
+  const [limitsSaving, setLimitsSaving] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
   const periodLabel = useMemo(() => currentUsagePeriod(), []);
@@ -55,13 +60,25 @@ export default function BillingPage(_props: Route.ComponentProps) {
         const sub = await getSubscriptionByAccountId(activeAccountId);
         if (cancelled) return;
         setSubscription(sub);
-        const [p, u] = await Promise.all([
+        const [p, u, defs] = await Promise.all([
           sub ? getSaasPlanById(sub.planId) : Promise.resolve(null),
           getUsageMonthForAccount(activeAccountId, periodLabel),
+          listMetricDefinitions(),
         ]);
         if (cancelled) return;
         setPlan(p);
         setUsage(u);
+        setMetricDefinitions(defs);
+
+        const nextDraft: Record<string, string> = {};
+        const planLimits = p?.limits && typeof p.limits === "object" ? p.limits : {};
+        for (const def of defs) {
+          const key = String(def.planLimitKey ?? "").trim();
+          if (!key) continue;
+          const raw = (planLimits as Record<string, unknown>)[key];
+          nextDraft[key] = Number.isFinite(Number(raw)) ? String(Number(raw)) : "";
+        }
+        setLimitsDraft(nextDraft);
       } catch (e) {
         if (!cancelled) {
           setDetailError(e instanceof Error ? e.message : "Error al cargar detalle.");
@@ -75,6 +92,47 @@ export default function BillingPage(_props: Route.ComponentProps) {
       cancelled = true;
     };
   }, [activeAccountId, periodLabel]);
+
+  const editableLimitDefs = useMemo(() => {
+    const map = new Map<string, MetricDefinitionRecord>();
+    for (const def of metricDefinitions) {
+      const key = String(def.planLimitKey ?? "").trim();
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, def);
+    }
+    return Array.from(map.entries()).map(([limitKey, def]) => ({ limitKey, def }));
+  }, [metricDefinitions]);
+
+  const canSaveLimits = useMemo(() => {
+    if (!plan || editableLimitDefs.length === 0) return false;
+    return editableLimitDefs.every(({ limitKey }) => {
+      const v = String(limitsDraft[limitKey] ?? "").trim();
+      if (!v) return true;
+      return Number.isFinite(Number(v)) && Number(v) >= 0;
+    });
+  }, [editableLimitDefs, limitsDraft, plan]);
+
+  async function saveDynamicLimits() {
+    if (!plan) return;
+    setLimitsSaving(true);
+    setDetailError(null);
+    try {
+      const payload: Record<string, number> = {};
+      for (const { limitKey } of editableLimitDefs) {
+        const raw = String(limitsDraft[limitKey] ?? "").trim();
+        if (!raw) continue;
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= 0) payload[limitKey] = n;
+      }
+      await updateSaasPlanLimits(plan.id, payload);
+      const refreshed = await getSaasPlanById(plan.id);
+      setPlan(refreshed);
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : "No se pudo guardar límites dinámicos.");
+    } finally {
+      setLimitsSaving(false);
+    }
+  }
 
   const companyName = useMemo(() => {
     if (!activeCompanyId) return "—";
@@ -110,7 +168,7 @@ export default function BillingPage(_props: Route.ComponentProps) {
 
         <section className="space-y-2 rounded border border-surface-200 p-4 dark:border-navy-600">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
-            Suscripción y plan (lectura)
+            Suscripción y plan
           </h2>
           {detailLoading ? (
             <p className="text-surface-500">Cargando…</p>
@@ -139,6 +197,47 @@ export default function BillingPage(_props: Route.ComponentProps) {
                 </pre>
               </dd>
             </dl>
+          )}
+        </section>
+
+        <section className="space-y-3 rounded border border-surface-200 p-4 dark:border-navy-600">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+            Límites dinámicos por métrica
+          </h2>
+          {!plan ? (
+            <p className="text-surface-500">Selecciona una cuenta con plan activo.</p>
+          ) : editableLimitDefs.length === 0 ? (
+            <p className="text-surface-500">
+              No hay métricas con <code className="rounded bg-zinc-100 px-1 dark:bg-navy-800">planLimitKey</code>.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {editableLimitDefs.map(({ limitKey, def }) => (
+                  <DpInput
+                    key={limitKey}
+                    type="number"
+                    label={`${def.label} (${limitKey})`}
+                    value={limitsDraft[limitKey] ?? ""}
+                    onChange={(v: string | number) =>
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        [limitKey]: String(v ?? "").replace(/[^0-9.]/g, ""),
+                      }))
+                    }
+                    placeholder="0 = sin límite"
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                disabled={!canSaveLimits || limitsSaving}
+                onClick={() => void saveDynamicLimits()}
+              >
+                {limitsSaving ? "Guardando..." : "Guardar límites"}
+              </button>
+            </>
           )}
         </section>
 

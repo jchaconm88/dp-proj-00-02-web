@@ -1,4 +1,4 @@
-import { getDocument } from "~/lib/firestore.service";
+import { getDocument, updateDocument } from "~/lib/firestore.service";
 import type { SaasPlanRecord } from "./saas-plans.types";
 
 /** Catálogo SaaS (límites / features); colección raíz `plans`. */
@@ -23,4 +23,15 @@ export async function getSaasPlanById(id: string): Promise<SaasPlanRecord | null
     limits: d.limits && typeof d.limits === "object" ? d.limits : undefined,
     features: d.features && typeof d.features === "object" ? d.features : undefined,
   };
+}
+
+export async function updateSaasPlanLimits(planId: string, limits: Record<string, number>): Promise<void> {
+  const clean = Object.fromEntries(
+    Object.entries(limits)
+      .map(([key, value]) => [String(key).trim(), Number(value)])
+      .filter(([key, value]) => key && Number.isFinite(value))
+  );
+  await updateDocument(COLLECTION, planId, {
+    limits: clean,
+  });
 }

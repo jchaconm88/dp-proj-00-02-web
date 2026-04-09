@@ -14,6 +14,7 @@ export default [
     route("reports", "routes/reports/ReportDefinitionsPage.tsx"),
     route("reports/:definitionId/runs", "routes/reports/ReportRunsPage.tsx"),
     route("system/billing", "routes/system/billing/BillingPage.tsx"),
+    route("system/dashboard-metrics", "routes/system/dashboard-metrics/DashboardMetricsPage.tsx"),
     route("system/companies", "routes/system/companies/CompaniesPage.tsx", [
       route("add", "routes/system/companies/CompanyAdd.tsx"),
       route("edit/:id", "routes/system/companies/CompanyEdit.tsx"),

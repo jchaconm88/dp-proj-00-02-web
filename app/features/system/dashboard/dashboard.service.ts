@@ -20,7 +20,6 @@ function hasUsageForPeriod(raw: unknown): boolean {
 }
 
 function snapshotLooksIncomplete(snap: Record<string, unknown>): boolean {
-  if (!hasUsageForPeriod(snap.usage)) return true;
   const cards = Array.isArray(snap.cards) ? snap.cards : [];
   return cards.length === 0;
 }

@@ -41,6 +41,14 @@
         ]
       },
       {
+        "title": "Métricas dashboard",
+        "link": "/system/dashboard-metrics",
+        "permission": [
+          "view",
+          "company"
+        ]
+      },
+      {
         "title": "Empresas",
         "link": "/system/companies",
         "permission": [
