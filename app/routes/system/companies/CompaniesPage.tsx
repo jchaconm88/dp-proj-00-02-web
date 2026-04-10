@@ -99,12 +99,16 @@ export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/system/companies");
 
   return (
-    <DpContent title="EMPRESAS">
+    <DpContent
+      title="EMPRESAS"
+      breadcrumbItems={["SISTEMA", "EMPRESAS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

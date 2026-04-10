@@ -238,6 +238,7 @@ export default function DriverDialog({
     return (
         <DpContentSet
             title={isEdit ? "Editar conductor" : "Agregar conductor"}
+            recordId={isEdit ? driverId : null}
             cancelLabel="Cancelar"
             onCancel={handleHide}
             saveLabel="Guardar"

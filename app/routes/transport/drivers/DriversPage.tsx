@@ -61,6 +61,10 @@ export default function DriversPage({ loaderData }: Route.ComponentProps) {
         setFilterValue(value);
         tableRef.current?.filter(value);
     };
+    const focusFilterInput = () => {
+        const input = document.getElementById("filterInput") as HTMLInputElement | null;
+        input?.focus();
+    };
 
     const openAdd = () => navigate("/transport/drivers/add");
     const openEdit = (row: DriverRecord) =>
@@ -90,12 +94,19 @@ export default function DriversPage({ loaderData }: Route.ComponentProps) {
     const handleHide = () => navigate("/transport/drivers");
 
     return (
-        <DpContent title="CONDUCTORES">
+        <DpContent
+            title="CONDUCTORES"
+            breadcrumbItems={["TRANSPORTE", "CONDUCTORES"]}
+            onFilterAction={focusFilterInput}
+            onCreate={openAdd}
+            createLabel="Nuevo"
+            filterLabel="Filtrar"
+        >
             <DpContentHeader
                 filterValue={filterValue}
                 onFilter={handleFilter}
                 onLoad={() => revalidator.revalidate()}
-                onCreate={openAdd}
+                showCreateButton={false}
                 onDelete={handleDelete}
                 deleteDisabled={selectedCount === 0 || saving}
                 loading={isLoading || saving}

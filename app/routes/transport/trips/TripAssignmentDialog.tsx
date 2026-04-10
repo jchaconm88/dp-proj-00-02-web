@@ -169,6 +169,7 @@ export default function TripAssignmentDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tripStopDialogOpen, setTripStopDialogOpen] = useState(false);
+  const [tripStopDialogStopId, setTripStopDialogStopId] = useState<string | null>(null);
 
   const stopOptions = useMemo(
     () => [{ label: "— Seleccionar parada —", value: "" }, ...stops.map((s) => ({ label: stopSelectLabel(s), value: s.id }))],
@@ -226,6 +227,7 @@ export default function TripAssignmentDialog({
     () => chargeTypes.find((c) => c.id === chargeTypeId),
     [chargeTypes, chargeTypeId]
   );
+  const hasChargeTypes = chargeTypes.length > 0;
 
   const entityPickMode = selectedChargeType ? sourceEntityPickMode(selectedChargeType.source) : "choose";
 
@@ -356,6 +358,14 @@ export default function TripAssignmentDialog({
 
   const openNewTripStop = (target: "stop" | "from" | "to") => {
     pendingNewStopTargetRef.current = target;
+    setTripStopDialogStopId(null);
+    setTripStopDialogOpen(true);
+  };
+
+  const openEditTripStop = (stopIdToEdit: string) => {
+    const sid = String(stopIdToEdit ?? "").trim();
+    if (!sid) return;
+    setTripStopDialogStopId(sid);
     setTripStopDialogOpen(true);
   };
 
@@ -569,9 +579,14 @@ export default function TripAssignmentDialog({
     !!positionId.trim() &&
     scopeValid;
 
+  const canEditScopeStop = scopeType === "stop" && !!scopeStopId.trim();
+  const canEditScopeFromStop = scopeType === "segment" && !!scopeFromStopId.trim();
+  const canEditScopeToStop = scopeType === "segment" && !!scopeToStopId.trim();
+
   return (
     <DpContentSet
       title={isEdit ? "Editar asignación" : "Agregar asignación"}
+      recordId={isEdit ? assignmentId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"
@@ -597,204 +612,246 @@ export default function TripAssignmentDialog({
           disabled={listsLoading}
           filter
         />
-        {entityPickMode === "choose" && (
-          <DpInput
-            type="select"
-            label="Tipo entidad"
-            name="entityType"
-            value={entityType}
-            onChange={(v) => onEntityTypeChange(v as AssignmentEntityType)}
-            options={ENTITY_TYPE_OPTIONS}
-          />
+        {!listsLoading && !hasChargeTypes && (
+          <p className="text-sm text-[var(--dp-menu-text)]">
+            No hay tipos de asignación disponibles para la empresa/cuenta activa.
+          </p>
         )}
-        {(entityPickMode === "employee" || (entityPickMode === "choose" && entityType === "employee")) && (
-          isEdit ? (
+        {!!selectedChargeType && (
+          <>
+            {entityPickMode === "choose" && (
+              <DpInput
+                type="select"
+                label="Tipo entidad"
+                name="entityType"
+                value={entityType}
+                onChange={(v) => onEntityTypeChange(v as AssignmentEntityType)}
+                options={ENTITY_TYPE_OPTIONS}
+              />
+            )}
+            {(entityPickMode === "employee" || (entityPickMode === "choose" && entityType === "employee")) && (
+              isEdit ? (
+                <DpInput
+                  type="select"
+                  label="Empleado"
+                  name="employeeId"
+                  value={entitySelectId}
+                  onChange={(v) => onEmployeeSelect(String(v))}
+                  options={[{ label: "— Seleccionar empleado —", value: "" }, ...employeeOptions]}
+                  placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleado"}
+                  disabled={listsLoading}
+                  filter
+                />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="employeeIds" className="font-medium text-[var(--dp-menu-text)]">
+                    Empleados
+                  </label>
+                  <MultiSelect
+                    inputId="employeeIds"
+                    value={entitySelectIds}
+                    options={employeeOptions}
+                    optionLabel="label"
+                    optionValue="value"
+                    onChange={(e) => onEmployeesMultiSelect((e.value as string[]) ?? [])}
+                    placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleados"}
+                    disabled={listsLoading}
+                    filter
+                    className="w-full"
+                    display="chip"
+                  />
+                </div>
+              )
+            )}
+            {(entityPickMode === "resource" || (entityPickMode === "choose" && entityType === "resource")) && (
+              isEdit ? (
+                <DpInput
+                  type="select"
+                  label="Recurso"
+                  name="resourceId"
+                  value={entitySelectId}
+                  onChange={(v) => onResourceSelect(String(v))}
+                  options={[{ label: "— Seleccionar recurso —", value: "" }, ...resourceOptions]}
+                  placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recurso"}
+                  disabled={listsLoading || refreshingResources}
+                  filter
+                  onRefresh={() => void loadResources()}
+                  refreshing={refreshingResources}
+                  refreshAriaLabel="Refrescar recursos"
+                />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="resourceIds" className="font-medium text-[var(--dp-menu-text)]">
+                    Recursos
+                  </label>
+                  <div className="flex items-stretch gap-2">
+                    <MultiSelect
+                      inputId="resourceIds"
+                      value={entitySelectIds}
+                      options={resourceOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      onChange={(e) => onResourcesMultiSelect((e.value as string[]) ?? [])}
+                      placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recursos"}
+                      disabled={listsLoading || refreshingResources}
+                      filter
+                      className="min-w-0 flex-1"
+                      display="chip"
+                    />
+                    <Button
+                      type="button"
+                      icon="pi pi-refresh"
+                      outlined
+                      onClick={() => void loadResources()}
+                      loading={refreshingResources}
+                      disabled={listsLoading || refreshingResources}
+                      aria-label="Refrescar recursos"
+                      title="Refrescar recursos"
+                    />
+                  </div>
+                </div>
+              )
+            )}
             <DpInput
               type="select"
-              label="Empleado"
-              name="employeeId"
-              value={entitySelectId}
-              onChange={(v) => onEmployeeSelect(String(v))}
-              options={[{ label: "— Seleccionar empleado —", value: "" }, ...employeeOptions]}
-              placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleado"}
+              label="Cargo (posición)"
+              name="positionId"
+              value={positionId}
+              onChange={(v) => onPositionSelect(String(v))}
+              options={positionOptions}
+              placeholder={listsLoading ? "Cargando cargos…" : "Seleccionar cargo"}
               disabled={listsLoading}
               filter
             />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="employeeIds" className="font-medium text-zinc-700 dark:text-zinc-300">
-                Empleados
-              </label>
-              <MultiSelect
-                inputId="employeeIds"
-                value={entitySelectIds}
-                options={employeeOptions}
-                optionLabel="label"
-                optionValue="value"
-                onChange={(e) => onEmployeesMultiSelect((e.value as string[]) ?? [])}
-                placeholder={listsLoading ? "Cargando empleados…" : "Seleccionar empleados"}
-                disabled={listsLoading}
-                filter
-                className="w-full"
-                display="chip"
-              />
-            </div>
-          )
-        )}
-        {(entityPickMode === "resource" || (entityPickMode === "choose" && entityType === "resource")) && (
-          isEdit ? (
             <DpInput
               type="select"
-              label="Recurso"
-              name="resourceId"
-              value={entitySelectId}
-              onChange={(v) => onResourceSelect(String(v))}
-              options={[{ label: "— Seleccionar recurso —", value: "" }, ...resourceOptions]}
-              placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recurso"}
-              disabled={listsLoading || refreshingResources}
-              filter
-              onRefresh={() => void loadResources()}
-              refreshing={refreshingResources}
-              refreshAriaLabel="Refrescar recursos"
+              label="Alcance"
+              name="scopeType"
+              value={scopeType}
+              onChange={(v) => {
+                const t = v as TripAssignmentScopeType;
+                setScopeType(t);
+                setScopeStopId("");
+                setScopeFromStopId("");
+                setScopeToStopId("");
+              }}
+              options={SCOPE_TYPE_OPTIONS}
             />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="resourceIds" className="font-medium text-zinc-700 dark:text-zinc-300">
-                Recursos
-              </label>
-              <div className="flex items-stretch gap-2">
-                <MultiSelect
-                  inputId="resourceIds"
-                  value={entitySelectIds}
-                  options={resourceOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  onChange={(e) => onResourcesMultiSelect((e.value as string[]) ?? [])}
-                  placeholder={listsLoading ? "Cargando recursos…" : "Seleccionar recursos"}
-                  disabled={listsLoading || refreshingResources}
+            {scopeType === "stop" && (
+              <div className="flex flex-col gap-2">
+                <DpInput
+                  type="select"
+                  label="Parada"
+                  name="scopeStopId"
+                  value={scopeStopId}
+                  onChange={(v) => setScopeStopId(String(v))}
+                  options={stopOptions}
+                  placeholder={stopsLoading ? "Cargando paradas…" : "Seleccionar parada"}
+                  disabled={stopsLoading}
                   filter
-                  className="min-w-0 flex-1"
-                  display="chip"
                 />
-                <Button
-                  type="button"
-                  icon="pi pi-refresh"
-                  outlined
-                  onClick={() => void loadResources()}
-                  loading={refreshingResources}
-                  disabled={listsLoading || refreshingResources}
-                  aria-label="Refrescar recursos"
-                  title="Refrescar recursos"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    label="Nueva parada…"
+                    icon="pi pi-plus"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    onClick={() => openNewTripStop("stop")}
+                  />
+                  <Button
+                    type="button"
+                    label="Editar parada"
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    onClick={() => openEditTripStop(scopeStopId)}
+                    disabled={!canEditScopeStop}
+                  />
+                </div>
               </div>
-            </div>
-          )
-        )}
-        <DpInput
-          type="select"
-          label="Cargo (posición)"
-          name="positionId"
-          value={positionId}
-          onChange={(v) => onPositionSelect(String(v))}
-          options={positionOptions}
-          placeholder={listsLoading ? "Cargando cargos…" : "Seleccionar cargo"}
-          disabled={listsLoading}
-          filter
-        />
-        <DpInput
-          type="select"
-          label="Alcance"
-          name="scopeType"
-          value={scopeType}
-          onChange={(v) => {
-            const t = v as TripAssignmentScopeType;
-            setScopeType(t);
-            setScopeStopId("");
-            setScopeFromStopId("");
-            setScopeToStopId("");
-          }}
-          options={SCOPE_TYPE_OPTIONS}
-        />
-        {scopeType === "stop" && (
-          <div className="flex flex-col gap-2">
-            <DpInput
-              type="select"
-              label="Parada"
-              name="scopeStopId"
-              value={scopeStopId}
-              onChange={(v) => setScopeStopId(String(v))}
-              options={stopOptions}
-              placeholder={stopsLoading ? "Cargando paradas…" : "Seleccionar parada"}
-              disabled={stopsLoading}
-              filter
-            />
-            <Button
-              type="button"
-              label="Nueva parada…"
-              icon="pi pi-plus"
-              severity="secondary"
-              outlined
-              size="small"
-              className="self-start"
-              onClick={() => openNewTripStop("stop")}
-            />
-          </div>
-        )}
-        {scopeType === "segment" && (
-          <>
-            <div className="flex flex-col gap-2">
-              <DpInput
-                type="select"
-                label="Parada inicio"
-                name="scopeFromStopId"
-                value={scopeFromStopId}
-                onChange={(v) => setScopeFromStopId(String(v))}
-                options={stopOptions}
-                placeholder={stopsLoading ? "Cargando paradas…" : "Inicio"}
-                disabled={stopsLoading}
-                filter
-              />
-              <Button
-                type="button"
-                label="Nueva parada (inicio)…"
-                icon="pi pi-plus"
-                severity="secondary"
-                outlined
-                size="small"
-                className="self-start"
-                onClick={() => openNewTripStop("from")}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <DpInput
-                type="select"
-                label="Parada fin"
-                name="scopeToStopId"
-                value={scopeToStopId}
-                onChange={(v) => setScopeToStopId(String(v))}
-                options={stopOptions}
-                placeholder={stopsLoading ? "Cargando paradas…" : "Fin"}
-                disabled={stopsLoading}
-                filter
-              />
-              <Button
-                type="button"
-                label="Nueva parada (fin)…"
-                icon="pi pi-plus"
-                severity="secondary"
-                outlined
-                size="small"
-                className="self-start"
-                onClick={() => openNewTripStop("to")}
-              />
-            </div>
+            )}
+            {scopeType === "segment" && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <DpInput
+                    type="select"
+                    label="Parada inicio"
+                    name="scopeFromStopId"
+                    value={scopeFromStopId}
+                    onChange={(v) => setScopeFromStopId(String(v))}
+                    options={stopOptions}
+                    placeholder={stopsLoading ? "Cargando paradas…" : "Inicio"}
+                    disabled={stopsLoading}
+                    filter
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      label="Nueva parada (inicio)…"
+                      icon="pi pi-plus"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      onClick={() => openNewTripStop("from")}
+                    />
+                    <Button
+                      type="button"
+                      label="Editar inicio"
+                      icon="pi pi-pencil"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      onClick={() => openEditTripStop(scopeFromStopId)}
+                      disabled={!canEditScopeFromStop}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <DpInput
+                    type="select"
+                    label="Parada fin"
+                    name="scopeToStopId"
+                    value={scopeToStopId}
+                    onChange={(v) => setScopeToStopId(String(v))}
+                    options={stopOptions}
+                    placeholder={stopsLoading ? "Cargando paradas…" : "Fin"}
+                    disabled={stopsLoading}
+                    filter
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      label="Nueva parada (fin)…"
+                      icon="pi pi-plus"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      onClick={() => openNewTripStop("to")}
+                    />
+                    <Button
+                      type="button"
+                      label="Editar fin"
+                      icon="pi pi-pencil"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      onClick={() => openEditTripStop(scopeToStopId)}
+                      disabled={!canEditScopeToStop}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
       <TripStopDialog
         visible={tripStopDialogOpen}
         tripId={tripId}
-        stopId={null}
+        stopId={tripStopDialogStopId}
         nestedInDialog
         onSuccess={onTripStopNestedSuccess}
         onHide={() => setTripStopDialogOpen(false)}

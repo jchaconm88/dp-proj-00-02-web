@@ -143,6 +143,7 @@ export default function LocationDialog({
     return (
         <DpContentSet
             title={isEdit ? "Editar ubicación" : "Agregar ubicación"}
+            recordId={isEdit ? locationId : null}
             cancelLabel="Cancelar"
             onCancel={handleHide}
             saveLabel="Guardar"

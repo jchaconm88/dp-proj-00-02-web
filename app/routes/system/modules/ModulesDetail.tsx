@@ -143,7 +143,12 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
 
   if (!moduleId) {
     return (
-      <DpContentInfo title="MÓDULO" backLabel="Volver a módulos" onBack={backToModules}>
+      <DpContentInfo
+        title="MÓDULO"
+        breadcrumbItems={["SISTEMA", "MÓDULOS", "DETALLE"]}
+        backLabel="Volver a módulos"
+        onBack={backToModules}
+      >
         <p className="text-zinc-500">ID de módulo no válido.</p>
       </DpContentInfo>
     );
@@ -151,7 +156,12 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
 
   if (!module) {
     return (
-      <DpContentInfo title="MÓDULO" backLabel="Volver a módulos" onBack={backToModules}>
+      <DpContentInfo
+        title="MÓDULO"
+        breadcrumbItems={["SISTEMA", "MÓDULOS", "DETALLE"]}
+        backLabel="Volver a módulos"
+        onBack={backToModules}
+      >
         <p className="text-zinc-500">Módulo no encontrado.</p>
       </DpContentInfo>
     );
@@ -160,6 +170,7 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={module.description || module.id}
+      breadcrumbItems={["SISTEMA", "MÓDULOS", "DETALLE"]}
       backLabel="Volver a módulos"
       onBack={backToModules}
       editLabel="Editar módulo"

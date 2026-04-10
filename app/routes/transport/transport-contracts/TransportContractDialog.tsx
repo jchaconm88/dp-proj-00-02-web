@@ -157,6 +157,7 @@ export default function TransportContractDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar contrato" : "Agregar contrato"}
+      recordId={isEdit ? contractId : null}
       cancelLabel="Cancelar"
       onCancel={handleHide}
       saveLabel="Guardar"

@@ -137,10 +137,14 @@ export default function OrdersPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/logistic/orders");
 
   return (
-    <DpContent title="PEDIDOS">
+    <DpContent
+      title="PEDIDOS"
+      breadcrumbItems={["LOGÍSTICA", "PEDIDOS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

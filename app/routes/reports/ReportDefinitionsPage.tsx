@@ -100,7 +100,11 @@ export default function ReportDefinitionsPage({ loaderData }: Route.ComponentPro
   };
 
   return (
-    <DpContent title="REPORTES">
+    <DpContent
+      title="REPORTES"
+      breadcrumbItems={["REPORTES", "DEFINICIONES"]}
+      onCreate={openCreateDef}
+    >
       {error && (
         <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
           {error}
@@ -114,7 +118,7 @@ export default function ReportDefinitionsPage({ loaderData }: Route.ComponentPro
           defTableRef.current?.filter(v);
         }}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openCreateDef}
+        showCreateButton={false}
         onDelete={() => setDeleteConfirm(true)}
         deleteDisabled={saving || defSelectedCount === 0}
         loading={isLoading}

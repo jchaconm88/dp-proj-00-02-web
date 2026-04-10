@@ -331,7 +331,7 @@ function DpTableInner<T extends DpTableRow>(
               e.stopPropagation();
               onDetail(row);
             }}
-            className="p-link border-none bg-transparent cursor-pointer font-medium text-primary underline"
+            className="dp-table-link-button"
           >
             {String(value)}
           </button>
@@ -445,8 +445,9 @@ function DpTableInner<T extends DpTableRow>(
   );
 
   return (
-    <div className="space-y-4">
+    <div className="dp-table-shell space-y-4">
       <DataTable
+        className="dp-neon-table"
         value={rowsForTable}
         dataKey="id"
         loading={effectiveLoading}
@@ -472,7 +473,7 @@ function DpTableInner<T extends DpTableRow>(
         header={header}
         filters={filters}
         globalFilterFields={globalFilterFields}
-        tableStyle={{ minWidth: "50rem" }}
+        tableStyle={{ minWidth: "100%" }}
         size="small"
       >
         <Column

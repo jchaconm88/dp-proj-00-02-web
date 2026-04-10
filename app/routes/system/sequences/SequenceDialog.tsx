@@ -121,6 +121,7 @@ export default function SequenceDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar secuencia" : "Agregar secuencia"}
+      recordId={isEdit ? sequenceId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

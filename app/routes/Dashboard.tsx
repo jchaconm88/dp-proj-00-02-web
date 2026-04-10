@@ -44,7 +44,7 @@ function primeIconClass(name?: string, className = "h-5 w-5 shrink-0"): string {
   return `pi pi-${base} ${className}`.trim();
 }
 
-const HEADER_HEIGHT = 75;
+const HEADER_HEIGHT = 48;
 
 /**
  * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
@@ -266,95 +266,41 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   }
 
   return (
-    <div
-      key={activeCompanyId}
-      className="flex min-h-screen flex-col bg-zinc-100 dark:bg-navy-900"
-    >
-      {/* Header (estilo dp-proj-00-01) */}
-      <header
-        className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 dark:border-navy-600 dark:bg-navy-700"
-        style={{ height: HEADER_HEIGHT }}
+    <div key={activeCompanyId} className="min-h-screen bg-[var(--dp-surface)] text-[var(--dp-on-surface)]">
+      {/* Sidebar estilo Stitch, ocupando toda la pantalla */}
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/10 bg-[var(--dp-shell-surface)] backdrop-blur-2xl transition-[width] duration-300 ${
+          sidebarOpen ? "w-64" : "w-20"
+        }`}
       >
-        <div className="flex w-64 items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((o) => !o)}
-            className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-navy-300 dark:hover:bg-navy-600"
-            aria-label="Menú"
-          >
-            <i className="pi pi-bars h-5 w-5" aria-hidden />
-          </button>
-          <Link to="/home" className="text-lg font-semibold text-zinc-900 dark:text-navy-100">
-            ngx-admin
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-navy-300 dark:hover:bg-navy-600" aria-label="Buscar">
-            <i className="pi pi-search h-5 w-5" aria-hidden />
-          </button>
-          <button type="button" className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-navy-300 dark:hover:bg-navy-600" aria-label="Correo">
-            <i className="pi pi-envelope h-5 w-5" aria-hidden />
-          </button>
-          <button type="button" className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-navy-300 dark:hover:bg-navy-600" aria-label="Notificaciones">
-            <i className="pi pi-bell h-5 w-5" aria-hidden />
-          </button>
-          <div className="ml-2 flex items-center gap-3">
-            <Dropdown
-              value={activeCompanyId}
-              onChange={(e) => {
-                const next = String(e.value ?? "");
-                if (!next || next === activeCompanyId) return;
-                setActiveCompanyId(next);
-                // Hard reload para garantizar recarga de loaders/datos/permisos por empresa.
-                window.location.reload();
-              }}
-              options={companyOptions}
-              optionLabel="name"
-              optionValue="code"
-              placeholder="Empresa"
-              className="w-56"
-              disabled={rolesLoading || companyOptions.length <= 1}
-            />
-            <Dropdown
-              value={theme}
-              onChange={(e) => setTheme(e.value ?? "light")}
-              options={themes}
-              optionLabel="name"
-              optionValue="code"
-              placeholder="Tema"
-              className="w-28"
-            />
-            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-navy-600 dark:bg-navy-600">
-              <i className="pi pi-user h-5 w-5 text-zinc-500 dark:text-navy-300" aria-hidden />
-              <span className="text-sm font-medium text-zinc-800 dark:text-navy-200">
-                {profile?.displayName || user.email || "Usuario"}
-              </span>
+        <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden py-4">
+          {sidebarOpen && (
+            <div className="px-6 pb-3">
+              <Link to="/home" className="group min-w-0">
+                <p className="bg-gradient-to-r from-[var(--dp-primary)] to-[var(--dp-secondary)] bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+                  Neon Zenith
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--dp-tertiary)]/80">
+                  System Active
+                </p>
+              </Link>
             </div>
-            <button
-              type="button"
-              onClick={async () => {
-                await signOut();
-                navigate("/login", { replace: true });
-              }}
-              className="rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-navy-300 dark:hover:bg-navy-600 dark:hover:text-navy-100"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar (estilo dp-proj-00-01) */}
-        <aside
-          className={`flex shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 transition-[width] duration-200 dark:border-navy-600 dark:bg-navy-800 ${sidebarOpen ? "w-64" : "w-16"
-            }`}
-        >
-          <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden py-3">
+          )}
+          {!sidebarOpen && (
+            <div className="flex justify-center pb-3">
+              <Link
+                to="/home"
+                className="rounded-xl border border-white/10 bg-[var(--dp-surface-high)]/60 p-2 text-[var(--dp-tertiary)]"
+              >
+                <i className="pi pi-sparkles" aria-hidden />
+              </Link>
+            </div>
+          )}
+          <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden py-2">
             {sections.map((section, idx) => (
               <div key={idx} className={`pb-4 ${sidebarOpen ? "px-2" : "px-0"}`}>
                 {sidebarOpen && section.title && (
-                  <div className="mb-2 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-navy-300">
+                  <div className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dp-menu-text)]">
                     {section.title}
                   </div>
                 )}
@@ -373,7 +319,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                             <button
                               type="button"
                               onClick={() => toggleExpanded(item.title)}
-                              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-200/80 dark:text-navy-200 dark:hover:bg-navy-600"
+                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--dp-menu-text)] transition-all hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
                             >
                               <i className={primeIconClass(item.icon)} aria-hidden />
                               <span className="flex-1">{item.title}</span>
@@ -383,7 +329,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                               />
                             </button>
                             {isExpanded && (
-                              <div className="ml-4 border-l border-zinc-200 pl-2 dark:border-navy-500">
+                              <div className="ml-4 border-l border-white/10 pl-2">
                                 {item.children!.map((child, j) => {
                                   const childHref = child.link ?? "#";
                                   return (
@@ -393,8 +339,8 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                                       end={false}
                                       className={({ isActive }) =>
                                         `mb-0.5 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors no-underline ${isActive
-                                          ? "bg-blue-100 font-medium text-blue-800 dark:bg-navy-500 dark:text-navy-100"
-                                          : "text-zinc-600 hover:bg-zinc-200/80 dark:text-navy-300 dark:hover:bg-navy-600"
+                                          ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
+                                          : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
                                         }`
                                       }
                                     >
@@ -412,9 +358,9 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                           key={i}
                           to={href}
                           title={item.title}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors no-underline ${isActive
-                            ? "bg-zinc-200 text-zinc-900 dark:bg-navy-500 dark:text-navy-100"
-                            : "text-zinc-700 hover:bg-zinc-200/80 dark:text-navy-200 dark:hover:bg-navy-600"
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all no-underline ${isActive
+                            ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
+                            : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
                             }`}
                         >
                           {item.icon && <i className={primeIconClass(item.icon)} aria-hidden />}
@@ -432,7 +378,9 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                               to={firstChildLink.link!}
                               title={item.title}
                               className={({ isActive }) =>
-                                `flex flex-col items-center justify-center rounded-lg p-2.5 text-zinc-700 transition-colors hover:bg-zinc-200/80 dark:text-navy-200 dark:hover:bg-navy-600 ${isActive ? "bg-zinc-200 dark:bg-navy-500" : ""
+                                `flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors ${isActive
+                                  ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
+                                  : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
                                 }`
                               }
                             >
@@ -441,7 +389,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                           ) : (
                             <span
                               title={item.title}
-                              className="flex flex-col items-center justify-center rounded-lg p-2.5 text-zinc-500 dark:text-navy-300"
+                              className="flex flex-col items-center justify-center rounded-xl p-2.5 text-[var(--dp-menu-text)]"
                             >
                               <i className={primeIconClass(item.icon)} aria-hidden />
                             </span>
@@ -454,7 +402,9 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
                         <Link
                           to={href}
                           title={item.title}
-                          className={`flex flex-col items-center justify-center rounded-lg p-2.5 text-zinc-700 transition-colors hover:bg-zinc-200/80 dark:text-navy-200 dark:hover:bg-navy-600 no-underline ${isActive ? "bg-zinc-200 dark:bg-navy-500" : ""
+                          className={`flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors no-underline ${isActive
+                            ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
+                            : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
                             }`}
                         >
                           <i className={primeIconClass(item.icon)} aria-hidden />
@@ -466,34 +416,118 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
               </div>
             ))}
           </div>
-        </aside>
+        </div>
+      </aside>
 
-        <main className="min-w-0 flex-1 overflow-auto p-6">
-          <Outlet />
-        </main>
-      </div>
+      {/* Botón de menú flotante */}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen((o) => !o)}
+        className="fixed top-8 z-[60] rounded-full border border-white/15 bg-[var(--dp-surface-high)]/90 p-1.5 text-[var(--dp-on-surface-soft)] shadow-lg shadow-black/20 transition hover:text-[var(--dp-tertiary)]"
+        style={{ left: sidebarOpen ? "15.25rem" : "3.95rem" }}
+        aria-label="Menú"
+      >
+        <i className={`pi ${sidebarOpen ? "pi-angle-left" : "pi-angle-right"} text-xs`} aria-hidden />
+      </button>
+
+      {/* Header compacto */}
+      <header
+        className="dp-glass-panel fixed top-0 z-40 flex items-center justify-between px-3 md:px-4"
+        style={{
+          height: HEADER_HEIGHT,
+          left: sidebarOpen ? "16rem" : "5rem",
+          width: sidebarOpen ? "calc(100% - 16rem)" : "calc(100% - 5rem)",
+        }}
+      >
+        <div className="relative w-56 md:w-80">
+          <i className="pi pi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--dp-on-surface-soft)]" />
+          <input
+            type="text"
+            placeholder="Search systems..."
+            className="w-full rounded-full border border-white/10 bg-[var(--dp-surface-low)]/70 py-1 pl-9 pr-4 text-sm text-[var(--dp-on-surface)] outline-none transition focus:border-[var(--dp-primary)]"
+          />
+        </div>
+
+        <div className="flex items-center gap-1 md:gap-2">
+          <button
+            type="button"
+            className="rounded-full p-1.5 text-[var(--dp-on-surface-soft)] transition hover:bg-white/5 hover:text-[var(--dp-tertiary)]"
+            aria-label="Ayuda"
+          >
+            <i className="pi pi-question-circle text-sm" aria-hidden />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTheme("light")}
+            className={`rounded-full p-1.5 transition ${
+              theme === "light"
+                ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_20%,transparent)] text-[var(--dp-tertiary)]"
+                : "text-[var(--dp-on-surface-soft)] hover:bg-white/5"
+            }`}
+            aria-label="Tema claro"
+          >
+            <i className="pi pi-sun text-sm" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => setTheme("dark")}
+            className={`rounded-full p-1.5 transition ${
+              theme === "dark"
+                ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_20%,transparent)] text-[var(--dp-tertiary)]"
+                : "text-[var(--dp-on-surface-soft)] hover:bg-white/5"
+            }`}
+            aria-label="Tema oscuro"
+          >
+            <i className="pi pi-moon text-sm" aria-hidden />
+          </button>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <Dropdown
+              value={activeCompanyId}
+              onChange={(e) => {
+                const next = String(e.value ?? "");
+                if (!next || next === activeCompanyId) return;
+                setActiveCompanyId(next);
+                // Hard reload para garantizar recarga de loaders/datos/permisos por empresa.
+                window.location.reload();
+              }}
+              options={companyOptions}
+              optionLabel="name"
+              optionValue="code"
+              placeholder="Empresa"
+              className="w-48"
+              disabled={rolesLoading || companyOptions.length <= 1}
+            />
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[var(--dp-surface-low)]/70 px-2.5 py-1">
+              <i className="pi pi-user text-xs text-[var(--dp-on-surface-soft)]" aria-hidden />
+              <span className="max-w-28 truncate text-xs font-semibold text-[var(--dp-on-surface)]">
+                {profile?.displayName || user.email || "Usuario"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              }}
+              className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--dp-on-surface-soft)] transition hover:text-[var(--dp-tertiary)]"
+            >
+              Salir
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main
+        className="min-h-screen overflow-auto p-5 md:p-6"
+        style={{
+          marginLeft: sidebarOpen ? "16rem" : "5rem",
+          paddingTop: `calc(${HEADER_HEIGHT}px + 12px)`,
+        }}
+      >
+        <Outlet />
+      </main>
     </div>
-  );
-}
-
-function IconHome({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-    </svg>
-  );
-}
-function IconFolder({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12a2.25 2.25 0 012.25-2.25h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-    </svg>
-  );
-}
-function IconMenu({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
   );
 }

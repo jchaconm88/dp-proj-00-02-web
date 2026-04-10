@@ -112,14 +112,15 @@ export default function RateRulesPage({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={titleLabel}
+      breadcrumbItems={["TRANSPORTE", "CONTRATOS", "REGLAS DE TARIFA"]}
       backLabel="Volver a contratos"
       onBack={backToContracts}
+      onCreate={openAdd}
     >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

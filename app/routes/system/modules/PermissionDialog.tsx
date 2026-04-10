@@ -76,6 +76,7 @@ export default function PermissionDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar permiso" : "Agregar permiso"}
+      recordId={isEdit && permissionIndex !== null ? (currentPermissions[permissionIndex]?.code?.trim() || String(permissionIndex)) : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

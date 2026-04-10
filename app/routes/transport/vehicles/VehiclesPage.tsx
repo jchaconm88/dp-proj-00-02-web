@@ -98,10 +98,14 @@ export default function VehiclesPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/transport/vehicles");
 
   return (
-    <DpContent title="VEHÍCULOS">
+    <DpContent
+      title="VEHÍCULOS"
+      breadcrumbItems={["TRANSPORTE", "VEHÍCULOS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

@@ -103,6 +103,7 @@ export default function CompanyDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar empresa" : "Nueva empresa"}
+      recordId={isEdit ? companyId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

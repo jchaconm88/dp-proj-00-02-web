@@ -163,7 +163,7 @@ export async function getTripById(id: string): Promise<TripRecord | null> {
 export async function addTrip(data: TripAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
   const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
+  const payload = {
     companyId,
     accountId,
     code: data.code.trim(),
@@ -179,7 +179,9 @@ export async function addTrip(data: TripAddInput): Promise<string> {
     transportGuide: (data.transportGuide ?? "").trim(),
     status: data.status,
     scheduledStart: (data.scheduledStart ?? "").trim() || null,
-  });
+  };
+  const tripId = await addDocument(COLLECTION, payload);
+  return tripId;
 }
 
 export async function updateTrip(id: string, data: TripEditInput): Promise<void> {

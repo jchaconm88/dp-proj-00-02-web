@@ -73,6 +73,7 @@ export default function ModuleDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar módulo" : "Agregar módulo"}
+      recordId={isEdit ? moduleId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

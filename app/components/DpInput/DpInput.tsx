@@ -39,7 +39,7 @@ function formatDateTimeToValue(d: Date | null): string {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
-const labelClass = "font-medium text-zinc-700 dark:text-zinc-300";
+const labelClass = "font-medium text-[var(--dp-menu-text)]";
 const controlClass = "w-full";
 
 export type DpInputType =

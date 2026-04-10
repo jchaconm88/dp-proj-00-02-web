@@ -101,14 +101,15 @@ export default function ResourceCostsPage({ loaderData }: Route.ComponentProps) 
   return (
     <DpContentInfo
       title={resourceLabel}
+      breadcrumbItems={["RECURSOS HUMANOS", "RECURSOS", "COSTOS"]}
       backLabel="Volver a recursos"
       onBack={backToResources}
+      onCreate={openAdd}
     >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

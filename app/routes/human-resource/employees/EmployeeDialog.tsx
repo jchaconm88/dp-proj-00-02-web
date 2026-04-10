@@ -173,6 +173,7 @@ export default function EmployeeDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar empleado" : "Agregar empleado"}
+      recordId={isEdit ? employeeId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

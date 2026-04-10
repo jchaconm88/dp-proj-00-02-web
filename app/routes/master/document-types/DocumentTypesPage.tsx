@@ -94,10 +94,14 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
   const handleHide = () => navigate("/master/document-types");
 
   return (
-    <DpContent title="TIPOS DE DOCUMENTO">
+    <DpContent
+      title="TIPOS DE DOCUMENTO"
+      breadcrumbItems={["MAESTROS", "TIPOS DE DOCUMENTO"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

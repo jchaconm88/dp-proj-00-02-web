@@ -256,6 +256,7 @@ export default function RateRuleDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar regla de tarifa" : "Agregar regla de tarifa"}
+      recordId={isEdit ? ruleId : null}
       cancelLabel="Cancelar"
       onCancel={handleHide}
       saveLabel="Guardar"

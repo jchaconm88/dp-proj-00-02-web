@@ -88,12 +88,16 @@ export default function EmployeesPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/human-resource/employees");
 
   return (
-    <DpContent title="EMPLEADOS">
+    <DpContent
+      title="EMPLEADOS"
+      breadcrumbItems={["RECURSOS HUMANOS", "EMPLEADOS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading}

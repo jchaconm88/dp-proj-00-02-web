@@ -94,12 +94,16 @@ export default function ClientsPage({ loaderData }: Route.ComponentProps) {
     const handleHide = () => navigate("/master/clients");
 
     return (
-        <DpContent title="CLIENTES">
+        <DpContent
+            title="CLIENTES"
+            breadcrumbItems={["MAESTROS", "CLIENTES"]}
+            onCreate={openAdd}
+        >
             <DpContentHeader
                 filterValue={filterValue}
                 onFilter={handleFilter}
                 onLoad={() => revalidator.revalidate()}
-                onCreate={openAdd}
+                showCreateButton={false}
                 onDelete={handleDelete}
                 deleteDisabled={selectedCount === 0 || saving}
                 loading={isLoading || saving}

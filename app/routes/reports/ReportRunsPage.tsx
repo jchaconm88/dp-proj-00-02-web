@@ -214,6 +214,7 @@ export default function ReportRunsPage({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={`Historial · ${definition.name}`}
+      breadcrumbItems={["REPORTES", "DEFINICIONES", "CORRIDAS"]}
       backLabel="Volver a definiciones"
       onBack={() => navigate("/reports")}
     >

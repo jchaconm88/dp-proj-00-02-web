@@ -278,6 +278,7 @@ export default function TripDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar viaje" : "Agregar viaje"}
+      recordId={isEdit ? tripId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

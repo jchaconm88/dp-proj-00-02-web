@@ -8,6 +8,8 @@ import {
   getTripStop,
   addTripStop,
   updateTripStop,
+  splitTripScheduledStart,
+  joinTripScheduledStart,
   type TripStopType,
   type TripStopStatus,
 } from "~/features/transport/trips";
@@ -52,7 +54,8 @@ export default function TripStopDialog({
   const [districtName, setDistrictName] = useState("");
   const [observations, setObservations] = useState("");
   const [status, setStatus] = useState<TripStopStatus>("pending");
-  const [plannedArrival, setPlannedArrival] = useState("");
+  const [plannedDate, setPlannedDate] = useState("");
+  const [plannedTime, setPlannedTime] = useState("");
 
   /** Coordenadas y horas reales no se editan en este formulario; se conservan al guardar. */
   const hiddenGeoRef = useRef({
@@ -83,7 +86,8 @@ export default function TripStopDialog({
       setDistrictName("");
       setObservations("");
       setStatus("pending");
-      setPlannedArrival("");
+      setPlannedDate("");
+      setPlannedTime("");
       hiddenGeoRef.current = {
         lat: 0,
         lng: 0,
@@ -111,7 +115,9 @@ export default function TripStopDialog({
         setDistrictName(fromCatalog || (data.districtName ?? "").trim());
         setObservations(data.observations ?? "");
         setStatus(data.status ?? "pending");
-        setPlannedArrival(data.plannedArrival ? data.plannedArrival.slice(0, 16) : "");
+        const { date, time } = splitTripScheduledStart(data.plannedArrival);
+        setPlannedDate(date);
+        setPlannedTime(time);
         hiddenGeoRef.current = {
           lat: data.lat ?? 0,
           lng: data.lng ?? 0,
@@ -144,7 +150,7 @@ export default function TripStopDialog({
         lat: h.lat,
         lng: h.lng,
         status,
-        plannedArrival: plannedArrival.trim() || "",
+        plannedArrival: joinTripScheduledStart(plannedDate, plannedTime),
         actualArrival: h.actualArrival,
         actualDeparture: h.actualDeparture,
       };
@@ -169,6 +175,7 @@ export default function TripStopDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar parada del viaje" : "Agregar parada del viaje"}
+      recordId={isEdit ? stopId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"
@@ -225,13 +232,23 @@ export default function TripStopDialog({
           rows={4}
         />
         <DpInput type="select" label="Estado" name="status" value={status} onChange={(v) => setStatus(v as TripStopStatus)} options={STATUS_OPTIONS} />
-        <DpInput
-          type="datetime"
-          label="Llegada planificada"
-          name="plannedArrival"
-          value={plannedArrival}
-          onChange={setPlannedArrival}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DpInput
+            type="date"
+            label="Fecha llegada planificada (opcional)"
+            name="plannedDate"
+            value={plannedDate}
+            onChange={setPlannedDate}
+          />
+          <DpInput
+            type="input"
+            label="Hora llegada planificada (opcional)"
+            name="plannedTime"
+            value={plannedTime}
+            onChange={setPlannedTime}
+            inputType="time"
+          />
+        </div>
       </div>
     </DpContentSet>
   );

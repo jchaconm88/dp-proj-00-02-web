@@ -121,6 +121,7 @@ export default function PlanDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar plan" : "Agregar plan"}
+      recordId={isEdit ? planId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

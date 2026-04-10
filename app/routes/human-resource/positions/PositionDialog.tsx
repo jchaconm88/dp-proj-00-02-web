@@ -101,6 +101,7 @@ export default function PositionDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar cargo" : "Agregar cargo"}
+      recordId={isEdit ? positionId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

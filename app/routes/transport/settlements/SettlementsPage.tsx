@@ -163,10 +163,14 @@ export default function SettlementsPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/transport/settlements");
 
   return (
-    <DpContent title="LIQUIDACIONES">
+    <DpContent
+      title="LIQUIDACIONES"
+      breadcrumbItems={["TRANSPORTE", "LIQUIDACIONES"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

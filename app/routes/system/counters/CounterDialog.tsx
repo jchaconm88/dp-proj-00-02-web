@@ -107,6 +107,7 @@ export default function CounterDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar contador" : "Agregar contador"}
+      recordId={isEdit ? counterId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

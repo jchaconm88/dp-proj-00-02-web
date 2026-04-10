@@ -153,12 +153,13 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={trip ? `Cargos: ${trip.code}` : "Cargos del viaje"}
+      breadcrumbItems={["TRANSPORTE", "VIAJES", "CARGOS"]}
       backLabel="Volver a viajes"
       onBack={onBack}
+      onCreate={openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

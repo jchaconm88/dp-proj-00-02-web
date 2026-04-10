@@ -429,6 +429,7 @@ export default function TripCostDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar costo" : "Agregar costo"}
+      recordId={isEdit ? costId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

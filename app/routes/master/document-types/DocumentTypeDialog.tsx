@@ -94,6 +94,7 @@ export default function DocumentTypeDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar tipo de documento" : "Agregar tipo de documento"}
+      recordId={isEdit ? documentTypeId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

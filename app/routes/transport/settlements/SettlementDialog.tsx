@@ -351,6 +351,7 @@ export default function SettlementDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar liquidación" : "Nueva liquidación"}
+      recordId={isEdit ? settlementId : null}
       variant="dialog"
       visible={visible}
       onHide={onHide}

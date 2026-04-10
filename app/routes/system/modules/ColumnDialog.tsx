@@ -97,6 +97,7 @@ export default function ColumnDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar columna" : "Agregar columna"}
+      recordId={isEdit && columnIndex !== null ? (currentColumns[columnIndex]?.name?.trim() || String(columnIndex)) : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

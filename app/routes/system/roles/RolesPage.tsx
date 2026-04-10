@@ -93,12 +93,16 @@ export default function Roles({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <DpContent title="ROLES">
+    <DpContent
+      title="ROLES"
+      breadcrumbItems={["SISTEMA", "ROLES"]}
+      onCreate={loaderData.companyId ? openAdd : undefined}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={loaderData.companyId ? openAdd : undefined}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading}

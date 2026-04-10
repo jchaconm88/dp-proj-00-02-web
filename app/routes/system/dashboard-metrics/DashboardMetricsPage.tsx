@@ -152,7 +152,7 @@ export default function DashboardMetricsPage() {
   }
 
   return (
-    <DpContent title="MÉTRICAS DASHBOARD">
+    <DpContent title="MÉTRICAS DASHBOARD" breadcrumbItems={["SISTEMA", "MÉTRICAS DASHBOARD"]}>
       <div className="space-y-4 text-sm">
         <p className="text-surface-600 dark:text-surface-400">
           Administración dinámica de <code>metric-definitions</code> y <code>dashboard-card-definitions</code>.

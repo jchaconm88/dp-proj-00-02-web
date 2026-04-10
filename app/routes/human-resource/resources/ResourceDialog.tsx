@@ -172,6 +172,7 @@ export default function ResourceDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar recurso" : "Agregar recurso"}
+      recordId={isEdit ? resourceId : null}
       cancelLabel="Cancelar"
       onCancel={handleHide}
       saveLabel="Guardar"

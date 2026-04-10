@@ -126,6 +126,7 @@ export default function TransportServiceDialog({
     return (
         <DpContentSet
             title={isEdit ? "Editar Servicio de Transporte" : "Agregar Servicio de Transporte"}
+            recordId={isEdit ? serviceId : null}
             cancelLabel="Cancelar"
             onCancel={handleHide}
             saveLabel="Guardar"

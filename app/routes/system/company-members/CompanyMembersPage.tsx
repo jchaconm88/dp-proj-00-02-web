@@ -128,12 +128,16 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
   const handleHide = () => navigate("/system/company-members");
 
   return (
-    <DpContent title="MIEMBROS DE LA EMPRESA">
+    <DpContent
+      title="MIEMBROS DE LA EMPRESA"
+      breadcrumbItems={["SISTEMA", "MIEMBROS DE LA EMPRESA"]}
+      onCreate={loaderData.companyId ? openAdd : undefined}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={loaderData.companyId ? openAdd : undefined}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

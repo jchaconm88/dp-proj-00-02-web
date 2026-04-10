@@ -140,6 +140,7 @@ export default function OrderDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar pedido" : "Agregar pedido"}
+      recordId={isEdit ? orderId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

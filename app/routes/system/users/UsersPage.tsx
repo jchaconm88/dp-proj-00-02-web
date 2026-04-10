@@ -94,7 +94,7 @@ export default function Users({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <DpContent title="USUARIOS">
+    <DpContent title="USUARIOS" breadcrumbItems={["SISTEMA", "USUARIOS"]}>
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}

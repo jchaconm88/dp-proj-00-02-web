@@ -128,6 +128,7 @@ export default function ChargeTypeDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar Tipo de Cobro" : "Agregar Tipo de Cobro"}
+      recordId={isEdit ? chargeTypeId : null}
       cancelLabel="Cancelar"
       onCancel={handleHide}
       saveLabel="Guardar"

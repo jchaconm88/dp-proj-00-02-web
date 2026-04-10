@@ -90,12 +90,16 @@ export default function Counters({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <DpContent title="CONTADORES">
+      <DpContent
+        title="CONTADORES"
+        breadcrumbItems={["SISTEMA", "CONTADORES"]}
+        onCreate={openAdd}
+      >
         <DpContentHeader
           filterValue={filterValue}
           onFilter={handleFilter}
           onLoad={() => revalidator.revalidate()}
-          onCreate={openAdd}
+          showCreateButton={false}
           onDelete={openDeleteConfirm}
           deleteDisabled={selectedCount === 0 || saving}
           loading={isLoading}

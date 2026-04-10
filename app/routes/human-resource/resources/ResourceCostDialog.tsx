@@ -130,6 +130,7 @@ export default function ResourceCostDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar costo" : "Agregar costo"}
+      recordId={isEdit ? costId : null}
       cancelLabel="Cancelar"
       onCancel={handleHide}
       saveLabel="Guardar"

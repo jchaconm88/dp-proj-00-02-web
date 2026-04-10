@@ -35,13 +35,409 @@ html.dark {
   color-scheme: dark;
 }
 
+:root {
+  /* Typography palette */
+  --dp-font-family-base: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --dp-font-family-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --dp-font-size-12: 0.75rem;
+  --dp-font-size-14: 0.875rem;
+  --dp-font-size-16: 1rem;
+
+  /* Color palette (light) */
+  --dp-color-bg: #f5f7fb;
+  --dp-color-surface: #ffffff;
+  --dp-color-surface-elevated: #eef2ff;
+  --dp-color-text: #111827;
+  --dp-color-text-soft: #64748b;
+  --dp-color-border-soft: rgba(15, 23, 42, 0.08);
+  --dp-color-primary: #4f46e5;
+  --dp-color-secondary: #8b5cf6;
+  --dp-color-tertiary: #06b6d4;
+  --dp-menu-text: #64748b;
+  --dp-menu-text-strong: #111827;
+  --dp-table-row-selected-bg: color-mix(in srgb, var(--dp-color-primary) 14%, var(--dp-shell-surface));
+  --dp-table-row-selected-text: var(--dp-color-text);
+  --dp-create-btn-border: color-mix(in srgb, var(--dp-color-secondary) 35%, transparent);
+  --dp-create-btn-bg: color-mix(in srgb, var(--dp-color-secondary) 22%, transparent);
+  --dp-create-btn-text: color-mix(in srgb, var(--dp-color-text) 98%, transparent);
+  --dp-link-accent: color-mix(in srgb, var(--dp-color-secondary) 68%, var(--dp-color-text));
+  --dp-paginator-surface: color-mix(in srgb, var(--dp-color-bg) 84%, #cfd4dc);
+  --dp-contentset-surface: var(--dp-surface-low);
+  --dp-contentset-footer-surface: var(--dp-shell-surface);
+  --dp-content-surface-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+
+  --dp-surface: #f5f7fb;
+  --dp-surface-low: #ffffff;
+  --dp-surface-high: #eef2ff;
+  --dp-on-surface: #111827;
+  --dp-on-surface-soft: #64748b;
+  --dp-outline-soft: rgba(15, 23, 42, 0.08);
+  --dp-primary: #4f46e5;
+  --dp-secondary: #8b5cf6;
+  --dp-tertiary: #06b6d4;
+  --dp-shell-surface: color-mix(in srgb, var(--dp-surface-low) 90%, transparent);
+}
+
+html.dark {
+  /* Color palette (dark) */
+  --dp-color-bg: #0b0e14;
+  --dp-color-surface: #151a23;
+  --dp-color-surface-elevated: #222936;
+  --dp-color-text: #ecedf6;
+  --dp-color-text-soft: #a9abb3;
+  --dp-color-border-soft: rgba(255, 255, 255, 0.08);
+  --dp-color-primary: #97a9ff;
+  --dp-color-secondary: #bf81ff;
+  --dp-color-tertiary: #a1faff;
+  --dp-menu-text: #a9abb3;
+  --dp-menu-text-strong: #ecedf6;
+  --dp-table-row-selected-bg: color-mix(in srgb, var(--dp-color-primary) 22%, var(--dp-shell-surface));
+  --dp-table-row-selected-text: var(--dp-color-text);
+  --dp-create-btn-border: color-mix(in srgb, var(--dp-color-secondary) 40%, transparent);
+  --dp-create-btn-bg: color-mix(in srgb, var(--dp-color-secondary) 26%, transparent);
+  --dp-create-btn-text: color-mix(in srgb, var(--dp-color-text) 98%, transparent);
+  --dp-link-accent: color-mix(in srgb, var(--dp-color-secondary) 72%, var(--dp-color-text));
+  --dp-paginator-surface: color-mix(in srgb, var(--dp-surface-high) 68%, var(--dp-color-bg));
+  --dp-contentset-surface: var(--dp-paginator-surface);
+  --dp-contentset-footer-surface: var(--dp-shell-surface);
+  --dp-content-surface-shadow: 0 1px 3px rgba(0, 0, 0, 0.34);
+
+  --dp-surface: #0b0e14;
+  --dp-surface-low: #151a23;
+  --dp-surface-high: #222936;
+  --dp-on-surface: #ecedf6;
+  --dp-on-surface-soft: #a9abb3;
+  --dp-outline-soft: rgba(255, 255, 255, 0.08);
+  --dp-primary: #97a9ff;
+  --dp-secondary: #bf81ff;
+  --dp-tertiary: #a1faff;
+  --dp-shell-surface: color-mix(in srgb, var(--dp-surface-low) 96%, transparent);
+}
+
 html,
 body {
   @apply bg-zinc-100 text-zinc-900 antialiased;
+  font-family: var(--dp-font-family-base);
+  font-size: var(--dp-font-size-16);
 }
 
 html.dark body {
   @apply bg-navy-900 text-navy-100;
+}
+
+/* PrimeReact components inherit the same typography system */
+.p-component {
+  font-family: var(--dp-font-family-base);
+}
+
+.dp-glass-panel {
+  background: color-mix(in srgb, var(--dp-surface-high) 72%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--dp-outline-soft);
+}
+
+.dp-soft-panel {
+  background: var(--dp-surface-low);
+  border: 1px solid var(--dp-outline-soft);
+}
+
+.dp-neon-glow-primary {
+  box-shadow: 0 0 28px color-mix(in srgb, var(--dp-primary) 24%, transparent);
+}
+
+.dp-neon-glow-tertiary {
+  box-shadow: 0 0 24px color-mix(in srgb, var(--dp-tertiary) 20%, transparent);
+}
+
+.dp-pill-toggle {
+  border-radius: 9999px;
+  border: 1px solid var(--dp-outline-soft);
+  background: color-mix(in srgb, var(--dp-surface-low) 80%, transparent);
+}
+
+.dp-pill-toggle-active {
+  color: var(--dp-primary);
+  background: color-mix(in srgb, var(--dp-primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--dp-primary) 36%, transparent);
+}
+
+.dp-content-title {
+  font-size: clamp(1.2rem, 0.95rem + 0.9vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--dp-on-surface);
+}
+
+.dp-content-subtitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--dp-tertiary) 85%, #ffffff);
+}
+
+.dp-content-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dp-menu-text);
+}
+
+.dp-content-breadcrumb-sep {
+  margin: 0 0.1rem 0 0.2rem;
+  color: color-mix(in srgb, var(--dp-menu-text) 75%, transparent);
+}
+
+.dp-content-breadcrumb-current {
+  color: color-mix(in srgb, var(--dp-tertiary) 92%, #ffffff);
+}
+
+.dp-content-surface {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  border: none;
+  background: var(--dp-shell-surface);
+  box-shadow: var(--dp-content-surface-shadow);
+}
+
+.dp-content-surface::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dp-primary) 13%, transparent) 0%,
+    transparent 42%,
+    color-mix(in srgb, var(--dp-tertiary) 7%, transparent) 100%
+  );
+}
+
+.dp-content-surface::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--dp-secondary) 75%, transparent) 0%,
+    color-mix(in srgb, var(--dp-primary) 45%, transparent) 40%,
+    color-mix(in srgb, var(--dp-tertiary) 80%, transparent) 100%
+  );
+}
+
+.dp-toolbar-input {
+  border-radius: 0.6rem;
+  border: 1px solid var(--dp-outline-soft);
+  background: color-mix(in srgb, var(--dp-color-bg) 78%, #000000 22%);
+  color: var(--dp-on-surface);
+}
+
+.dp-toolbar-input::placeholder {
+  color: color-mix(in srgb, var(--dp-on-surface-soft) 85%, transparent);
+}
+
+.dp-toolbar-input:focus,
+.dp-toolbar-input:focus-visible,
+.p-inputtext.dp-toolbar-input:enabled:focus {
+  border-color: var(--dp-create-btn-border) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp-color-secondary) 55%, transparent) !important;
+  outline: none;
+}
+
+.dp-content-header-shell {
+  border-bottom: 1px solid var(--dp-outline-soft);
+  background: var(--dp-paginator-surface);
+  padding: 0.75rem 0.9rem;
+}
+
+.dp-contentset-shell {
+  position: relative;
+  background: var(--dp-contentset-surface);
+}
+
+.dp-contentset-dialog.p-dialog {
+  overflow: hidden;
+  border: 1px solid var(--dp-outline-soft);
+  background: var(--dp-contentset-surface);
+}
+
+.dp-contentset-dialog .p-dialog-header,
+.dp-contentset-dialog .p-dialog-content {
+  background: var(--dp-contentset-surface);
+}
+
+.dp-contentset-dialog.p-dialog::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--dp-secondary) 75%, transparent) 0%,
+    color-mix(in srgb, var(--dp-primary) 45%, transparent) 40%,
+    color-mix(in srgb, var(--dp-tertiary) 80%, transparent) 100%
+  );
+}
+
+.dp-btn-soft {
+  border-radius: 0.7rem !important;
+  border: 1px solid var(--dp-outline-soft) !important;
+  background: color-mix(in srgb, var(--dp-surface-high) 75%, transparent) !important;
+  color: var(--dp-on-surface-soft) !important;
+}
+
+.dp-btn-soft:hover {
+  color: var(--dp-on-surface) !important;
+}
+
+.dp-btn-neon {
+  border-radius: 0.7rem !important;
+  border: 1px solid var(--dp-create-btn-border) !important;
+  background: var(--dp-create-btn-bg) !important;
+  color: var(--dp-create-btn-text) !important;
+}
+
+.dp-btn-neon:hover {
+  filter: brightness(1.08);
+}
+
+.dp-table-link-button {
+  border: none;
+  background: transparent;
+  color: var(--dp-link-accent);
+  border-radius: 0;
+  padding: 0;
+  font-size: var(--dp-font-size-14);
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.dp-table-link-button:hover {
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+
+.dp-table-shell {
+  position: relative;
+  width: 100%;
+}
+
+.dp-neon-table.p-datatable {
+  display: block;
+  min-height: 0;
+}
+
+.dp-neon-table {
+  width: 100%;
+  border: none;
+  border-radius: 0 0 0.85rem 0.85rem;
+  overflow: hidden;
+  background: var(--dp-shell-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.dp-neon-table .p-datatable-wrapper {
+  background: var(--dp-shell-surface);
+}
+
+.dp-neon-table .p-datatable-thead > tr > th {
+  font-family: var(--dp-font-family-base);
+  background: var(--dp-shell-surface);
+  color: var(--dp-menu-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--dp-on-surface-soft) 14%, transparent);
+  border-top: none;
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+  font-size: var(--dp-font-size-14);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dp-neon-table .p-datatable-tbody > tr {
+  background: var(--dp-shell-surface);
+  color: var(--dp-menu-text);
+}
+
+.dp-neon-table .p-datatable-tbody > tr > td {
+  font-family: var(--dp-font-family-base);
+  border-bottom: 1px solid color-mix(in srgb, var(--dp-on-surface-soft) 12%, transparent);
+  font-size: var(--dp-font-size-14);
+}
+
+.dp-neon-table .p-datatable-thead > tr > th:first-child,
+.dp-neon-table .p-datatable-tbody > tr > td:first-child {
+  padding-left: 0.95rem;
+}
+
+.dp-neon-table .p-datatable-thead > tr > th:last-child,
+.dp-neon-table .p-datatable-tbody > tr > td:last-child {
+  padding-right: 0.95rem;
+}
+
+.dp-neon-table .p-datatable-tbody > tr:hover {
+  background: color-mix(in srgb, var(--dp-primary) 10%, transparent);
+}
+
+.dp-neon-table .p-datatable-tbody > tr.p-highlight {
+  background: var(--dp-table-row-selected-bg);
+  color: var(--dp-table-row-selected-text);
+}
+
+.dp-neon-table .p-datatable-tbody > tr.p-highlight > td {
+  background: transparent;
+}
+
+.dp-neon-table .p-paginator {
+  border-top: 1px solid var(--dp-outline-soft);
+  background: var(--dp-paginator-surface);
+  color: var(--dp-on-surface-soft);
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.dp-neon-table .p-paginator .p-paginator-pages .p-paginator-page,
+.dp-neon-table .p-paginator .p-paginator-first,
+.dp-neon-table .p-paginator .p-paginator-prev,
+.dp-neon-table .p-paginator .p-paginator-next,
+.dp-neon-table .p-paginator .p-paginator-last {
+  min-width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  color: var(--dp-on-surface-soft);
+}
+
+.dp-neon-table .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: color-mix(in srgb, var(--dp-primary) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dp-primary) 42%, transparent);
+  color: var(--dp-on-surface);
+}
+
+.dp-neon-table .p-paginator .p-dropdown {
+  border-radius: 0.5rem;
+  border-color: var(--dp-outline-soft);
+  background: color-mix(in srgb, var(--dp-surface-low) 85%, transparent);
+}
+
+.dp-neon-table .p-paginator .p-paginator-current {
+  font-size: var(--dp-font-size-14);
+  color: var(--dp-on-surface-soft);
 }
 
 /* Layout tipo ngx-admin: sidebar y menú */

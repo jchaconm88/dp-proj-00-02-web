@@ -10,8 +10,8 @@ import ModuleDialog from "./ModuleDialog";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Módulos" },
-    { name: "description", content: "Mantenimiento de módulos del sistema" },
+    { title: "Mรณdulos" },
+    { name: "description", content: "Mantenimiento de mรณdulos del sistema" },
   ];
 }
 
@@ -26,8 +26,8 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
 }
 
 const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Colección", column: "id", order: 1, display: true, filter: true },
-  { header: "Descripción", column: "description", order: 2, display: true, filter: true },
+  { header: "Colecciรณn", column: "id", order: 1, display: true, filter: true },
+  { header: "Descripciรณn", column: "description", order: 2, display: true, filter: true },
 ];
 
 export default function Modules({ loaderData }: Route.ComponentProps) {
@@ -43,7 +43,7 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Loading unificado: navegación entre rutas + revalidaciones
+  // Loading unificado: navegaciรณn entre rutas + revalidaciones
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
 
   const handleFilter = (value: string) => {
@@ -93,16 +93,20 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <DpContent title="MÓDULOS">
+    <DpContent
+      title="Mร�DULOS"
+      breadcrumbItems={["SISTEMA", "Mร�DULOS"]}
+      onCreate={loaderData.companyId ? openAdd : undefined}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={loaderData.companyId ? openAdd : undefined}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading}
-        filterPlaceholder="Filtrar por colección o descripción..."
+        filterPlaceholder="Filtrar por colecciรณn o descripciรณn..."
       />
 
       {error && (
@@ -113,11 +117,11 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
 
       {!loaderData.companyId && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          Selecciona una empresa en el encabezado para ver y gestionar módulos de esa empresa.
+          Selecciona una empresa en el encabezado para ver y gestionar mรณdulos de esa empresa.
         </div>
       )}
 
-      {/* data prop: modo controlado - se actualiza automáticamente con cada revalidación */}
+      {/* data prop: modo controlado - se actualiza automรกticamente con cada revalidaciรณn */}
       <DpTable<ModuleRecord>
         ref={tableRef}
         data={loaderData.modules}
@@ -128,8 +132,8 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
         onEdit={openEdit}
         onSelectionChange={(rows) => setSelectedCount(rows.length)}
         showFilterInHeader={false}
-        filterPlaceholder="Filtrar por colección o descripción..."
-        emptyMessage='No hay módulos en la colección "modules".'
+        filterPlaceholder="Filtrar por colecciรณn o descripciรณn..."
+        emptyMessage='No hay mรณdulos en la colecciรณn "modules".'
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
@@ -151,10 +155,10 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}
         onHide={closeDeleteConfirm}
-        title="Eliminar módulos"
+        title="Eliminar mรณdulos"
         message={
           pendingDeleteIds?.length
-            ? `¿Eliminar ${pendingDeleteIds.length} módulo(s)? Esta acción no se puede deshacer.`
+            ? `ยฟEliminar ${pendingDeleteIds.length} mรณdulo(s)? Esta acciรณn no se puede deshacer.`
             : ""
         }
         confirmLabel="Eliminar"

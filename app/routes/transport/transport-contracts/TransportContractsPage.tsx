@@ -93,12 +93,16 @@ export default function TransportContractsPage({ loaderData }: Route.ComponentPr
   const handleHide = () => navigate("/transport/transport-contracts");
 
   return (
-    <DpContent title="CONTRATOS DE TRANSPORTE">
+    <DpContent
+      title="CONTRATOS DE TRANSPORTE"
+      breadcrumbItems={["TRANSPORTE", "CONTRATOS DE TRANSPORTE"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

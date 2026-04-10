@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { getActiveSequenceByEntity, type SequenceRecord } from "~/features/system/sequences";
 
-const labelClass = "font-medium text-zinc-700 dark:text-zinc-300";
+const labelClass = "font-medium text-[var(--dp-menu-text)]";
 const controlClass = "w-full";
 
 export interface DpCodeInputProps {

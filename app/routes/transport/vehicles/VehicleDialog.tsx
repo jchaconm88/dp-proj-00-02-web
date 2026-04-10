@@ -115,6 +115,7 @@ export default function VehicleDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar vehículo" : "Agregar vehículo"}
+      recordId={isEdit ? vehicleId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

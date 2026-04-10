@@ -135,6 +135,7 @@ export default function RouteDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar ruta" : "Agregar ruta"}
+      recordId={isEdit ? routeId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

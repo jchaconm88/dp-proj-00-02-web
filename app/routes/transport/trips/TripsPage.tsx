@@ -40,6 +40,20 @@ type TripRow = TripRecord & {
   clientDisplay?: string;
 };
 
+function scheduledStartToTime(value: string): number {
+  const s = String(value ?? "").trim();
+  if (!s) return Number.NEGATIVE_INFINITY;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (dateOnly) {
+    const y = Number(dateOnly[1]);
+    const m = Number(dateOnly[2]);
+    const d = Number(dateOnly[3]);
+    return new Date(y, m - 1, d).getTime();
+  }
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
+}
+
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Código", column: "code", order: 1, display: true, filter: true },
   { header: "Ruta", column: "routeDisplay", order: 2, display: true, filter: true, sort: true },
@@ -73,14 +87,16 @@ const TABLE_DEF: DpTableDefColumn[] = [
 
 export async function clientLoader() {
   const { items } = await getTrips();
+  const rows = items.map((t) => ({
+    ...t,
+    routeDisplay: (t.route || t.routeId || "—").trim(),
+    transportServiceDisplay: (t.transportService || t.transportServiceId || "—").trim(),
+    clientDisplay: (t.client || t.clientId || "—").trim(),
+    vehicle: (t.vehicle || t.vehicleId || "—").trim(),
+  }));
+  rows.sort((a, b) => scheduledStartToTime(b.scheduledStart) - scheduledStartToTime(a.scheduledStart));
   return {
-    items: items.map((t) => ({
-      ...t,
-      routeDisplay: (t.route || t.routeId || "—").trim(),
-      transportServiceDisplay: (t.transportService || t.transportServiceId || "—").trim(),
-      clientDisplay: (t.client || t.clientId || "—").trim(),
-      vehicle: (t.vehicle || t.vehicleId || "—").trim(),
-    })),
+    items: rows,
   };
 }
 
@@ -225,10 +241,14 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/transport/trips");
 
   return (
-    <DpContent title="VIAJES">
+    <DpContent
+      title="VIAJES"
+      breadcrumbItems={["TRANSPORTE", "VIAJES"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

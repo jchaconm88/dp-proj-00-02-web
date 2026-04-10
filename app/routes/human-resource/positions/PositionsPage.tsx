@@ -67,12 +67,16 @@ export default function PositionsPage({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <DpContent title="CARGOS">
+    <DpContent
+      title="CARGOS"
+      breadcrumbItems={["RECURSOS HUMANOS", "CARGOS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={handleRefresh}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || isLoading}
         loading={isLoading}

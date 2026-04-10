@@ -101,6 +101,7 @@ export default function RolePermissionDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar permisos del módulo" : "Agregar permisos por módulo"}
+      recordId={isEdit ? editModuleId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

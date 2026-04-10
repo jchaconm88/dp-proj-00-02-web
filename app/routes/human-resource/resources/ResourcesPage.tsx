@@ -94,12 +94,16 @@ export default function ResourcesPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/human-resource/resources");
 
   return (
-    <DpContent title="RECURSOS EXTERNOS">
+    <DpContent
+      title="RECURSOS EXTERNOS"
+      breadcrumbItems={["RECURSOS HUMANOS", "RECURSOS EXTERNOS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

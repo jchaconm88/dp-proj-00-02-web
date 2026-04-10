@@ -156,6 +156,7 @@ export default function StopDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar parada" : "Agregar parada"}
+      recordId={isEdit ? stopId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

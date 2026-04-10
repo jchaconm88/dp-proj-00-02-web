@@ -302,6 +302,7 @@ export default function ReportDefinitionDialog({
   return (
     <DpContentSet
       title={title}
+      recordId={editing ? editing.id : null}
       variant="dialog"
       visible={visible}
       onHide={onHide}

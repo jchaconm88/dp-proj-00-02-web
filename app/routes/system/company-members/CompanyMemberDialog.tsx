@@ -134,6 +134,7 @@ export default function CompanyMemberDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar miembro" : "Agregar miembro"}
+      recordId={isEdit ? (membership?.uid ?? null) : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

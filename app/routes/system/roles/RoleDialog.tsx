@@ -83,6 +83,7 @@ export default function RoleDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar rol" : "Agregar rol"}
+      recordId={isEdit ? roleId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

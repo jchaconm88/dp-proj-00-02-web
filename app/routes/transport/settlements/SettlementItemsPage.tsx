@@ -186,12 +186,13 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
   return (
     <DpContentInfo
       title={settlement ? `Ítems: ${settlement.code}` : "Ítems de liquidación"}
+      breadcrumbItems={["TRANSPORTE", "LIQUIDACIONES", "ÍTEMS"]}
       backLabel="Volver a liquidaciones"
       onBack={onBack}
+      onCreate={openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

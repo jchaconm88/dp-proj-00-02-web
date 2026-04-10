@@ -195,6 +195,7 @@ export default function ClientDialog({
     return (
         <DpContentSet
             title={isEdit ? "Editar cliente" : "Agregar cliente"}
+            recordId={isEdit ? clientId : null}
             cancelLabel="Cancelar"
             onCancel={handleHide}
             saveLabel="Guardar"

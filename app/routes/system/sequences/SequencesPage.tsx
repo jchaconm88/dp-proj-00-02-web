@@ -104,12 +104,16 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <DpContent title="SECUENCIAS">
+      <DpContent
+        title="SECUENCIAS"
+        breadcrumbItems={["SISTEMA", "SECUENCIAS"]}
+        onCreate={openAdd}
+      >
         <DpContentHeader
           filterValue={filterValue}
           onFilter={handleFilter}
           onLoad={() => revalidator.revalidate()}
-          onCreate={openAdd}
+          showCreateButton={false}
           onDelete={openDeleteConfirm}
           deleteDisabled={selectedCount === 0 || saving}
           loading={isLoading}

@@ -140,7 +140,7 @@ export default function BillingPage(_props: Route.ComponentProps) {
   }, [activeCompanyId, companies]);
 
   return (
-    <DpContent title="CUENTA Y FACTURACIÓN">
+    <DpContent title="CUENTA Y FACTURACIÓN" breadcrumbItems={["SISTEMA", "CUENTA Y FACTURACIÓN"]}>
       <div className="flex flex-col gap-4 text-sm">
         <p className="text-surface-600 dark:text-surface-400">
           Resumen del tenant asociado a la empresa activa. Datos en Firestore:{" "}

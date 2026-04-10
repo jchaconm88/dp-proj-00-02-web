@@ -126,12 +126,13 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   return (
     <DpContentInfo
       title={trip ? `Asignaciones: ${trip.code}` : "Asignaciones del viaje"}
+      breadcrumbItems={["TRANSPORTE", "VIAJES", "ASIGNACIONES"]}
       backLabel="Volver a viajes"
       onBack={onBack}
+      onCreate={openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

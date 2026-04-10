@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 
@@ -29,6 +28,10 @@ export interface DpContentSetProps {
   showError?: boolean;
   errorMessage?: string;
   dismissibleError?: boolean;
+  /** ID de registro para mostrar en edición (p. ej. "SER-4492-2024"). */
+  recordId?: string | null;
+  /** Etiqueta del ID en edición. */
+  recordIdLabel?: string;
   /**
    * Solo en modo diálogo (`visible`): contenido fijo encima del área con scroll.
    * Útil cuando `position: sticky` no aplica (p. ej. por `transform` en el `Dialog` de PrimeReact).
@@ -53,17 +56,18 @@ function FooterButtons({
   saveDisabled: boolean;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       <Button
         type="button"
         label={cancelLabel}
-        severity="secondary"
+        text
         onClick={onCancel}
         disabled={saving}
       />
       <Button
         type="button"
         label={saving ? "Guardando..." : saveLabel}
+        className="dp-btn-neon"
         onClick={onSave}
         disabled={saving || saveDisabled}
         loading={saving}
@@ -90,6 +94,8 @@ export default function DpContentSet({
   showError = false,
   errorMessage = "",
   dismissibleError = true,
+  recordId,
+  recordIdLabel = "ID registro",
   dialogBodyHeader,
   children,
 }: DpContentSetProps) {
@@ -100,6 +106,7 @@ export default function DpContentSet({
   }, [errorMessage]);
 
   const canShowError = showError && !!errorMessage && !errorClosed;
+  const showRecordId = !!recordId && String(recordId).trim().length > 0;
 
   const errorBannerDialog = canShowError && !showLoading && (
     <div className="px-6 pt-3">
@@ -154,14 +161,14 @@ export default function DpContentSet({
   );
 
   const scrollBody = showLoading ? (
-    <div className="py-8 text-center text-zinc-500">{loadingMessage}</div>
+    <div className="py-8 text-center text-[var(--dp-on-surface-soft)]">{loadingMessage}</div>
   ) : (
     children
   );
 
   /** Contenido con error embebido (panel / inline): barra opaca ancho completo */
   const contentElWithInlineError = showLoading ? (
-    <div className="py-8 text-center text-zinc-500">{loadingMessage}</div>
+    <div className="py-8 text-center text-[var(--dp-on-surface-soft)]">{loadingMessage}</div>
   ) : (
     <>
       {errorBannerInline}
@@ -172,14 +179,27 @@ export default function DpContentSet({
   if (visible !== undefined) {
     return (
       <Dialog
-        header={title}
+        header={
+          <div className="space-y-1">
+            <p className="text-xl font-semibold tracking-tight">{title}</p>
+            {showRecordId && (
+              <p className="text-xs text-[var(--dp-menu-text)]">
+                {recordIdLabel}: <span className="font-semibold text-[var(--dp-link-accent)]">{recordId}</span>
+              </p>
+            )}
+          </div>
+        }
         visible={visible}
         onHide={onHide ?? onCancel}
         baseZIndex={dialogBaseZIndex}
         style={{ width: dialogWidth ?? "36rem", maxHeight: "90vh" }}
+        className="dp-contentset-dialog"
         contentStyle={{ overflow: "hidden", display: "flex", flexDirection: "column", padding: 0 }}
         pt={{
-          header: { className: "border-b border-zinc-200 dark:border-zinc-700" },
+          header: {
+            className:
+              "border-b border-white/10 bg-[var(--dp-shell-surface)] text-[var(--dp-on-surface)]",
+          },
         }}
         closable={!saving}
         closeOnEscape={!saving}
@@ -187,17 +207,17 @@ export default function DpContentSet({
         blockScroll
         modal
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="dp-contentset-shell flex min-h-0 flex-1 flex-col overflow-hidden">
           {errorBannerDialog}
           {dialogBodyHeader != null ? (
-            <div className="flex-shrink-0 border-b border-zinc-200 bg-white px-6 pt-3 dark:border-zinc-700 dark:bg-slate-950/40">
+            <div className="flex-shrink-0 border-b border-white/10 bg-[var(--dp-shell-surface)] px-6 pt-3">
               {dialogBodyHeader}
             </div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-4">
             <div className="flex flex-col gap-4">{scrollBody}</div>
           </div>
-          <div className="flex-shrink-0 border-t border-zinc-200 bg-zinc-50/80 px-6 py-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+              <div className="flex-shrink-0 bg-[var(--dp-contentset-footer-surface)] px-6 py-4">
             {footerEl}
           </div>
         </div>
@@ -207,7 +227,7 @@ export default function DpContentSet({
 
   if (variant === "inline") {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="dp-contentset-shell dp-content-surface flex flex-col gap-4 p-4 md:p-5">
         {contentElWithInlineError}
         {footerEl}
       </div>
@@ -215,11 +235,17 @@ export default function DpContentSet({
   }
 
   return (
-    <Panel header={title}>
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div className="space-y-1 px-1">
+        <p className="dp-content-subtitle">Kinetic Observatory</p>
+        <h1 className="dp-content-title">{title}</h1>
+      </div>
+      <section className="dp-content-surface p-4 md:p-5">
+        <div className="dp-contentset-shell relative space-y-4">
         {contentElWithInlineError}
         {footerEl}
-      </div>
-    </Panel>
+        </div>
+      </section>
+    </div>
   );
 }

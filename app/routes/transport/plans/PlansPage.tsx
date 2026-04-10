@@ -131,10 +131,14 @@ export default function PlansPage({ loaderData }: Route.ComponentProps) {
   const handleHide = () => navigate("/transport/plans");
 
   return (
-    <DpContent title="PLANES">
+    <DpContent
+      title="PLANES"
+      breadcrumbItems={["TRANSPORTE", "PLANES"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}

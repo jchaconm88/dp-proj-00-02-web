@@ -585,6 +585,7 @@ export default function TripChargeDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar cargo" : "Agregar cargo"}
+      recordId={isEdit ? chargeId : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

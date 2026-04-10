@@ -124,7 +124,12 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
 
   if (!roleId) {
     return (
-      <DpContentInfo title="ROL" backLabel="Volver a roles" onBack={backToRoles}>
+      <DpContentInfo
+        title="ROL"
+        breadcrumbItems={["SISTEMA", "ROLES", "DETALLE"]}
+        backLabel="Volver a roles"
+        onBack={backToRoles}
+      >
         <p className="text-zinc-500">ID de rol no válido.</p>
       </DpContentInfo>
     );
@@ -132,7 +137,12 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
 
   if (!role) {
     return (
-      <DpContentInfo title="ROL" backLabel="Volver a roles" onBack={backToRoles}>
+      <DpContentInfo
+        title="ROL"
+        breadcrumbItems={["SISTEMA", "ROLES", "DETALLE"]}
+        backLabel="Volver a roles"
+        onBack={backToRoles}
+      >
         <p className="text-zinc-500">Rol no encontrado.</p>
       </DpContentInfo>
     );
@@ -141,6 +151,7 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={role.name || roleId}
+      breadcrumbItems={["SISTEMA", "ROLES", "DETALLE"]}
       backLabel="Volver a roles"
       onBack={backToRoles}
       editLabel="Editar rol"

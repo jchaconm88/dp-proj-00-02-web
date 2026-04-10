@@ -87,12 +87,16 @@ export default function ChargeTypesPage({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <DpContent title="TIPOS DE COBROS">
+    <DpContent
+      title="TIPOS DE COBROS"
+      breadcrumbItems={["TRANSPORTE", "TIPOS DE COBROS"]}
+      onCreate={openAdd}
+    >
       <DpContentHeader
         filterValue={filterValue}
         onFilter={handleFilter}
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
+        showCreateButton={false}
         onDelete={handleDelete}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}

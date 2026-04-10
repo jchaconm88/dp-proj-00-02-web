@@ -104,14 +104,15 @@ export default function LocationsPage({ loaderData }: Route.ComponentProps) {
     return (
         <DpContentInfo
             title={loaderData.client ? `Ubicaciones: ${loaderData.client.commercialName || loaderData.client.code}` : "Ubicaciones"}
+            breadcrumbItems={["MAESTROS", "CLIENTES", "UBICACIONES"]}
             backLabel="Volver a clientes"
             onBack={() => navigate("/master/clients")}
+            onCreate={openAdd}
         >
             <DpContentHeader
                 filterValue={filterValue}
                 onFilter={handleFilter}
                 onLoad={() => revalidator.revalidate()}
-                onCreate={openAdd}
                 onDelete={handleDelete}
                 deleteDisabled={selectedCount === 0 || saving}
                 loading={isLoading || saving}

@@ -153,12 +153,13 @@ export default function StopsPage({ loaderData }: Route.ComponentProps) {
   return (
     <DpContentInfo
       title={route ? `Paradas: ${route.name}` : "Paradas"}
+      breadcrumbItems={["TRANSPORTE", "RUTAS", "PARADAS"]}
       backLabel="Volver a rutas"
       onBack={onBack}
+      onCreate={openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        onCreate={openAdd}
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         filterValue={filterValue}
