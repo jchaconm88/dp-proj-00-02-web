@@ -1,22 +1,30 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { Button } from "primereact/button";
 import {
   getTrips,
+  getTripsByFilters,
   deleteTrip,
   deleteTrips,
   getTripsCascadeDeleteTotals,
   updateTripsStatus,
   type TripCascadeDeleteCounts,
   type TripRecord,
+  type TripQueryFilters,
   type TripStatus,
 } from "~/features/transport/trips";
+import { getVehicles } from "~/features/transport/vehicles";
+import { getTransportServices } from "~/features/transport/transport-services";
 import type { Route } from "./+types/TripsPage";
 import {
   DpContent,
+  DpContentFilter,
   DpContentHeader,
   DpContentHeaderAction,
   DpContentSet,
+  createDateRangeMaxDaysRule,
+  type DpContentFilterRef,
+  type DpFilterDef,
 } from "~/components/DpContent";
 import { DpInput } from "~/components/DpInput";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
@@ -26,6 +34,23 @@ import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/const
 import TripDialog from "./TripDialog";
 
 const TRIP_STATUS_SELECT_OPTIONS = statusToSelectOptions(TRIP_STATUS);
+const TRIP_FILTER_STATUS_OPTIONS = TRIP_STATUS_SELECT_OPTIONS;
+const MAX_TRIP_FILTER_RANGE_DAYS = 60;
+
+type TripFiltersForm = {
+  scheduledRange: { from: string; to: string };
+  status: string[];
+  vehicleIds: string[];
+  transportServiceIds: string[];
+};
+
+function todayYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -85,8 +110,36 @@ const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Costos", column: "tripCosts", order: 12, display: true, filter: false },
 ];
 
-export async function clientLoader() {
-  const { items } = await getTrips();
+export async function clientLoader(args: Route.ClientLoaderArgs) {
+  const requestArg = (args as Route.ClientLoaderArgs & { request?: Request }).request;
+  const url = requestArg ? new URL(requestArg.url) : null;
+  const params = url?.searchParams;
+  const fromParam = String(params?.get("from") ?? "").trim();
+  const toParam = String(params?.get("to") ?? "").trim();
+  const today = todayYmd();
+  const defaultFrom = fromParam || toParam || today;
+  const defaultTo = toParam || fromParam || today;
+  const hasExplicitFilters = Boolean(params && Array.from(params.keys()).length > 0);
+  const filters: TripQueryFilters = {
+    scheduledStartFrom: defaultFrom,
+    scheduledStartTo: defaultTo,
+    status: params?.getAll("status").map((x) => x.trim()).filter(Boolean) as TripStatus[] | undefined,
+    vehicleIds: params?.getAll("vehicleId").map((x) => x.trim()).filter(Boolean) || undefined,
+    transportServiceIds: params?.getAll("transportServiceId").map((x) => x.trim()).filter(Boolean) || undefined,
+  };
+  const hasFilters = Boolean(
+    filters.scheduledStartFrom ||
+      filters.scheduledStartTo ||
+      (filters.status?.length ?? 0) > 0 ||
+      (filters.vehicleIds?.length ?? 0) > 0 ||
+      (filters.transportServiceIds?.length ?? 0) > 0
+  );
+  const [tripResult, vehiclesResult, servicesResult] = await Promise.all([
+    hasFilters ? getTripsByFilters(filters) : getTrips(),
+    getVehicles(),
+    getTransportServices(),
+  ]);
+  const { items } = tripResult;
   const rows = items.map((t) => ({
     ...t,
     routeDisplay: (t.route || t.routeId || "—").trim(),
@@ -97,6 +150,25 @@ export async function clientLoader() {
   rows.sort((a, b) => scheduledStartToTime(b.scheduledStart) - scheduledStartToTime(a.scheduledStart));
   return {
     items: rows,
+    appliedFilters: {
+      scheduledRange: {
+        from: filters.scheduledStartFrom ?? "",
+        to: filters.scheduledStartTo ?? "",
+      },
+      status: filters.status ?? [],
+      vehicleIds: filters.vehicleIds ?? [],
+      transportServiceIds: filters.transportServiceIds ?? [],
+    } satisfies TripFiltersForm,
+    vehicleOptions: vehiclesResult.items
+      .filter((v) => v.active)
+      .map((v) => ({ label: (v.plate || v.id).trim(), value: v.id })),
+    transportServiceOptions: servicesResult.items
+      .filter((s) => s.active)
+      .map((s) => ({
+        label: `${(s.code || "").trim()}${s.code && s.name ? " · " : ""}${(s.name || s.id).trim()}`,
+        value: s.id,
+      })),
+    hasExplicitFilters,
   };
 }
 
@@ -126,12 +198,112 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   /** IDs fijados al abrir el modal (no cambian si el usuario altera la selección en la tabla). */
   const [bulkTripIds, setBulkTripIds] = useState<string[]>([]);
   const [statusChangeSaving, setStatusChangeSaving] = useState(false);
+  const [filters, setFilters] = useState<TripFiltersForm>(loaderData.appliedFilters);
+  const contentFilterRef = useRef<DpContentFilterRef>(null);
+  const defaultTripFilters = useRef<TripFiltersForm>({
+    scheduledRange: { from: todayYmd(), to: todayYmd() },
+    status: [],
+    vehicleIds: [],
+    transportServiceIds: [],
+  }).current;
 
   const dialogVisible = isAdd || !!editId;
+
+  useEffect(() => {
+    setFilters(loaderData.appliedFilters);
+  }, [loaderData.appliedFilters]);
+
+  const vehicleLabelById = new Map(loaderData.vehicleOptions.map((o) => [String(o.value), o.label]));
+  const serviceLabelById = new Map(loaderData.transportServiceOptions.map((o) => [String(o.value), o.label]));
+  const statusLabelById = new Map(TRIP_FILTER_STATUS_OPTIONS.map((o) => [String(o.value), o.label]));
+  const filterDefs = useMemo<DpFilterDef[]>(
+    () => [
+      {
+        name: "scheduledRange",
+        label: "Inicio programado",
+        type: "date-range",
+        colSpan: 2,
+        summary: (value) => {
+          const v = (value as { from?: string; to?: string }) ?? {};
+          const from = String(v.from ?? "").trim();
+          const to = String(v.to ?? "").trim();
+          if (from && to) return `${from} a ${to}`;
+          return from || to;
+        },
+        validators: createDateRangeMaxDaysRule(MAX_TRIP_FILTER_RANGE_DAYS),
+      },
+      {
+        name: "status",
+        label: "Estado",
+        type: "multiselect",
+        options: TRIP_FILTER_STATUS_OPTIONS,
+        placeholder: "— Todos los estados —",
+        filter: true,
+        summary: (value) =>
+          ((value as string[]) ?? [])
+            .map((id) => statusLabelById.get(id) || id)
+            .filter(Boolean)
+            .join(", "),
+      },
+      {
+        name: "vehicleIds",
+        label: "Vehículo",
+        type: "multiselect",
+        options: loaderData.vehicleOptions,
+        placeholder: "— Todos los vehículos —",
+        filter: true,
+        summary: (value) =>
+          ((value as string[]) ?? [])
+            .map((id) => vehicleLabelById.get(id) || id)
+            .filter(Boolean)
+            .join(", "),
+      },
+      {
+        name: "transportServiceIds",
+        label: "Servicio",
+        type: "multiselect",
+        options: loaderData.transportServiceOptions,
+        placeholder: "— Todos los servicios —",
+        filter: true,
+        summary: (value) =>
+          ((value as string[]) ?? [])
+            .map((id) => serviceLabelById.get(id) || id)
+            .filter(Boolean)
+            .join(", "),
+      },
+    ],
+    [
+      loaderData.transportServiceOptions,
+      loaderData.vehicleOptions,
+      serviceLabelById,
+      statusLabelById,
+      vehicleLabelById,
+    ]
+  );
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
+  };
+
+  const applySearchParams = (nextFilters: TripFiltersForm) => {
+    const params = new URLSearchParams();
+    if (nextFilters.scheduledRange.from.trim()) params.set("from", nextFilters.scheduledRange.from.trim());
+    if (nextFilters.scheduledRange.to.trim()) params.set("to", nextFilters.scheduledRange.to.trim());
+    for (const st of nextFilters.status) {
+      const v = String(st).trim();
+      if (v) params.append("status", v);
+    }
+    for (const id of nextFilters.vehicleIds) {
+      const v = String(id).trim();
+      if (v) params.append("vehicleId", v);
+    }
+    for (const id of nextFilters.transportServiceIds) {
+      const v = String(id).trim();
+      if (v) params.append("transportServiceId", v);
+    }
+    const qs = params.toString();
+    navigate(qs ? `/transport/trips?${qs}` : "/transport/trips");
   };
 
   const openAdd = () => navigate("/transport/trips/add");
@@ -244,8 +416,19 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
     <DpContent
       title="VIAJES"
       breadcrumbItems={["TRANSPORTE", "VIAJES"]}
+      onFilterAction={() => contentFilterRef.current?.toggle()}
       onCreate={openAdd}
     >
+      <DpContentFilter
+        ref={contentFilterRef}
+        defaultShow={false}
+        filterDefs={filterDefs}
+        initialValues={defaultTripFilters as Record<string, unknown>}
+        values={filters as Record<string, unknown>}
+        onValuesChange={(next) => setFilters(next as TripFiltersForm)}
+        onSearch={(mapped) => applySearchParams(mapped as TripFiltersForm)}
+        searchLabel="Buscar"
+      />
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         showCreateButton={false}

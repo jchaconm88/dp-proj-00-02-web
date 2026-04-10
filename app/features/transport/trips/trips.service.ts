@@ -1,5 +1,4 @@
 import {
-  getCollection,
   getDocument,
   addDocument,
   updateDocument,
@@ -13,13 +12,14 @@ import {
   deleteDocumentFromSubcollection,
 } from "~/lib/firestore.service";
 import { deleteField } from "firebase/firestore";
-import { where } from "firebase/firestore";
+import { where, type QueryConstraint } from "firebase/firestore";
 import { parseStatus, STOP_STATUS, STOP_TYPE, TRIP_STATUS } from "~/constants/status-options";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type {
   TripRecord,
   TripAddInput,
   TripEditInput,
+  TripQueryFilters,
   TripStatus,
   TripStopRecord,
   TripStopAddInput,
@@ -153,6 +153,48 @@ export async function getTrips(): Promise<{ items: TripRecord[] }> {
     where("accountId", "==", accountId),
   ]);
   return { items: list.map(toTripRecord) };
+}
+
+export async function getTripsByFilters(filters: TripQueryFilters): Promise<{ items: TripRecord[] }> {
+  const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
+  const statuses = (filters.status ?? []).map((x) => String(x).trim()).filter(Boolean) as TripStatus[];
+  const vehicleIds = (filters.vehicleIds ?? []).map((x) => String(x).trim()).filter(Boolean);
+  const transportServiceIds = (filters.transportServiceIds ?? []).map((x) => String(x).trim()).filter(Boolean);
+  const scheduledStartFrom = String(filters.scheduledStartFrom ?? "").trim();
+  const scheduledStartTo = String(filters.scheduledStartTo ?? "").trim();
+  const baseConstraints: QueryConstraint[] = [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ];
+  if (scheduledStartFrom) baseConstraints.push(where("scheduledStart", ">=", scheduledStartFrom));
+  if (scheduledStartTo) baseConstraints.push(where("scheduledStart", "<=", `${scheduledStartTo}T23:59:59`));
+
+  const fetchBy = async (extra: QueryConstraint[] = []) => {
+    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [...baseConstraints, ...extra]);
+    return list.map(toTripRecord);
+  };
+
+  let current = await fetchBy();
+
+  const applyDimension = async (
+    values: string[],
+    buildConstraint: (value: string) => QueryConstraint
+  ) => {
+    if (!values.length) return;
+    const allowedIds = new Set<string>();
+    for (const value of values) {
+      const rows = await fetchBy([buildConstraint(value)]);
+      for (const row of rows) allowedIds.add(row.id);
+    }
+    current = current.filter((row) => allowedIds.has(row.id));
+  };
+
+  await applyDimension(statuses, (value) => where("status", "==", value));
+  await applyDimension(vehicleIds, (value) => where("vehicleId", "==", value));
+  await applyDimension(transportServiceIds, (value) => where("transportServiceId", "==", value));
+
+  return { items: current };
 }
 
 export async function getTripById(id: string): Promise<TripRecord | null> {

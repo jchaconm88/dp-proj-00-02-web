@@ -8,6 +8,12 @@ export interface DpContentInfoProps {
   breadcrumbItems?: string[];
   backLabel: string;
   onBack: () => void;
+  /** Acción del botón superior "Filtrar" */
+  onFilterAction?: () => void;
+  /** Texto del botón superior "Filtrar" */
+  filterLabel?: string;
+  /** Controla visibilidad del botón Filtrar (además de tener handler) */
+  showFilterButton?: boolean;
   /** Acción del botón superior "Nuevo" */
   onCreate?: () => void;
   /** Texto del botón superior "Nuevo" */
@@ -24,6 +30,9 @@ export default function DpContentInfo({
   breadcrumbItems,
   backLabel,
   onBack,
+  onFilterAction,
+  filterLabel = "Filtrar",
+  showFilterButton = true,
   onCreate,
   createLabel = "Nuevo",
   showCreateButton = true,
@@ -32,6 +41,7 @@ export default function DpContentInfo({
   children,
 }: DpContentInfoProps) {
   const canShowEdit = editLabel != null && onEdit != null;
+  const canShowFilter = showFilterButton && onFilterAction != null;
   const canShowCreate = showCreateButton && onCreate != null;
 
   return (
@@ -62,6 +72,15 @@ export default function DpContentInfo({
             className="dp-btn-soft"
             onClick={onBack}
           />
+          {canShowFilter && (
+            <Button
+              type="button"
+              label={filterLabel}
+              icon="pi pi-filter"
+              className="dp-btn-soft"
+              onClick={onFilterAction}
+            />
+          )}
           {canShowEdit && (
             <Button
               type="button"

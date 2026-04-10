@@ -335,6 +335,77 @@ En **`TripsPage`** hay un botón **«Cambiar estado»** que abre un modal (`DpCo
 
 ---
 
+## `DpContentFilter`: definición por esquema (`DpFilterDef[]`)
+
+`DpContentFilter` ahora funciona por **definición declarativa**, similar a `DpTable` con `tableDef`.
+
+### API principal
+
+- `filterDefs`: arreglo de definiciones (`DpFilterDef[]`) con `name`, `label`, `type`, `options`, `summary`, `validators`, etc.
+- `values` / `onValuesChange`: estado controlado del formulario de filtros.
+- `onSearch`: callback al pulsar **Buscar**.
+- `initialValues`: estado inicial para el formulario.
+- `resetToInitialOnClear`: al limpiar, vuelve a `initialValues` (default `true`).
+- `searchOnClear`: ejecuta búsqueda al limpiar (default `true`).
+
+### Ejemplo de uso
+
+```tsx
+import {
+  DpContentFilter,
+  createDateRangeMaxDaysRule,
+  type DpFilterDef,
+} from "~/components/DpContent";
+
+const filterDefs: DpFilterDef[] = [
+  {
+    name: "scheduledRange",
+    label: "Inicio programado",
+    type: "date-range",
+    colSpan: 2,
+    validators: createDateRangeMaxDaysRule(60),
+    summary: (value) => {
+      const v = (value as { from?: string; to?: string }) ?? {};
+      const from = String(v.from ?? "").trim();
+      const to = String(v.to ?? "").trim();
+      return from && to ? `${from} a ${to}` : from || to;
+    },
+  },
+  {
+    name: "status",
+    label: "Estado",
+    type: "multiselect",
+    options: statusOptions,
+    filter: true,
+  },
+];
+
+<DpContentFilter
+  filterDefs={filterDefs}
+  values={filters}
+  onValuesChange={(next) => setFilters(next as TripFiltersForm)}
+  onSearch={(mapped) => applySearchParams(mapped as TripFiltersForm)}
+  initialValues={defaultFilters}
+  defaultShow={false}
+/>;
+```
+
+### Reglas predefinidas disponibles
+
+Importables desde `~/components/DpContent`:
+
+- `createDateRangeMaxDaysRule(maxDays, options?)`
+- `createDateRangeOrderRule(options?)`
+- `createRequiredIfRule(predicate, options?)`
+- `createMaxLengthRule(maxLength, options?)`
+- `createMinLengthRule(minLength, options?)`
+- `createDateNotFutureRule(options?)`
+- `createAtLeastOneSelectedRule(options?)`
+
+> Puedes combinar varias reglas en `validators: [ruleA, ruleB, ...]`.
+
+---
+
 ## Licencia
 
 Privado — uso interno.

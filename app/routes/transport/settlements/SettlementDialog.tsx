@@ -119,8 +119,7 @@ export default function SettlementDialog({
   const [entityType, setEntityType] = useState("");
   const [entityId, setEntityId] = useState("");
   const [entityName, setEntityName] = useState("");
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd] = useState("");
+  const [periodRange, setPeriodRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [currency, setCurrency] = useState("PEN");
   const [status, setStatus] = useState<SettlementFormValues["status"]>("draft");
   const [paymentStatus, setPaymentStatus] =
@@ -164,8 +163,7 @@ export default function SettlementDialog({
       setEntityType(f.entityType);
       setEntityId(f.entityId);
       setEntityName(f.entityName);
-      setPeriodStart(f.periodStart);
-      setPeriodEnd(f.periodEnd);
+      setPeriodRange({ from: f.periodStart, to: f.periodEnd });
       setCurrency(f.currency);
       setStatus(f.status);
       setPaymentStatus(f.paymentStatus);
@@ -194,8 +192,7 @@ export default function SettlementDialog({
           setEntityId(f.entityId);
           setEntityName(f.entityName);
         }
-        setPeriodStart(f.periodStart);
-        setPeriodEnd(f.periodEnd);
+        setPeriodRange({ from: f.periodStart, to: f.periodEnd });
         setCurrency(f.currency);
         setStatus(f.status);
         setPaymentStatus(f.paymentStatus);
@@ -258,8 +255,8 @@ export default function SettlementDialog({
     entityType,
     entityId,
     entityName,
-    periodStart,
-    periodEnd,
+    periodStart: periodRange.from,
+    periodEnd: periodRange.to,
     currency,
     status,
     paymentStatus,
@@ -281,7 +278,7 @@ export default function SettlementDialog({
       setError("Seleccione una entidad en el listado.");
       return;
     }
-    if (!periodStart.trim() || !periodEnd.trim()) {
+    if (!periodRange.from.trim() || !periodRange.to.trim()) {
       setError("Indique inicio y fin del periodo.");
       return;
     }
@@ -402,8 +399,15 @@ export default function SettlementDialog({
             {!settlementId && " No se pueden crear liquidaciones nuevas con esta categoría por ahora."}
           </p>
         )}
-        <DpInput type="date" label="Periodo inicio" value={periodStart} onChange={setPeriodStart} />
-        <DpInput type="date" label="Periodo fin" value={periodEnd} onChange={setPeriodEnd} />
+        <div className="md:col-span-2">
+          <DpInput
+            type="date-range"
+            label="Periodo"
+            value={periodRange}
+            onChange={setPeriodRange}
+            placeholder="Seleccionar rango"
+          />
+        </div>
         <DpInput
           type="select"
           label="Moneda"

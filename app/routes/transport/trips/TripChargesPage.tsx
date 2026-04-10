@@ -15,6 +15,7 @@ import {
   type DpTableDefColumn,
   type DpTableFooterTotals,
 } from "~/components/DpTable";
+import DpTColumn from "~/components/DpTable/DpTColumn";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import {
   TRIP_CHARGE_TYPE,
@@ -183,7 +184,25 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
         showFilterInHeader={false}
         emptyMessage="No hay cargos en este viaje."
         emptyFilterMessage="No se encontraron cargos."
-      />
+      >
+        <DpTColumn<TripChargeTableRow> name="settlement">
+          {(row) => {
+            const settlementLabel = String(row.settlement ?? "").trim();
+            const settlementId = String(row.settlementId ?? "").trim();
+            if (!settlementLabel || !settlementId) return <span>{settlementLabel || "—"}</span>;
+            return (
+              <button
+                type="button"
+                onClick={() => navigate(`/transport/settlements/${encodeURIComponent(settlementId)}/items`)}
+                className="dp-table-link-button"
+                aria-label={`Ver liquidación ${settlementLabel}`}
+              >
+                {settlementLabel}
+              </button>
+            );
+          }}
+        </DpTColumn>
+      </DpTable>
       {dialogVisible && (
         <TripChargeDialog
           visible={dialogVisible}

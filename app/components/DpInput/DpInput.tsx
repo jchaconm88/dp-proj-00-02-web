@@ -1,10 +1,12 @@
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
 import { Checkbox } from "primereact/checkbox";
 import { Calendar } from "primereact/calendar";
 import { Button } from "primereact/button";
 import type { DropdownChangeEvent } from "primereact/dropdown";
+import type { MultiSelectChangeEvent } from "primereact/multiselect";
 import type { ChangeEvent } from "react";
 
 /** Convierte string YYYY-MM-DD a Date (mediodía local para evitar problemas de zona). */
@@ -20,6 +22,26 @@ function formatDateToValue(d: Date | null): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function parseDateRangeValue(value: DpInputDateRangeValue): Date[] | null {
+  const from = parseDateString(value.from);
+  const to = parseDateString(value.to);
+  if (from && to) return [from, to];
+  if (from) return [from];
+  return null;
+}
+
+function formatDateRangeToValue(range: unknown): DpInputDateRangeValue {
+  if (range == null) return { from: "", to: "" };
+  if (range instanceof Date) {
+    return { from: formatDateToValue(range), to: "" };
+  }
+  if (!Array.isArray(range)) return { from: "", to: "" };
+  return {
+    from: formatDateToValue((range[0] as Date | null | undefined) ?? null),
+    to: formatDateToValue((range[1] as Date | null | undefined) ?? null),
+  };
 }
 
 /** Convierte string YYYY-MM-DDTHH:mm o YYYY-MM-DDTHH:mm:ss a Date (local). */
@@ -47,8 +69,10 @@ export type DpInputType =
   | "input-decimal"
   | "number"
   | "select"
+  | "multiselect"
   | "check"
   | "date"
+  | "date-range"
   | "datetime"
   | "textarea";
 
@@ -94,6 +118,17 @@ export interface DpInputSelectProps extends DpInputPropsBase {
   refreshAriaLabel?: string;
 }
 
+export interface DpInputMultiSelectProps extends DpInputPropsBase {
+  type: "multiselect";
+  value: Array<string | number>;
+  onChange: (value: Array<string | number>) => void;
+  options: DpInputOption[] | Record<string, unknown>[];
+  optionLabel?: string;
+  optionValue?: string;
+  placeholder?: string;
+  filter?: boolean;
+}
+
 export interface DpInputCheckProps extends DpInputPropsBase {
   type: "check";
   value: boolean;
@@ -104,6 +139,18 @@ export interface DpInputDateProps extends DpInputPropsBase {
   type: "date";
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+export interface DpInputDateRangeValue {
+  from: string;
+  to: string;
+}
+
+export interface DpInputDateRangeProps extends DpInputPropsBase {
+  type: "date-range";
+  value: DpInputDateRangeValue;
+  onChange: (value: DpInputDateRangeValue) => void;
   placeholder?: string;
 }
 
@@ -118,8 +165,10 @@ export type DpInputProps =
   | DpInputInputProps
   | DpInputInputDecimalProps
   | DpInputSelectProps
+  | DpInputMultiSelectProps
   | DpInputCheckProps
   | DpInputDateProps
+  | DpInputDateRangeProps
   | DpInputDatetimeProps;
 
 function getInputId(name: string | undefined, label: string): string {
@@ -180,6 +229,38 @@ export default function DpInput(props: DpInputProps) {
     );
   }
 
+  if (props.type === "multiselect") {
+    const {
+      value,
+      onChange,
+      options,
+      optionLabel = "label",
+      optionValue = "value",
+      placeholder,
+      filter,
+    } = props;
+    return (
+      <div className={`${wrapperClass} ${className}`.trim()}>
+        <label htmlFor={id} className={labelClass}>
+          {label}
+        </label>
+        <MultiSelect
+          inputId={id}
+          value={value}
+          options={options}
+          optionLabel={optionLabel}
+          optionValue={optionValue}
+          onChange={(e: MultiSelectChangeEvent) => onChange((e.value as Array<string | number>) ?? [])}
+          placeholder={placeholder}
+          filter={filter}
+          disabled={disabled}
+          className="w-full"
+          display="chip"
+        />
+      </div>
+    );
+  }
+
   if (props.type === "date") {
     const { value, onChange, placeholder } = props;
     const dateValue = parseDateString(value);
@@ -193,6 +274,31 @@ export default function DpInput(props: DpInputProps) {
           value={dateValue}
           onChange={(e) => onChange(formatDateToValue(e.value as Date | null))}
           dateFormat="dd/mm/yy"
+          locale="es"
+          placeholder={placeholder}
+          disabled={disabled}
+          showIcon
+          className={controlClass}
+        />
+      </div>
+    );
+  }
+
+  if (props.type === "date-range") {
+    const { value, onChange, placeholder } = props;
+    const rangeValue = parseDateRangeValue(value);
+    return (
+      <div className={`${wrapperClass} ${className}`.trim()}>
+        <label htmlFor={id} className={labelClass}>
+          {label}
+        </label>
+        <Calendar
+          id={id}
+          value={rangeValue}
+          onChange={(e) => onChange(formatDateRangeToValue(e.value))}
+          dateFormat="dd/mm/yy"
+          selectionMode="range"
+          hideOnRangeSelection
           locale="es"
           placeholder={placeholder}
           disabled={disabled}

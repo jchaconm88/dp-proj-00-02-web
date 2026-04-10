@@ -210,6 +210,7 @@ function DpTableInner<T extends DpTableRow>(
   const [internalLoading, setInternalLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [selection, setSelection] = useState<T[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(() => new Date());
   const selectionRef = useRef(selection);
 
   useEffect(() => {
@@ -218,7 +219,10 @@ function DpTableInner<T extends DpTableRow>(
 
   // Modo controlado: sincroniza datos externos â†’ estado interno cuando cambia `data` prop
   useEffect(() => {
-    if (dataProp !== undefined) setRows(dataProp);
+    if (dataProp !== undefined) {
+      setRows(dataProp);
+      setLastUpdatedAt(new Date());
+    }
   }, [dataProp]);
 
   // Loading efectivo: la prop externa tiene precedencia - permite control desde useNavigation/useRevalidator
@@ -260,10 +264,14 @@ function DpTableInner<T extends DpTableRow>(
   }, [rows, filterColumns]);
 
   // API imperativa - sigue funcionando para compatibilidad y casos de uso avanzados
-  const setDatasource = useCallback((newData: T[]) => setRows(newData), []);
+  const setDatasource = useCallback((newData: T[]) => {
+    setRows(newData);
+    setLastUpdatedAt(new Date());
+  }, []);
   const clearDatasource = useCallback(() => {
     setRows([]);
     setSelection([]);
+    setLastUpdatedAt(new Date());
   }, []);
   const setLoading = useCallback((value: boolean) => setInternalLoading(value), []);
   const getSelectedRows = useCallback((): T[] => selectionRef.current, []);
@@ -386,6 +394,12 @@ function DpTableInner<T extends DpTableRow>(
     return applyGlobalFilterRows(rowsForTable, globalFilter, globalFilterFields);
   }, [footerTotals, rowsForTable, globalFilter, globalFilterFields]);
 
+  const visibleRowsCount = useMemo(
+    () => applyGlobalFilterRows(rowsForTable, globalFilter, globalFilterFields).length,
+    [rowsForTable, globalFilter, globalFilterFields]
+  );
+  const updatedAtText = useMemo(() => format(lastUpdatedAt, "dd/MM/yyyy HH:mm"), [lastUpdatedAt]);
+
   const footerSumsByColumn = useMemo(() => {
     if (!footerTotals?.sumColumns?.length) return {} as Record<string, number>;
     const out: Record<string, number> = {};
@@ -444,8 +458,25 @@ function DpTableInner<T extends DpTableRow>(
     [footerTotals, footerLabelColumnKey, footerSumsByColumn]
   );
 
+  const recordsLabelPaddingClass = onEdit ? "pl-36" : "pl-24";
+
   return (
-    <div className="dp-table-shell space-y-4">
+    <div className="dp-table-shell">
+      <div
+        className={`dp-content-header-shell text-sm font-medium text-[var(--dp-on-surface-soft)] ${recordsLabelPaddingClass}`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[var(--dp-outline-soft)] bg-[var(--dp-surface-high)]/70 px-2.5 py-1 text-xs text-[var(--dp-on-surface-soft)]">
+            Se muestran <span className="text-[var(--dp-menu-text)]">{visibleRowsCount}</span> registros
+            {globalFilter.trim() ? (
+              <span className="text-[var(--dp-on-surface-soft)]"> de {rowsForTable.length}</span>
+            ) : null}
+          </span>
+          <span className="rounded-full border border-[var(--dp-outline-soft)] bg-[var(--dp-surface-high)]/70 px-2.5 py-1 text-xs text-[var(--dp-on-surface-soft)]">
+            Actualizado al <span className="text-[var(--dp-menu-text)]">{updatedAtText}</span>
+          </span>
+        </div>
+      </div>
       <DataTable
         className="dp-neon-table"
         value={rowsForTable}

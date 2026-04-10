@@ -8,7 +8,14 @@ import {
   type SettlementItem,
 } from "~/features/transport/settlements";
 import type { Route } from "./+types/SettlementItemsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
+import {
+  DpContentInfo,
+  DpContentHeader,
+  DpContentFilter,
+  createDateRangeMaxDaysRule,
+  type DpContentFilterRef,
+  type DpFilterDef,
+} from "~/components/DpContent";
 import {
   DpTable,
   type DpTableRef,
@@ -37,6 +44,28 @@ type ItemRow = SettlementItem & {
   settledFormatted: string;
   pendingFormatted: string;
 };
+
+type ItemFiltersForm = {
+  route: string;
+  dateRange: { from: string; to: string };
+  chargeType: string;
+};
+
+const MAX_ITEM_FILTER_RANGE_DAYS = 60;
+
+function tripStartToTime(value: string): number {
+  const s = String(value ?? "").trim();
+  if (!s) return Number.POSITIVE_INFINITY;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (dateOnly) {
+    const y = Number(dateOnly[1]);
+    const m = Number(dateOnly[2]);
+    const d = Number(dateOnly[3]);
+    return new Date(y, m - 1, d).getTime();
+  }
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+}
 
 const TABLE_DEF: DpTableDefColumn[] = [
   { header: "Viaje", column: "tripCode", order: 1, display: true, filter: true },
@@ -88,10 +117,11 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<ItemRow>>(null);
+  const contentFilterRef = useRef<DpContentFilterRef>(null);
 
   const tableRows = useMemo<ItemRow[]>(
-    () =>
-      items.map((it) => {
+    () => {
+      const rows = items.map((it) => {
         const typeLabel =
           SETTLEMENT_MOVEMENT_TYPE[it.movement.type]?.label ?? it.movement.type;
         return {
@@ -104,9 +134,82 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
           settledFormatted: formatAmountWithSymbol(it.settledAmount, it.currency),
           pendingFormatted: formatAmountWithSymbol(it.pendingAmount, it.currency),
         };
-      }),
+      });
+      rows.sort((a, b) => tripStartToTime(a.tripStartDate) - tripStartToTime(b.tripStartDate));
+      return rows;
+    },
     [items]
   );
+
+  const defaultFilters = useMemo<ItemFiltersForm>(() => {
+    return {
+      route: "",
+      dateRange: { from: "", to: "" },
+      chargeType: "",
+    };
+  }, []);
+
+  const [filtersDraft, setFiltersDraft] = useState<ItemFiltersForm>(defaultFilters);
+  const [filtersApplied, setFiltersApplied] = useState<ItemFiltersForm>(defaultFilters);
+
+  const chargeTypeOptions = useMemo(
+    () => [
+      { label: "— Todos los tipos de cargo —", value: "" },
+      ...Array.from(new Set(tableRows.map((r) => String(r.chargeType ?? "").trim()).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b))
+        .map((v) => ({ label: v, value: v })),
+    ],
+    [tableRows]
+  );
+
+  const filterDefs = useMemo<DpFilterDef[]>(
+    () => [
+      {
+        name: "route",
+        label: "Ruta",
+        type: "input",
+        placeholder: "Buscar por ruta",
+        summary: (value) => String(value ?? "").trim(),
+      },
+      {
+        name: "dateRange",
+        label: "Fecha",
+        type: "date-range",
+        summary: (value) => {
+          const x = (value as { from?: string; to?: string }) ?? {};
+          const from = String(x.from ?? "").trim();
+          const to = String(x.to ?? "").trim();
+          if (from && to) return `${from} a ${to}`;
+          return from || to;
+        },
+        validators: createDateRangeMaxDaysRule(MAX_ITEM_FILTER_RANGE_DAYS),
+      },
+      {
+        name: "chargeType",
+        label: "Tipo de cargo",
+        type: "select",
+        options: chargeTypeOptions,
+        filter: true,
+        summary: (value) => String(value ?? "").trim(),
+      },
+    ],
+    [chargeTypeOptions]
+  );
+
+  const filteredRows = useMemo(() => {
+    const routeNeedle = filtersApplied.route.trim().toLowerCase();
+    const from = filtersApplied.dateRange.from.trim();
+    const to = filtersApplied.dateRange.to.trim();
+    const chargeType = filtersApplied.chargeType.trim();
+    return tableRows.filter((r) => {
+      const routeOk = !routeNeedle || r.tripRouteDisplay.toLowerCase().includes(routeNeedle);
+      const rowDate = String(r.tripStartDate ?? "").trim().slice(0, 10);
+      const fromOk = !from || (rowDate && rowDate >= from);
+      const toOk = !to || (rowDate && rowDate <= to);
+      const chargeTypeOk = !chargeType || String(r.chargeType ?? "").trim() === chargeType;
+      return routeOk && fromOk && toOk && chargeTypeOk;
+    });
+  }, [tableRows, filtersApplied]);
 
   const footerCurrency = useMemo(() => {
     if (!items.length) return "PEN";
@@ -189,8 +292,18 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
       breadcrumbItems={["TRANSPORTE", "LIQUIDACIONES", "ÍTEMS"]}
       backLabel="Volver a liquidaciones"
       onBack={onBack}
+      onFilterAction={() => contentFilterRef.current?.toggle()}
       onCreate={openAdd}
     >
+      <DpContentFilter
+        ref={contentFilterRef}
+        defaultShow={false}
+        filterDefs={filterDefs}
+        initialValues={defaultFilters as Record<string, unknown>}
+        values={filtersDraft as Record<string, unknown>}
+        onValuesChange={(next) => setFiltersDraft(next as ItemFiltersForm)}
+        onSearch={(mapped) => setFiltersApplied(mapped as ItemFiltersForm)}
+      />
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onDelete={openDeleteConfirm}
@@ -206,7 +319,7 @@ export default function SettlementItemsPage({ loaderData }: Route.ComponentProps
       )}
       <DpTable<ItemRow>
         ref={tableRef}
-        data={tableRows}
+        data={filteredRows}
         loading={isLoading || saving}
         tableDef={TABLE_DEF}
         paginator={false}

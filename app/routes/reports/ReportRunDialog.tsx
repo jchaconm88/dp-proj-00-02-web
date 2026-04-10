@@ -33,8 +33,7 @@ export default function ReportRunDialog({
   onHide,
   onSuccess,
 }: ReportRunDialogProps) {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [outputFormat, setOutputFormat] = useState<ReportOutputFormat>("xlsx");
   const [includeTopBlock, setIncludeTopBlock] = useState(true);
   const [includeFooter, setIncludeFooter] = useState(true);
@@ -61,8 +60,7 @@ export default function ReportRunDialog({
     const first = `${y}-${m}-01`;
     const lastDay = new Date(y, today.getMonth() + 1, 0).getDate();
     const last = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
-    setDateFrom(first);
-    setDateTo(last);
+    setDateRange({ from: first, to: last });
   }, [visible, definition]);
 
   const runSourceMeta = useMemo(
@@ -72,7 +70,9 @@ export default function ReportRunDialog({
 
   const handleRun = async () => {
     if (!definition) return;
-    if (!dateFrom.trim() || !dateTo.trim()) {
+    const dateFrom = dateRange.from.trim();
+    const dateTo = dateRange.to.trim();
+    if (!dateFrom || !dateTo) {
       setError("Indica fecha desde y hasta.");
       return;
     }
@@ -129,8 +129,13 @@ export default function ReportRunDialog({
       dismissibleError
     >
       <div className="flex flex-col gap-3">
-        <DpInput type="date" label="Desde" value={dateFrom} onChange={(v) => setDateFrom(String(v))} />
-        <DpInput type="date" label="Hasta" value={dateTo} onChange={(v) => setDateTo(String(v))} />
+        <DpInput
+          type="date-range"
+          label="Periodo (desde/hasta)"
+          value={dateRange}
+          onChange={(v) => setDateRange(v)}
+          placeholder="Seleccionar rango"
+        />
         <DpInput
           type="select"
           label="Formato de salida"

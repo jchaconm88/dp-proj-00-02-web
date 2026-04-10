@@ -37,6 +37,14 @@ export interface TripAddInput {
 
 export type TripEditInput = Partial<Omit<TripRecord, "id">>;
 
+export interface TripQueryFilters {
+  scheduledStartFrom?: string;
+  scheduledStartTo?: string;
+  status?: TripStatus[];
+  vehicleIds?: string[];
+  transportServiceIds?: string[];
+}
+
 export type TripStopType = "origin" | "pickup" | "delivery" | "checkpoint" | "rest";
 export type TripStopStatus = "pending" | "arrived" | "completed" | "skipped";
 
