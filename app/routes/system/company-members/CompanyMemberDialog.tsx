@@ -1,17 +1,12 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigation } from "react-router";
 import { MultiSelect } from "primereact/multiselect";
-import { Checkbox } from "primereact/checkbox";
-import { Button } from "primereact/button";
 import { DpInput } from "~/components/DpInput";
 import { DpContentSet } from "~/components/DpContent";
-import {
-  COMPANY_ADMIN_ROLE_MARKER,
-  saveCompanyMembership,
-  type CompanyUserRecord,
-} from "~/features/system/company-users";
+import { saveCompanyMembership, type CompanyUserRecord } from "~/features/system/company-users";
 import { resolveAuthUidByEmail } from "~/features/system/auth/resolve-auth-uid.service";
-import type { RoleRecord } from "~/features/system/roles";
+import { getAllRoles, type RoleRecord } from "~/features/system/roles";
+import { getProfiles, type ProfileRecord } from "~/features/system/users";
 import { statusToSelectOptions, type StatusOption } from "~/constants/status-options";
 
 const MEMBER_STATUS_MAP: Record<string, StatusOption> = {
@@ -20,30 +15,74 @@ const MEMBER_STATUS_MAP: Record<string, StatusOption> = {
 };
 const STATUS_OPTS = statusToSelectOptions(MEMBER_STATUS_MAP);
 
+function getErrorCode(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code?: unknown }).code ?? "").trim();
+  }
+  return "";
+}
+
+function describeMemberError(err: unknown, context: string): string {
+  const code = getErrorCode(err);
+  switch (code) {
+    case "permission-denied":
+      return `${context}: no tienes permisos para esta acción en la empresa activa. Verifica que tu membresía esté activa y que tu rol incluya administración de miembros.`;
+    case "unauthenticated":
+      return `${context}: tu sesión expiró. Vuelve a iniciar sesión e inténtalo de nuevo.`;
+    case "not-found":
+      return `${context}: no se encontró el registro solicitado (puede haber sido eliminado).`;
+    case "unavailable":
+      return `${context}: el servicio no está disponible temporalmente. Intenta nuevamente en unos segundos.`;
+    case "deadline-exceeded":
+      return `${context}: la operación tardó demasiado. Revisa tu conexión e inténtalo otra vez.`;
+    case "failed-precondition":
+      return `${context}: hay una precondición que no se cumple (reglas/índice/datos).`;
+    default:
+      if (err instanceof Error && err.message.trim()) {
+        return `${context}: ${err.message}`;
+      }
+      return `${context}: ocurrió un error inesperado.`;
+  }
+}
+
+function normalizeEmail(value?: string): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isMissingOrIdLike(value: string | undefined, membershipUserId: string): boolean {
+  const raw = String(value ?? "").trim();
+  if (!raw) return true;
+  return raw === membershipUserId;
+}
+
+function findProfileForMembership(
+  membership: CompanyUserRecord,
+  profiles: ProfileRecord[]
+): ProfileRecord | null {
+  const byId = new Map(profiles.map((p) => [p.id, p]));
+  const byEmail = new Map(profiles.map((p) => [normalizeEmail(p.email), p]));
+  const usersDocId = String(membership.usersDocId ?? "").trim();
+  const userEmail = normalizeEmail(membership.userEmail);
+  return (
+    (usersDocId ? byId.get(usersDocId) : undefined) ||
+    (userEmail ? byEmail.get(userEmail) : undefined) ||
+    byId.get(membership.userId) ||
+    null
+  );
+}
+
 export interface CompanyMemberDialogProps {
   visible: boolean;
   companyId: string | null;
   membership: CompanyUserRecord | null;
-  roleOptions: RoleRecord[];
   onSuccess?: () => void;
   onHide: () => void;
-}
-
-function stripMarker(ids: string[]): string[] {
-  return ids.filter((id) => id !== COMPANY_ADMIN_ROLE_MARKER);
-}
-
-function mergeRoleIds(realRoleIds: string[], companyAdmin: boolean): string[] {
-  const base = [...new Set(stripMarker(realRoleIds))];
-  if (companyAdmin) return [...base, COMPANY_ADMIN_ROLE_MARKER];
-  return base;
 }
 
 export default function CompanyMemberDialog({
   visible,
   companyId,
   membership,
-  roleOptions,
   onSuccess,
   onHide,
 }: CompanyMemberDialogProps) {
@@ -51,51 +90,159 @@ export default function CompanyMemberDialog({
   const navigation = useNavigation();
   const isNavigating = navigation.state !== "idle";
 
-  const [email, setEmail] = useState("");
-  const [resolvedUid, setResolvedUid] = useState("");
+  const [selectedUserDocId, setSelectedUserDocId] = useState("");
+  const [users, setUsers] = useState<ProfileRecord[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [companyAdmin, setCompanyAdmin] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive">("active");
-  const [resolving, setResolving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedUser = useMemo(
+    () => users.find((u) => u.id === selectedUserDocId) ?? null,
+    [users, selectedUserDocId]
+  );
+  const editMembershipProfile = useMemo(() => {
+    if (!isEdit || !membership) return null;
+    return findProfileForMembership(membership, users);
+  }, [isEdit, membership, users]);
+  const editUserLabel = useMemo(() => {
+    if (!isEdit || !membership) return "";
+    return (
+      editMembershipProfile?.displayName?.trim() ||
+      editMembershipProfile?.email?.trim() ||
+      membership.user?.trim() ||
+      membership.userDisplayName?.trim() ||
+      membership.userEmail?.trim() ||
+      membership.usersDocId?.trim() ||
+      membership.userId
+    );
+  }, [isEdit, membership, editMembershipProfile]);
+  const userSelectOptions = useMemo(
+    () =>
+      users.map((u) => ({
+        label: (u.displayName?.trim() || u.email || u.id).trim(),
+        value: u.id,
+      })),
+    [users]
+  );
 
   useEffect(() => {
     if (!visible) return;
     setError(null);
     if (membership) {
-      setEmail("");
-      setResolvedUid(membership.uid);
-      setRoleIds(stripMarker(membership.roleIds));
-      setCompanyAdmin(membership.roleIds.includes(COMPANY_ADMIN_ROLE_MARKER));
+      setSelectedUserDocId(membership.usersDocId ?? "");
+      setRoleIds(membership.roleIds ?? []);
       setStatus(membership.status);
       return;
     }
-    setEmail("");
-    setResolvedUid("");
+    setSelectedUserDocId("");
     setRoleIds([]);
-    setCompanyAdmin(false);
     setStatus("active");
   }, [visible, membership]);
 
-  const resolveUid = async () => {
-    const em = email.trim().toLowerCase();
-    if (!em) {
-      setError("Introduce un email.");
-      return;
-    }
-    setResolving(true);
+  useEffect(() => {
+    if (!visible || !companyId) return;
+    let cancelled = false;
+    setRolesLoading(true);
+    getAllRoles(companyId)
+      .then((rows) => {
+        if (!cancelled) setRoles(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRoles([]);
+          setError(describeMemberError(err, "No se pudieron cargar los roles"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRolesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, companyId]);
+
+  const loadUsers = async () => {
+    if (usersLoading) return;
+    setUsersLoading(true);
     setError(null);
     try {
-      const r = await resolveAuthUidByEmail(em);
-      setResolvedUid(r.uid);
+      const { items } = await getProfiles();
+      setUsers(items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo resolver el email.");
-      setResolvedUid("");
+      setError(describeMemberError(err, "No se pudo cargar la lista de usuarios"));
     } finally {
-      setResolving(false);
+      setUsersLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!visible) return;
+    if (isEdit) return;
+    if (users.length > 0) return;
+    void loadUsers();
+  }, [visible, users.length, isEdit]);
+
+  const resolveAuthUidForSave = async (): Promise<{
+    userId: string;
+    user?: string;
+    usersDocId?: string;
+    userEmail?: string;
+    userDisplayName?: string;
+  }> => {
+    if (isEdit && membership) {
+      let profile = editMembershipProfile;
+      const shouldRepairDenorm =
+        isMissingOrIdLike(membership.user, membership.userId) ||
+        isMissingOrIdLike(membership.userDisplayName, membership.userId) ||
+        isMissingOrIdLike(membership.userEmail, membership.userId) ||
+        !String(membership.usersDocId ?? "").trim();
+
+      if (!profile && shouldRepairDenorm) {
+        const { items } = await getProfiles();
+        profile = findProfileForMembership(membership, items);
+      }
+
+      const fallbackUser =
+        profile?.displayName?.trim() ||
+        profile?.email?.trim().toLowerCase() ||
+        membership.user?.trim() ||
+        membership.userDisplayName?.trim() ||
+        membership.userEmail?.trim() ||
+        membership.usersDocId?.trim() ||
+        membership.userId;
+
+      return {
+        userId: membership.userId,
+        user: fallbackUser,
+        usersDocId: profile?.id ?? membership.usersDocId,
+        userEmail: profile?.email?.trim().toLowerCase() || membership.userEmail,
+        userDisplayName: profile?.displayName?.trim() || membership.userDisplayName,
+      };
+    }
+    if (!selectedUser) {
+      throw new Error("Selecciona un usuario existente.");
+    }
+    if (!selectedUser.email.trim()) {
+      throw new Error("El usuario seleccionado no tiene email.");
+    }
+    const email = selectedUser.email.trim().toLowerCase();
+    const displayName = selectedUser.displayName?.trim() || undefined;
+    const usersDocId = selectedUser.id.trim() || undefined;
+    const resolved = await resolveAuthUidByEmail(email);
+    return {
+      userId: resolved.uid,
+      user: displayName || email,
+      usersDocId,
+      userEmail: email,
+      userDisplayName: displayName,
+    };
+  };
+
+  const roleNameById = new Map(roles.map((r) => [r.id, r.name || r.id]));
 
   const save = async () => {
     const cid = companyId?.trim();
@@ -103,30 +250,49 @@ export default function CompanyMemberDialog({
       setError("No hay empresa seleccionada.");
       return;
     }
-    const uid = resolvedUid.trim();
-    if (!uid) {
-      setError("Resuelve el UID del usuario (email + botón).");
+    const normalizedRoleIds = [...new Set(roleIds.map((x) => String(x).trim()).filter(Boolean))];
+    if (normalizedRoleIds.length === 0) {
+      setError("Debes asignar al menos un rol.");
       return;
     }
-    setSaving(true);
-    setError(null);
     try {
+      const auth = await resolveAuthUidForSave();
+      if (!auth.userId.trim()) {
+        setError("No se pudo resolver el ID del usuario.");
+        return;
+      }
+      const normalizedUser =
+        auth.user?.trim() ||
+        auth.userDisplayName?.trim() ||
+        auth.userEmail?.trim() ||
+        auth.usersDocId?.trim() ||
+        auth.userId.trim();
+      setSaving(true);
+      setError(null);
       await saveCompanyMembership({
         companyId: cid,
-        uid,
-        roleIds: mergeRoleIds(roleIds, companyAdmin),
+        userId: auth.userId.trim(),
+        user: normalizedUser || undefined,
+        usersDocId: auth.usersDocId,
+        userEmail: auth.userEmail,
+        userDisplayName: auth.userDisplayName,
+        roleIds: normalizedRoleIds,
+        roleNames: normalizedRoleIds
+          .map((id) => roleNameById.get(id) || id)
+          .map((name) => String(name).trim())
+          .filter(Boolean),
         status,
       });
       onSuccess?.();
       onHide();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar.");
+      setError(describeMemberError(err, "No se pudo guardar el miembro"));
     } finally {
       setSaving(false);
     }
   };
 
-  const roleSelectOptions = roleOptions.map((r) => ({
+  const roleSelectOptions = roles.map((r) => ({
     label: r.name || r.id,
     value: r.id,
   }));
@@ -134,45 +300,45 @@ export default function CompanyMemberDialog({
   return (
     <DpContentSet
       title={isEdit ? "Editar miembro" : "Agregar miembro"}
-      recordId={isEdit ? (membership?.uid ?? null) : null}
+      recordId={isEdit ? (membership?.userId ?? null) : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"
       onSave={save}
       saving={saving || isNavigating}
-      saveDisabled={!companyId || !resolvedUid.trim() || isNavigating}
+      saveDisabled={
+        !companyId ||
+        (!isEdit && !selectedUserDocId.trim()) ||
+        roleIds.length === 0 ||
+        rolesLoading ||
+        (!isEdit && usersLoading) ||
+        isNavigating
+      }
       visible={visible}
       onHide={onHide}
       showError={!!error}
       errorMessage={error ?? ""}
     >
       {!isEdit && (
-        <div className="flex flex-col gap-2">
+        <div className="space-y-2">
           <DpInput
-            type="input"
-            label="Email (Authentication)"
-            name="email"
-            value={email}
-            onChange={setEmail}
-            placeholder="usuario@dominio.com"
-          />
-          <Button
-            type="button"
-            label={resolving ? "Resolviendo…" : "Resolver UID"}
-            onClick={() => void resolveUid()}
-            disabled={resolving || saving}
-            className="w-fit"
+            type="select"
+            label="Usuario"
+            name="usersDocId"
+            value={selectedUserDocId}
+            onChange={(v) => setSelectedUserDocId(String(v))}
+            options={userSelectOptions}
+            placeholder={usersLoading ? "Cargando usuarios..." : "Seleccionar usuario existente"}
+            filter
+            onRefresh={() => void loadUsers()}
+            refreshing={usersLoading}
+            refreshAriaLabel="Recargar usuarios"
           />
         </div>
       )}
-      {resolvedUid && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          UID: <code className="rounded bg-zinc-100 px-1 dark:bg-navy-800">{resolvedUid}</code>
-        </p>
-      )}
       {isEdit && (
-        <p className="text-sm text-zinc-500">
-          El UID no se puede cambiar desde aquí. Elimina la membresía y vuelve a agregar si hace falta.
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Usuario: <strong>{editUserLabel}</strong>
         </p>
       )}
 
@@ -190,18 +356,8 @@ export default function CompanyMemberDialog({
           display="chip"
           className="w-full"
           filter
+          disabled={rolesLoading}
         />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Checkbox
-          inputId="co-admin"
-          checked={companyAdmin}
-          onChange={(e) => setCompanyAdmin(e.checked === true)}
-        />
-        <label htmlFor="co-admin" className="cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
-          Administrador de empresa (puede gestionar miembros de esta empresa)
-        </label>
       </div>
 
       <DpInput
@@ -209,7 +365,7 @@ export default function CompanyMemberDialog({
         label="Estado"
         name="status"
         value={status}
-        onChange={(v) => setStatus(v as "active" | "inactive")}
+        onChange={(v) => setStatus(String(v) as "active" | "inactive")}
         options={STATUS_OPTS}
       />
     </DpContentSet>

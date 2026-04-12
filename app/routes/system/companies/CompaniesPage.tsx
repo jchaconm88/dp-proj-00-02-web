@@ -3,10 +3,11 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getCompanies, deleteCompany, type CompanyRecord } from "~/features/system/companies";
 import type { Route } from "./+types/CompaniesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import CompanyDialog from "./CompanyDialog";
 import type { StatusOption } from "~/constants/status-options";
+import { useTheme } from "~/lib/theme-context";
 
 const COMPANY_STATUS_MAP: Record<string, StatusOption> = {
   active: { label: "Activo", severity: "success" },
@@ -26,13 +27,15 @@ export async function clientLoader() {
 }
 
 const TABLE_DEF: DpTableDefColumn[] = [
+  { header: "Logo", column: "logoUrl", order: 0, display: true, filter: false },
   { header: "Nombre", column: "name", order: 1, display: true, filter: true },
   { header: "Código", column: "code", order: 2, display: true, filter: true },
   { header: "RUC / ID fiscal", column: "taxId", order: 3, display: true, filter: true },
+  { header: "Miembros", column: "companyMembers", order: 4, display: true, filter: false },
   {
     header: "Estado",
     column: "status",
-    order: 4,
+    order: 5,
     display: true,
     filter: true,
     type: "status",
@@ -41,6 +44,7 @@ const TABLE_DEF: DpTableDefColumn[] = [
 ];
 
 export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -133,7 +137,40 @@ export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
         showFilterInHeader={false}
         emptyMessage="No hay empresas registradas."
         emptyFilterMessage="No hay resultados para el filtro."
-      />
+      >
+        <DpTColumn name="logoUrl">
+          {(row: CompanyRecord) => {
+            const logo =
+              theme === "dark"
+                ? row.logoDarkUrl || row.logoLightUrl || row.logoUrl
+                : row.logoLightUrl || row.logoDarkUrl || row.logoUrl;
+            return logo ? (
+              <div className="w-full max-w-[180px] rounded-md border border-slate-200 bg-white/70 p-1 dark:border-slate-700 dark:bg-slate-900/30">
+                <img
+                  src={logo}
+                  alt={`Logo de ${row.name}`}
+                  className="h-14 w-full rounded object-contain"
+                />
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 dark:text-slate-400">Sin logo</span>
+            );
+          }}
+        </DpTColumn>
+        <DpTColumn name="companyMembers">
+          {(row: CompanyRecord) => (
+            <button
+              type="button"
+              onClick={() => navigate(`/system/companies/${encodeURIComponent(row.id)}/company-members`)}
+              className="p-button p-button-text p-button-rounded p-button-icon-only"
+              aria-label="Miembros por empresa"
+              title="Miembros por empresa"
+            >
+              <i className="pi pi-users" />
+            </button>
+          )}
+        </DpTColumn>
+      </DpTable>
 
       <CompanyDialog
         visible={dialogVisible}

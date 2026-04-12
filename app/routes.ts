@@ -19,9 +19,9 @@ export default [
       route("add", "routes/system/companies/CompanyAdd.tsx"),
       route("edit/:id", "routes/system/companies/CompanyEdit.tsx"),
     ]),
-    route("system/company-members", "routes/system/company-members/CompanyMembersPage.tsx", [
+    route("system/companies/:id/company-members", "routes/system/company-members/CompanyMembersPage.tsx", [
       route("add", "routes/system/company-members/CompanyMemberAdd.tsx"),
-      route("edit/:id", "routes/system/company-members/CompanyMemberEdit.tsx"),
+      route("edit/:membershipId", "routes/system/company-members/CompanyMemberEdit.tsx"),
     ]),
     route("system/users", "routes/system/users/UsersPage.tsx"),
     route("system/roles", "routes/system/roles/RolesPage.tsx"),

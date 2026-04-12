@@ -46,15 +46,48 @@ function primeIconClass(name?: string, className = "h-5 w-5 shrink-0"): string {
 
 const HEADER_HEIGHT = 48;
 
+function collectRolePermissionCodes(role: RoleRecord): string[] {
+  const out = new Set<string>();
+
+  // Legacy array: ["module", "module:view", "*", ...]
+  for (const p of role.permission ?? []) {
+    const code = String(p ?? "").trim();
+    if (code) out.add(code);
+  }
+
+  // Nuevo mapeo: permissions = { module: ["view","edit","*"], "*": ["*"] }
+  const mapped = role.permissions ?? {};
+  for (const [moduleKey, actions] of Object.entries(mapped)) {
+    const moduleName = String(moduleKey ?? "").trim();
+    if (!moduleName || !Array.isArray(actions)) continue;
+    for (const actionRaw of actions) {
+      const action = String(actionRaw ?? "").trim();
+      if (!action) continue;
+      if (moduleName === "*" && action === "*") {
+        out.add("*");
+        continue;
+      }
+      if (action === "*") {
+        out.add(`*:${moduleName}`);
+        continue;
+      }
+      out.add(`${moduleName}:${action}`);
+    }
+  }
+
+  return Array.from(out);
+}
+
 /**
  * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
  * Fuente de roleIds: solo `company-users` de la empresa activa.
- * Slug `"admin"` en esos ids: acceso total (admin plataforma o datos migrados desde perfil legacy).
+ * No depende del nombre del rol; usa códigos definidos en la colección `roles`.
  */
-function getEffectivePermissions(membershipRoleIds: string[], roles: RoleRecord[]): string[] {
-  const platform = membershipRoleIds.map((r) => String(r).toLowerCase());
-  if (platform.includes("admin")) return ["*"];
-
+function getEffectivePermissions(
+  membershipRoleIds: string[],
+  membershipRoleNames: string[],
+  roles: RoleRecord[]
+): string[] {
   const roleMap = new Map(roles.map((r) => [r.id, r]));
   const byName = new Map(roles.map((r) => [r.name.toLowerCase(), r]));
   let hasWildcard = false;
@@ -62,17 +95,18 @@ function getEffectivePermissions(membershipRoleIds: string[], roles: RoleRecord[
   for (const rid of membershipRoleIds) {
     if (rid === COMPANY_ADMIN_ROLE_MARKER) continue;
     const role = roleMap.get(rid) ?? byName.get(rid.toLowerCase());
-    const perms = role?.permission ?? [];
+    const perms = role ? collectRolePermissionCodes(role) : [];
+    if (perms.includes("*")) hasWildcard = true;
+    perms.forEach((p) => set.add(p));
+  }
+  for (const roleName of membershipRoleNames) {
+    const role = byName.get(String(roleName).toLowerCase());
+    const perms = role ? collectRolePermissionCodes(role) : [];
     if (perms.includes("*")) hasWildcard = true;
     perms.forEach((p) => set.add(p));
   }
   if (hasWildcard) return ["*"];
-  const resolved = Array.from(set);
-  if (resolved.length === 0) {
-    const mem = membershipRoleIds.map((r) => String(r).toLowerCase());
-    if (mem.includes("admin")) return ["*"];
-  }
-  return resolved;
+  return Array.from(set);
 }
 
 function canShowItem(permission: string[] | undefined, effectivePermissions: string[]): boolean {
@@ -128,11 +162,18 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
-  const membershipRoleIds = useMemo(() => {
+  const activeMembership = useMemo(() => {
     if (!activeCompanyId) return [];
-    const m = memberships.find((x) => x.companyId === activeCompanyId && x.status === "active");
-    return m?.roleIds ?? [];
+    return memberships.filter((x) => x.companyId === activeCompanyId && x.status === "active");
   }, [memberships, activeCompanyId]);
+  const membershipRoleIds = useMemo(
+    () => (activeMembership[0]?.roleIds ?? []).map((x) => String(x)),
+    [activeMembership]
+  );
+  const membershipRoleNames = useMemo(
+    () => (activeMembership[0]?.roleNames ?? []).map((x) => String(x)),
+    [activeMembership]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -156,8 +197,8 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   }, [activeCompanyId]);
 
   const effectivePermissions = useMemo(
-    () => getEffectivePermissions(membershipRoleIds, roles),
-    [membershipRoleIds, roles]
+    () => getEffectivePermissions(membershipRoleIds, membershipRoleNames, roles),
+    [membershipRoleIds, membershipRoleNames, roles]
   );
   const filteredMenu = useMemo(
     () => filterMenu(menuData as MenuItemJson[], effectivePermissions),
@@ -176,6 +217,15 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     () => companies.map((c) => ({ name: c.name, code: c.id })),
     [companies]
   );
+  const activeCompany = useMemo(
+    () => companies.find((c) => c.id === activeCompanyId) ?? null,
+    [companies, activeCompanyId]
+  );
+  const activeCompanyLogoUrl =
+    (theme === "dark"
+      ? activeCompany?.logoDarkUrl || activeCompany?.logoLightUrl || activeCompany?.logoUrl
+      : activeCompany?.logoLightUrl || activeCompany?.logoDarkUrl || activeCompany?.logoUrl) ?? "";
+  const activeCompanyName = activeCompany?.name?.trim() || "Empresa";
 
   const toggleExpanded = (title: string) => {
     setExpandedKeys((prev) => {
@@ -275,14 +325,24 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
       >
         <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden py-4">
           {sidebarOpen && (
-            <div className="px-6 pb-3">
+            <div className="px-4 pb-2">
               <Link to="/home" className="group min-w-0">
-                <p className="bg-gradient-to-r from-[var(--dp-primary)] to-[var(--dp-secondary)] bg-clip-text text-3xl font-bold tracking-tight text-transparent">
-                  Neon Zenith
-                </p>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--dp-tertiary)]/80">
-                  System Active
-                </p>
+                <div className="rounded-xl border border-white/10 bg-[var(--dp-surface-high)]/55 p-1">
+                  {activeCompanyLogoUrl ? (
+                    <img
+                      src={activeCompanyLogoUrl}
+                      alt={`Logo de ${activeCompanyName}`}
+                      className="h-20 w-full rounded-md object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-20 items-center justify-center gap-2 rounded-md border border-dashed border-white/20 bg-[var(--dp-surface-low)]/70 px-2">
+                      <i className="pi pi-building text-sm text-[var(--dp-tertiary)]" aria-hidden />
+                      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--dp-menu-text)]">
+                        Logo genérico
+                      </span>
+                    </div>
+                  )}
+                </div>
               </Link>
             </div>
           )}
@@ -290,9 +350,17 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
             <div className="flex justify-center pb-3">
               <Link
                 to="/home"
-                className="rounded-xl border border-white/10 bg-[var(--dp-surface-high)]/60 p-2 text-[var(--dp-tertiary)]"
+                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[var(--dp-surface-high)]/60 text-[var(--dp-tertiary)]"
               >
-                <i className="pi pi-sparkles" aria-hidden />
+                {activeCompanyLogoUrl ? (
+                  <img
+                    src={activeCompanyLogoUrl}
+                    alt={`Logo de ${activeCompanyName}`}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <i className="pi pi-building" aria-hidden />
+                )}
               </Link>
             </div>
           )}

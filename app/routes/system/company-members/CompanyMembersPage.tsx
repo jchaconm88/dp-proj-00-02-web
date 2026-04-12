@@ -1,52 +1,151 @@
 import { useRef, useState, useMemo } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import {
-  COMPANY_ADMIN_ROLE_MARKER,
   deleteCompanyUser,
   getCompanyUsersByCompanyId,
+  updateCompanyUser,
   type CompanyUserRecord,
 } from "~/features/system/company-users";
+import { getCompanyById } from "~/features/system/companies";
 import { getProfiles } from "~/features/system/users";
-import { getAllRoles, type RoleRecord } from "~/features/system/roles";
-import { getActiveCompanyId } from "~/lib/tenant";
+import { getAllRoles } from "~/features/system/roles";
 import type { Route } from "./+types/CompanyMembersPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
+import { DpContentHeader, DpContentInfo } from "~/components/DpContent";
 import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import CompanyMemberDialog from "./CompanyMemberDialog";
-
-type ProfileLite = { email: string; displayName: string };
+import type { StatusOption } from "~/constants/status-options";
 
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Miembros por empresa" },
-    { name: "description", content: "Asignación de usuarios a la empresa activa" },
+    { name: "description", content: "Asignación de usuarios a una empresa" },
   ];
 }
 
 type MemberRow = CompanyUserRecord & { emailLabel: string; rolesLabel: string };
 
-export async function clientLoader() {
-  const companyId = getActiveCompanyId();
-  if (!companyId) {
-    return { companyId: null as string | null, rows: [] as MemberRow[], roles: [] as RoleRecord[] };
-  }
-  const [members, { items: profiles }, roles] = await Promise.all([
-    getCompanyUsersByCompanyId(companyId),
-    getProfiles(),
-    getAllRoles(companyId),
-  ]);
-  const profileById = new Map(profiles.map((p) => [p.id, p]));
-  const roleById = new Map(roles.map((r) => [r.id, r]));
+const MEMBER_STATUS_MAP: Record<string, StatusOption> = {
+  active: { label: "Activo", severity: "success" },
+  inactive: { label: "Inactivo", severity: "secondary" },
+};
 
-  const rows: MemberRow[] = members.map((m) => {
-    const prof = profileById.get(m.uid);
-    const emailLabel = prof?.email || prof?.displayName || m.uid;
-    const realIds = m.roleIds.filter((id) => id !== COMPANY_ADMIN_ROLE_MARKER);
-    const names = realIds.map((id) => roleById.get(id)?.name || id);
-    if (m.roleIds.includes(COMPANY_ADMIN_ROLE_MARKER)) {
-      names.push("Admin empresa");
+function getErrorCode(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code?: unknown }).code ?? "").trim();
+  }
+  return "";
+}
+
+function describeCompanyMembersError(err: unknown, context: string): string {
+  const code = getErrorCode(err);
+  switch (code) {
+    case "permission-denied":
+      return `${context}: no tienes permisos suficientes en la empresa activa para completar esta operación.`;
+    case "unauthenticated":
+      return `${context}: tu sesión expiró. Inicia sesión nuevamente.`;
+    case "not-found":
+      return `${context}: el registro ya no existe.`;
+    case "unavailable":
+      return `${context}: el servicio no está disponible temporalmente.`;
+    default:
+      if (err instanceof Error && err.message.trim()) return `${context}: ${err.message}`;
+      return `${context}: ocurrió un error inesperado.`;
+  }
+}
+
+export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  const companyId = String(params?.id ?? "").trim() || null;
+  if (!companyId) {
+    return {
+      companyId: null as string | null,
+      companyName: "",
+      rows: [] as MemberRow[],
+    };
+  }
+  const [company, members] = await Promise.all([
+    getCompanyById(companyId),
+    getCompanyUsersByCompanyId(companyId),
+  ]);
+  let normalizedMembers = members;
+
+  const missingDenorm = members.filter((m) => {
+    const hasUserId = Boolean(m.userId?.trim());
+    const hasUserValue = Boolean(m.user?.trim() || m.userEmail?.trim() || m.userDisplayName?.trim());
+    const hasUserIdentity = hasUserId && hasUserValue;
+    const hasRoleNames = (m.roleIds?.length ?? 0) === 0 || (m.roleNames?.length ?? 0) > 0;
+    return !hasUserIdentity || !hasRoleNames;
+  });
+
+  if (missingDenorm.length > 0) {
+    const [{ items: profiles }, roles] = await Promise.all([getProfiles(), getAllRoles(companyId)]);
+    const profileById = new Map(profiles.map((p) => [p.id, p]));
+    const profileByEmail = new Map(profiles.map((p) => [p.email.trim().toLowerCase(), p]));
+    const roleById = new Map(roles.map((r) => [r.id, r]));
+
+    const updates: Promise<void>[] = [];
+    normalizedMembers = members.map((m) => {
+      const currentEmail = m.userEmail?.trim().toLowerCase() || "";
+      const prof =
+        profileById.get(m.usersDocId?.trim() || "") ||
+        profileByEmail.get(currentEmail) ||
+        profileById.get(m.userId);
+
+      const computedRoleNames = m.roleIds
+        .map((roleId) => roleById.get(roleId)?.name || roleId)
+        .map((name) => String(name).trim())
+        .filter(Boolean);
+
+      const patch: Partial<Omit<CompanyUserRecord, "id">> = {};
+      if (!m.userId?.trim()) {
+        const inferredUserId = m.id.includes("_") ? m.id.split("_").slice(1).join("_").trim() : "";
+        if (inferredUserId) patch.userId = inferredUserId;
+      }
+      if (!m.usersDocId?.trim() && prof?.id) patch.usersDocId = prof.id;
+      if (!m.userEmail?.trim() && prof?.email) patch.userEmail = prof.email.trim().toLowerCase();
+      if (!m.userDisplayName?.trim() && prof?.displayName) patch.userDisplayName = prof.displayName.trim();
+      if (!m.user?.trim()) {
+        patch.user =
+          prof?.displayName?.trim() ||
+          prof?.email?.trim().toLowerCase() ||
+          m.userDisplayName?.trim() ||
+          m.userEmail?.trim() ||
+          m.usersDocId?.trim() ||
+          m.userId ||
+          undefined;
+      }
+      if ((m.roleIds?.length ?? 0) > 0 && (m.roleNames?.length ?? 0) === 0) {
+        patch.roleNames = computedRoleNames;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        updates.push(updateCompanyUser(m.id, patch));
+      }
+
+      return {
+        ...m,
+        userId: patch.userId ?? m.userId,
+        usersDocId: patch.usersDocId ?? m.usersDocId,
+        userEmail: patch.userEmail ?? m.userEmail,
+        userDisplayName: patch.userDisplayName ?? m.userDisplayName,
+        user: patch.user ?? m.user,
+        roleNames: patch.roleNames ?? m.roleNames,
+      };
+    });
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
+  }
+
+  const rows: MemberRow[] = normalizedMembers.map((m) => {
+    const denormalizedUser = m.user?.trim() || "";
+    const displayName = m.userDisplayName?.trim() || "";
+    const email = m.userEmail?.trim() || "";
+    const emailLabel = denormalizedUser || displayName || email || "Sin usuario denormalizado";
+    const names =
+      m.roleNames?.filter((x) => String(x).trim().length > 0) ??
+      m.roleIds.filter((x) => String(x).trim().length > 0);
     return {
       ...m,
       emailLabel,
@@ -54,14 +153,21 @@ export async function clientLoader() {
     };
   });
 
-  return { companyId, rows, roles };
+  return { companyId, companyName: company?.name ?? "", rows };
 }
 
 const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Usuario / UID", column: "emailLabel", order: 1, display: true, filter: true },
-  { header: "UID", column: "uid", order: 2, display: true, filter: true },
-  { header: "Roles", column: "rolesLabel", order: 3, display: true, filter: true },
-  { header: "Estado", column: "status", order: 4, display: true, filter: true },
+  { header: "Usuario", column: "emailLabel", order: 1, display: true, filter: true },
+  { header: "Roles", column: "rolesLabel", order: 2, display: true, filter: true },
+  {
+    header: "Activo",
+    column: "status",
+    order: 3,
+    display: true,
+    filter: true,
+    type: "status",
+    typeOptions: MEMBER_STATUS_MAP,
+  },
 ];
 
 export default function CompanyMembersPage({ loaderData }: Route.ComponentProps) {
@@ -71,9 +177,11 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
   const tableRef = useRef<DpTableRef<MemberRow>>(null);
 
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
-  const isAdd = !!useMatch("/system/company-members/add");
-  const editMatch = useMatch("/system/company-members/edit/:id");
-  const editId = editMatch?.params.id ? decodeURIComponent(editMatch.params.id) : null;
+  const isAdd = !!useMatch("/system/companies/:id/company-members/add");
+  const editMatch = useMatch("/system/companies/:id/company-members/edit/:membershipId");
+  const editId = editMatch?.params.membershipId
+    ? decodeURIComponent(editMatch.params.membershipId)
+    : null;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,9 +201,13 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate("/system/company-members/add");
+  const basePath = loaderData.companyId
+    ? `/system/companies/${encodeURIComponent(loaderData.companyId)}/company-members`
+    : "/system/companies";
+
+  const openAdd = () => navigate(`${basePath}/add`);
   const openEdit = (row: MemberRow) =>
-    navigate(`/system/company-members/edit/${encodeURIComponent(row.id)}`);
+    navigate(`${basePath}/edit/${encodeURIComponent(row.id)}`);
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -114,23 +226,26 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
       setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar.");
+      setError(describeCompanyMembersError(err, "No se pudieron eliminar los miembros seleccionados"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleSuccess = () => {
-    navigate("/system/company-members");
+    navigate(basePath);
     revalidator.revalidate();
   };
 
-  const handleHide = () => navigate("/system/company-members");
+  const handleHide = () => navigate(basePath);
+  const handleBack = () => navigate("/system/companies");
 
   return (
-    <DpContent
-      title="MIEMBROS DE LA EMPRESA"
-      breadcrumbItems={["SISTEMA", "MIEMBROS DE LA EMPRESA"]}
+    <DpContentInfo
+      title={loaderData.companyName ? `Miembros: ${loaderData.companyName}` : "Miembros por empresa"}
+      breadcrumbItems={["SISTEMA", "EMPRESAS", "MIEMBROS"]}
+      backLabel="Volver a empresas"
+      onBack={handleBack}
       onCreate={loaderData.companyId ? openAdd : undefined}
     >
       <DpContentHeader
@@ -141,7 +256,7 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
         onDelete={openDeleteConfirm}
         deleteDisabled={selectedCount === 0 || saving}
         loading={isLoading || saving}
-        filterPlaceholder="Filtrar por usuario, UID, roles..."
+        filterPlaceholder="Filtrar por usuario y roles..."
       />
 
       {error && (
@@ -152,7 +267,7 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
 
       {!loaderData.companyId && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          Selecciona una empresa en el encabezado para gestionar sus miembros.
+          Selecciona una empresa desde la grilla de empresas para gestionar sus miembros.
         </div>
       )}
 
@@ -174,7 +289,6 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
         visible={dialogVisible}
         companyId={loaderData.companyId}
         membership={isAdd ? null : editingMembership}
-        roleOptions={loaderData.roles}
         onSuccess={handleSuccess}
         onHide={handleHide}
       />
@@ -194,6 +308,6 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
         severity="danger"
         loading={saving}
       />
-    </DpContent>
+    </DpContentInfo>
   );
 }

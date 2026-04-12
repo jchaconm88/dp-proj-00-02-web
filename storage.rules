@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myUid() {
+      return request.auth.uid;
+    }
+
+    function companyUserId(companyId, uid) {
+      return companyId + "_" + uid;
+    }
+
+    function isPlatformAdmin() {
+      return isSignedIn() && request.auth.token.platformAdmin == true;
+    }
+
+    function isActiveMember(companyId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/company-users/$(companyUserId(companyId, myUid())))
+        && firestore.get(/databases/(default)/documents/company-users/$(companyUserId(companyId, myUid()))).data.status != "inactive";
+    }
+
+    match /companies/{companyId}/logo/{fileName} {
+      allow read: if isPlatformAdmin() || isActiveMember(companyId);
+      allow write: if isPlatformAdmin();
+    }
+  }
+}

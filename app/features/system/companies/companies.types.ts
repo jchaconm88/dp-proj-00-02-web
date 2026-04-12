@@ -6,5 +6,13 @@ export type CompanyRecord = {
   accountId?: string;
   code?: string;
   taxId?: string;
+  /** Logo legacy (fase 1), se conserva para compatibilidad. */
+  logoUrl?: string;
+  /** Path legacy (fase 1), se conserva para compatibilidad. */
+  logoPath?: string;
+  logoLightUrl?: string;
+  logoLightPath?: string;
+  logoDarkUrl?: string;
+  logoDarkPath?: string;
 };
 

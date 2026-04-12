@@ -37,12 +37,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user?.uid || !activeCompanyId) return;
-    void callHttpsFunction<{ companyId: string }, { ok: boolean; accountId: string }>(
-      "refreshTenantClaims",
-      { companyId: activeCompanyId }
-    ).catch(() => {
-      /* claims opcionales hasta despliegue de la función */
-    });
+    void (async () => {
+      try {
+        await callHttpsFunction<{ companyId: string }, { ok: boolean; accountId: string }>(
+          "refreshTenantClaims",
+          { companyId: activeCompanyId }
+        );
+        // Fuerza refresco de token para aplicar claims nuevos inmediatamente.
+        await user.getIdToken(true);
+      } catch {
+        /* claims opcionales hasta despliegue de la función */
+      }
+    })();
   }, [user?.uid, activeCompanyId]);
 
   useEffect(() => {
