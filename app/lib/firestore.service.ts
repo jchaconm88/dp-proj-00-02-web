@@ -18,7 +18,37 @@ import {
   type DocumentData,
   type Transaction,
 } from "firebase/firestore";
+import { FirebaseError } from "firebase/app";
 import { db, auth } from "./firebase";
+
+function mapFirestoreError(err: unknown, action: string): string {
+  if (err instanceof FirebaseError) {
+    const code = String(err.code ?? "").trim();
+    if (code.includes("permission-denied")) {
+      return `${action}: no tienes permisos para esta acción. Verifica los permisos de tu rol en la empresa activa.`;
+    }
+    if (code.includes("unauthenticated")) {
+      return `${action}: tu sesión expiró. Vuelve a iniciar sesión.`;
+    }
+    if (code.includes("unavailable")) {
+      return `${action}: el servicio no está disponible temporalmente.`;
+    }
+    if (code.includes("deadline-exceeded")) {
+      return `${action}: la operación tardó demasiado. Revisa tu conexión.`;
+    }
+    if (err.message?.trim()) return `${action}: ${err.message}`;
+  }
+  if (err instanceof Error && err.message.trim()) return `${action}: ${err.message}`;
+  return `${action}: ocurrió un error inesperado.`;
+}
+
+async function runFirestore<T>(action: string, op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    throw new Error(mapFirestoreError(err, action));
+  }
+}
 
 /** Obtiene el email del usuario logueado (para auditoría). */
 function getCurrentUserEmail(): string | null {
@@ -33,7 +63,9 @@ export async function getDocument<T = DocumentData>(
   collectionName: string,
   id: string
 ): Promise<({ id: string } & T) | null> {
-  const snap = await getDoc(doc(db, collectionName, id));
+  const snap = await runFirestore("No se pudo consultar el registro", () =>
+    getDoc(doc(db, collectionName, id))
+  );
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as { id: string } & T;
 }
@@ -47,11 +79,13 @@ export async function addDocument<T>(
   data: T
 ): Promise<string> {
   const createBy = getCurrentUserEmail();
-  const ref = await addDoc(collection(db, collectionName), {
-    ...data,
-    createAt: serverTimestamp(),
-    createBy,
-  });
+  const ref = await runFirestore("No se pudo crear el registro", () =>
+    addDoc(collection(db, collectionName), {
+      ...data,
+      createAt: serverTimestamp(),
+      createBy,
+    })
+  );
   return ref.id;
 }
 
@@ -65,11 +99,13 @@ export async function createDocumentWithId<T extends Record<string, unknown>>(
   data: T
 ): Promise<void> {
   const createBy = getCurrentUserEmail();
-  await setDoc(doc(db, collectionName, documentId), {
-    ...data,
-    createAt: serverTimestamp(),
-    createBy,
-  }, { merge: false });
+  await runFirestore("No se pudo crear el registro", () =>
+    setDoc(doc(db, collectionName, documentId), {
+      ...data,
+      createAt: serverTimestamp(),
+      createBy,
+    }, { merge: false })
+  );
 }
 
 /** Elimina propiedades undefined de un objeto/array (Firestore no acepta undefined). */
@@ -102,11 +138,13 @@ export async function updateDocument<T extends Record<string, unknown>>(
 ): Promise<void> {
   const updateBy = getCurrentUserEmail();
   const cleanData = stripUndefined(data) as Record<string, unknown>;
-  await updateDoc(doc(db, collectionName, documentId), {
-    ...cleanData,
-    updateAt: serverTimestamp(),
-    updateBy,
-  });
+  await runFirestore("No se pudo actualizar el registro", () =>
+    updateDoc(doc(db, collectionName, documentId), {
+      ...cleanData,
+      updateAt: serverTimestamp(),
+      updateBy,
+    })
+  );
 }
 
 /**
@@ -118,7 +156,9 @@ export async function replaceDocument<T extends Record<string, unknown>>(
   documentId: string,
   data: T
 ): Promise<void> {
-  await setDoc(doc(db, collectionName, documentId), data, { merge: false });
+  await runFirestore("No se pudo reemplazar el registro", () =>
+    setDoc(doc(db, collectionName, documentId), data, { merge: false })
+  );
 }
 
 /**
@@ -128,7 +168,9 @@ export async function deleteDocument(
   collectionName: string,
   documentId: string
 ): Promise<void> {
-  await deleteDoc(doc(db, collectionName, documentId));
+  await runFirestore("No se pudo eliminar el registro", () =>
+    deleteDoc(doc(db, collectionName, documentId))
+  );
 }
 
 /**
@@ -141,7 +183,9 @@ export async function deleteManyDocuments(
   if (ids.length === 0) return;
   const batch = writeBatch(db);
   ids.forEach((id) => batch.delete(doc(db, collectionName, id)));
-  await batch.commit();
+  await runFirestore("No se pudieron eliminar los registros seleccionados", () =>
+    batch.commit()
+  );
 }
 
 /**
@@ -156,7 +200,9 @@ export async function getCollectionWithFilter<T = DocumentData>(
     collection(db, collectionName),
     where(filter, "==", value)
   );
-  const snapshot = await getDocs(q);
+  const snapshot = await runFirestore("No se pudo consultar la lista", () =>
+    getDocs(q)
+  );
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & T));
 }
 
@@ -168,7 +214,9 @@ export async function getCollectionWithMultiFilter<T = DocumentData>(
   filterArray: QueryConstraint[]
 ): Promise<({ id: string } & T)[]> {
   const q = query(collection(db, collectionName), ...filterArray);
-  const snapshot = await getDocs(q);
+  const snapshot = await runFirestore("No se pudo consultar la lista", () =>
+    getDocs(q)
+  );
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & T));
 }
 
@@ -180,7 +228,9 @@ export async function getCollection<T = DocumentData>(
   maxDocs?: number
 ): Promise<({ id: string } & T)[]> {
   const q = maxDocs ? query(collection(db, collectionName), limit(maxDocs)) : collection(db, collectionName);
-  const snapshot = await getDocs(q);
+  const snapshot = await runFirestore("No se pudo consultar la lista", () =>
+    getDocs(q)
+  );
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & T));
 }
 
@@ -191,7 +241,9 @@ export async function getCollection<T = DocumentData>(
 export async function runTransaction<T>(
   updateFn: (transaction: Transaction, firestoreDb: NonNullable<typeof db>) => Promise<T>
 ): Promise<T> {
-  return firestoreRunTransaction(db, (transaction) => updateFn(transaction, db));
+  return runFirestore("No se pudo completar la transacción", () =>
+    firestoreRunTransaction(db, (transaction) => updateFn(transaction, db))
+  );
 }
 
 /**
@@ -207,7 +259,9 @@ export async function getFirst<T = DocumentData>(
     where(filter, "==", value),
     limit(1)
   );
-  const snapshot = await getDocs(q);
+  const snapshot = await runFirestore("No se pudo consultar el registro", () =>
+    getDocs(q)
+  );
   if (snapshot.empty) return null;
   const d = snapshot.docs[0];
   return { id: d.id, ...d.data() } as { id: string } & T;
@@ -230,7 +284,9 @@ export async function getSubcollection<T = DocumentData>(
   parentId: string,
   subcollectionName: string
 ): Promise<({ id: string } & T)[]> {
-  const snapshot = await getDocs(subcollectionRef(parentCollection, parentId, subcollectionName));
+  const snapshot = await runFirestore("No se pudo consultar la lista", () =>
+    getDocs(subcollectionRef(parentCollection, parentId, subcollectionName))
+  );
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & T));
 }
 
@@ -243,7 +299,9 @@ export async function getDocumentFromSubcollection<T = DocumentData>(
   subcollectionName: string,
   documentId: string
 ): Promise<({ id: string } & T) | null> {
-  const snap = await getDoc(doc(db, parentCollection, parentId, subcollectionName, documentId));
+  const snap = await runFirestore("No se pudo consultar el registro", () =>
+    getDoc(doc(db, parentCollection, parentId, subcollectionName, documentId))
+  );
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as { id: string } & T;
 }
@@ -258,11 +316,13 @@ export async function addDocumentToSubcollection<T>(
   data: T
 ): Promise<string> {
   const createBy = getCurrentUserEmail();
-  const ref = await addDoc(subcollectionRef(parentCollection, parentId, subcollectionName), {
-    ...data,
-    createAt: serverTimestamp(),
-    createBy,
-  });
+  const ref = await runFirestore("No se pudo crear el registro", () =>
+    addDoc(subcollectionRef(parentCollection, parentId, subcollectionName), {
+      ...data,
+      createAt: serverTimestamp(),
+      createBy,
+    })
+  );
   return ref.id;
 }
 
@@ -277,10 +337,12 @@ export async function setDocumentWithIdInSubcollection<T extends Record<string, 
   data: T
 ): Promise<void> {
   const createBy = getCurrentUserEmail();
-  await setDoc(
-    doc(db, parentCollection, parentId, subcollectionName, documentId),
-    { ...data, createAt: serverTimestamp(), createBy },
-    { merge: false }
+  await runFirestore("No se pudo crear el registro", () =>
+    setDoc(
+      doc(db, parentCollection, parentId, subcollectionName, documentId),
+      { ...data, createAt: serverTimestamp(), createBy },
+      { merge: false }
+    )
   );
 }
 
@@ -296,9 +358,11 @@ export async function updateDocumentInSubcollection<T extends Record<string, unk
 ): Promise<void> {
   const updateBy = getCurrentUserEmail();
   const cleanData = stripUndefined(data) as Record<string, unknown>;
-  await updateDoc(
-    doc(db, parentCollection, parentId, subcollectionName, documentId),
-    { ...cleanData, updateAt: serverTimestamp(), updateBy }
+  await runFirestore("No se pudo actualizar el registro", () =>
+    updateDoc(
+      doc(db, parentCollection, parentId, subcollectionName, documentId),
+      { ...cleanData, updateAt: serverTimestamp(), updateBy }
+    )
   );
 }
 
@@ -311,7 +375,9 @@ export async function deleteDocumentFromSubcollection(
   subcollectionName: string,
   documentId: string
 ): Promise<void> {
-  await deleteDoc(doc(db, parentCollection, parentId, subcollectionName, documentId));
+  await runFirestore("No se pudo eliminar el registro", () =>
+    deleteDoc(doc(db, parentCollection, parentId, subcollectionName, documentId))
+  );
 }
 
 /**
@@ -335,8 +401,10 @@ export async function getNestedSubcollection<T = DocumentData>(
   subId: string,
   sub2: string
 ): Promise<({ id: string } & T)[]> {
-  const snapshot = await getDocs(
-    nestedCollectionRef(parentCollection, parentId, sub1, subId, sub2)
+  const snapshot = await runFirestore("No se pudo consultar la lista", () =>
+    getDocs(
+      nestedCollectionRef(parentCollection, parentId, sub1, subId, sub2)
+    )
   );
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & T));
 }
@@ -350,9 +418,11 @@ export async function addDocumentToNestedSubcollection<T>(
   data: T
 ): Promise<string> {
   const createBy = getCurrentUserEmail();
-  const ref = await addDoc(
-    nestedCollectionRef(parentCollection, parentId, sub1, subId, sub2),
-    { ...data, createAt: serverTimestamp(), createBy }
+  const ref = await runFirestore("No se pudo crear el registro", () =>
+    addDoc(
+      nestedCollectionRef(parentCollection, parentId, sub1, subId, sub2),
+      { ...data, createAt: serverTimestamp(), createBy }
+    )
   );
   return ref.id;
 }
@@ -367,10 +437,12 @@ export async function setDocumentWithIdInNestedSubcollection<T extends Record<st
   data: T
 ): Promise<void> {
   const createBy = getCurrentUserEmail();
-  await setDoc(
-    doc(db, parentCollection, parentId, sub1, subId, sub2, documentId),
-    { ...data, createAt: serverTimestamp(), createBy },
-    { merge: false }
+  await runFirestore("No se pudo crear el registro", () =>
+    setDoc(
+      doc(db, parentCollection, parentId, sub1, subId, sub2, documentId),
+      { ...data, createAt: serverTimestamp(), createBy },
+      { merge: false }
+    )
   );
 }
 
@@ -382,7 +454,9 @@ export async function deleteDocumentFromNestedSubcollection(
   sub2: string,
   documentId: string
 ): Promise<void> {
-  await deleteDoc(doc(db, parentCollection, parentId, sub1, subId, sub2, documentId));
+  await runFirestore("No se pudo eliminar el registro", () =>
+    deleteDoc(doc(db, parentCollection, parentId, sub1, subId, sub2, documentId))
+  );
 }
 
 /**

@@ -123,6 +123,8 @@ export default function RolePermissionDialog({
             onChange={(v) => setSelectedModuleId(v ? String(v) : null)}
             options={moduleOptions}
             placeholder="Seleccionar módulo"
+            filter
+            filterPlaceholder="Buscar módulo…"
           />
         )}
 

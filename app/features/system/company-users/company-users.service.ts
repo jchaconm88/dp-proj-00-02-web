@@ -2,14 +2,19 @@ import { COMPANY_USERS_COLLECTION } from "~/lib/auth-context";
 import { getCompanyById } from "~/features/system/companies";
 import {
   createDocumentWithId,
-  deleteDocument,
   getCollectionWithFilter,
   getCollectionWithMultiFilter,
   getDocument,
-  updateDocument,
 } from "~/lib/firestore.service";
-import { deleteField, where, type QueryConstraint } from "firebase/firestore";
+import { where, type QueryConstraint } from "firebase/firestore";
 import type { CompanyUserRecord } from "./company-users.types";
+import {
+  apiDeleteCompanyUser,
+  apiListCompanyUsers,
+  apiListMyMemberships,
+  apiSaveCompanyMembership,
+  apiUpdateCompanyUser,
+} from "~/features/system/system-store/system-store.api";
 
 type CompanyUserDoc = {
   companyId?: string;
@@ -62,24 +67,12 @@ export async function getCompanyMembershipsForSession(
   authUid: string,
   legacyUsersDocId?: string | null
 ): Promise<CompanyUserRecord[]> {
-  const primary = await getCompanyUsersByUserId(authUid);
-  if (primary.length > 0) return primary;
-  if (legacyUsersDocId && legacyUsersDocId !== authUid) {
-    return getCompanyUsersByUserId(legacyUsersDocId);
-  }
-  return [];
+  const { items } = await apiListMyMemberships(legacyUsersDocId);
+  return items;
 }
 
 export async function getCompanyUsersByCompanyId(companyId: string): Promise<CompanyUserRecord[]> {
-  const rows = await getCollectionWithFilter<CompanyUserDoc>(
-    COMPANY_USERS_COLLECTION,
-    "companyId",
-    companyId
-  );
-  const items = rows.map((r) => toCompanyUserRecord(r.id, r));
-  items.sort((a, b) => (a.user || a.userDisplayName || a.userEmail || a.userId).localeCompare(
-    b.user || b.userDisplayName || b.userEmail || b.userId
-  ));
+  const { items } = await apiListCompanyUsers(companyId);
   return items;
 }
 
@@ -136,53 +129,18 @@ export async function saveCompanyMembership(data: {
   roleNames?: string[];
   status: "active" | "inactive";
 }): Promise<string> {
-  const id = `${data.companyId}_${data.userId}`;
-  const existing = await getDocument<CompanyUserDoc>(COMPANY_USERS_COLLECTION, id);
-  if (existing) {
-    const comp = await getCompanyById(data.companyId);
-    const accountId = comp?.accountId?.trim() || data.companyId;
-    const payload: Record<string, unknown> = {
-      userId: data.userId,
-      user: data.user?.trim() || undefined,
-      usersDocId: data.usersDocId?.trim() || undefined,
-      userEmail: data.userEmail?.trim().toLowerCase() || undefined,
-      userDisplayName: data.userDisplayName?.trim() || undefined,
-      roleIds: data.roleIds,
-      roleNames: data.roleNames ?? [],
-      status: data.status,
-      accountId,
-      // Limpieza definitiva del campo legacy.
-      uid: deleteField(),
-    };
-    await updateDocument(COMPANY_USERS_COLLECTION, id, payload);
-    return id;
-  }
-  return addCompanyUser({
-    companyId: data.companyId,
-    userId: data.userId,
-    user: data.user,
-    usersDocId: data.usersDocId,
-    userEmail: data.userEmail,
-    userDisplayName: data.userDisplayName,
-    roleIds: data.roleIds,
-    roleNames: data.roleNames,
-    status: data.status,
-  });
+  const saved = await apiSaveCompanyMembership(data);
+  return saved.id;
 }
 
 export async function deleteCompanyUser(id: string): Promise<void> {
-  await deleteDocument(COMPANY_USERS_COLLECTION, id);
+  await apiDeleteCompanyUser(id);
 }
 
 export async function updateCompanyUser(
   id: string,
   data: Partial<Omit<CompanyUserRecord, "id">>
 ): Promise<void> {
-  const payload: Record<string, unknown> = { ...data };
-  if ("userId" in payload) {
-    // Si ya estamos usando userId, eliminar rastro legacy.
-    payload.uid = deleteField();
-  }
-  await updateDocument(COMPANY_USERS_COLLECTION, id, payload);
+  await apiUpdateCompanyUser(id, data);
 }
 

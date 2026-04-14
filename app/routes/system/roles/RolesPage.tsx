@@ -4,8 +4,9 @@ import { getRoles, deleteRole, type RoleRecord } from "~/features/system/roles";
 import { getActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/RolesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import RoleDialog from "./RoleDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -25,10 +26,7 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
   return { roles: items, companyId };
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Nombre", column: "name", order: 1, display: true, filter: true },
-  { header: "Descripción", column: "description", order: 2, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("role");
 
 export default function Roles({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();

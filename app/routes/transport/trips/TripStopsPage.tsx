@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import {
   getTripById,
   getTripStops,
@@ -8,10 +8,12 @@ import {
   type TripStopRecord,
 } from "~/features/transport/trips";
 import type { Route } from "./+types/TripStopsPage";
+import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { STOP_TYPE, STOP_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import TripStopDialog from "./TripStopDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -22,17 +24,7 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Orden", column: "order", order: 1, display: true, filter: true },
-  { header: "Código", column: "code", order: 2, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "status", typeOptions: STOP_TYPE },
-  { header: "Nombre", column: "name", order: 4, display: true, filter: true },
-  { header: "Documento externo", column: "externalDocument", order: 5, display: true, filter: true },
-  { header: "Distrito", column: "districtName", order: 6, display: true, filter: true },
-  { header: "Observaciones", column: "observations", order: 7, display: true, filter: true },
-  { header: "Estado", column: "status", order: 8, display: true, filter: true, type: "status", typeOptions: STOP_STATUS },
-  { header: "Llegada planificada", column: "plannedArrival", order: 9, display: true, filter: true, type: "datetime" },
-];
+const TABLE_DEF = moduleTableDef("trip-stop", { type: STOP_TYPE, status: STOP_STATUS });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const tripId = (params?.id ?? "") as string;
@@ -46,6 +38,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
   const { trip, stops, tripId } = loaderData;
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<TripStopRecord>>(null);
@@ -62,15 +55,17 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
   const [pendingDeleteStopIds, setPendingDeleteStopIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editStopId;
+  const listQuery = location.search;
+  const stopsBase = `/transport/trips/${encodeURIComponent(tripId)}/trip-stops`;
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops/add`);
+  const openAdd = () => navigate(withUrlSearch(`${stopsBase}/add`, listQuery));
   const openEdit = (row: TripStopRecord) =>
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops/edit/${encodeURIComponent(row.id)}`);
+    navigate(withUrlSearch(`${stopsBase}/edit/${encodeURIComponent(row.id)}`, listQuery));
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -102,11 +97,11 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
   };
 
   const handleSuccess = () => {
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`);
+    navigate(withUrlSearch(stopsBase, listQuery));
     revalidator.revalidate();
   };
-  const handleHide = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`);
-  const onBack = () => navigate("/transport/trips");
+  const handleHide = () => navigate(withUrlSearch(stopsBase, listQuery));
+  const onBack = () => navigate(withUrlSearch("/transport/trips", listQuery));
 
   return (
     <DpContentInfo

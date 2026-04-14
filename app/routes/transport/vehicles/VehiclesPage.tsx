@@ -3,9 +3,10 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getVehicles, deleteVehicle, deleteVehicles, type VehicleRecord } from "~/features/transport/vehicles";
 import type { Route } from "./+types/VehiclesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { VEHICLE_STATUS, VEHICLE_TYPE } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import VehicleDialog from "./VehicleDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -17,15 +18,7 @@ export function meta({ }: Route.MetaArgs) {
 
 type VehicleRow = VehicleRecord;
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Placa",       column: "plate",      order: 1, display: true, filter: true },
-  { header: "Tipo",        column: "type",       order: 2, display: true, filter: true, type: "label", typeOptions: VEHICLE_TYPE },
-  { header: "Marca",       column: "brand",      order: 3, display: true, filter: true },
-  { header: "Modelo",      column: "model",      order: 4, display: true, filter: true },
-  { header: "Capacidad(Kg)", column: "capacityKg", order: 5, display: true, filter: true },
-  { header: "Viaje actual", column: "currentTripId", order: 6, display: true, filter: true },
-  { header: "Estado",      column: "status",     order: 7, display: true, filter: true, type: "status", typeOptions: VEHICLE_STATUS },
-];
+const TABLE_DEF = moduleTableDef("vehicle", { type: VEHICLE_TYPE, status: VEHICLE_STATUS });
 
 export async function clientLoader() {
   const { items } = await getVehicles();

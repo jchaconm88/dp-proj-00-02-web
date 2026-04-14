@@ -18,7 +18,21 @@ function getCallable<Req, Res>(name: string): HttpsCallable<Req, Res> {
  */
 export function mapCallableError(err: unknown, fallback = "Error al comunicarse con el servidor."): string {
   if (err instanceof FirebaseError) {
-    return err.message;
+    const code = String(err.code ?? "").trim();
+    if (code.includes("permission-denied")) {
+      return "No tienes permisos para esta acción. Verifica los permisos de tu rol en la empresa activa.";
+    }
+    if (code.includes("unauthenticated")) {
+      return "Tu sesión expiró. Vuelve a iniciar sesión.";
+    }
+    if (code.includes("unavailable")) {
+      return "El servicio no está disponible temporalmente. Intenta nuevamente.";
+    }
+    if (code.includes("deadline-exceeded")) {
+      return "La operación tardó demasiado. Revisa tu conexión e inténtalo otra vez.";
+    }
+    if (err.message?.trim()) return err.message;
+    return fallback;
   }
   if (
     err &&

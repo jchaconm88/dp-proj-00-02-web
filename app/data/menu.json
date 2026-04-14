@@ -73,14 +73,6 @@
         ]
       },
       {
-        "title": "Módulos",
-        "link": "/system/modules",
-        "permission": [
-          "view",
-          "module"
-        ]
-      },
-      {
         "title": "Secuencias",
         "link": "/system/sequences",
         "permission": [

@@ -47,13 +47,16 @@ function storeCompanyId(uid: string, companyId: string) {
 }
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<CompanyUserRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (authLoading) {
+      return;
+    }
     if (!user?.uid) {
       setMemberships([]);
       setCompanies([]);
@@ -63,26 +66,31 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
-    const legacyId =
-      profile?.usersDocId && profile.usersDocId !== user.uid ? profile.usersDocId : null;
-    const m = (
-      await getCompanyMembershipsForSession(user.uid, legacyId)
-    ).filter((x) => x.status === "active");
-    setMemberships(m);
+    try {
+      const legacyId =
+        profile?.usersDocId && profile.usersDocId !== user.uid ? profile.usersDocId : null;
+      const m = (
+        await getCompanyMembershipsForSession(user.uid, legacyId)
+      ).filter((x) => x.status === "active");
+      setMemberships(m);
 
-    const uniqueCompanyIds = Array.from(new Set(m.map((x) => x.companyId).filter(Boolean)));
-    const fetched = await Promise.all(uniqueCompanyIds.map((id) => getCompanyById(id)));
-    const cs = fetched.filter((c): c is CompanyRecord => Boolean(c)).filter((c) => c.status === "active");
-    cs.sort((a, b) => a.name.localeCompare(b.name));
-    setCompanies(cs);
+      const uniqueCompanyIds = Array.from(new Set(m.map((x) => x.companyId).filter(Boolean)));
+      const fetched = await Promise.all(uniqueCompanyIds.map((id) => getCompanyById(id)));
+      const cs = fetched.filter((c): c is CompanyRecord => Boolean(c)).filter((c) => c.status === "active");
+      cs.sort((a, b) => a.name.localeCompare(b.name));
+      setCompanies(cs);
 
-    const stored = readStoredCompanyId(user.uid);
-    const storedValid = stored && uniqueCompanyIds.includes(stored) ? stored : null;
-    const next = storedValid ?? uniqueCompanyIds[0] ?? null;
-    setActiveCompanyIdState(next);
-    if (next) storeCompanyId(user.uid, next);
-    setLoading(false);
-  }, [user?.uid, profile?.usersDocId]);
+      const stored = readStoredCompanyId(user.uid);
+      const storedValid = stored && uniqueCompanyIds.includes(stored) ? stored : null;
+      const next = storedValid ?? uniqueCompanyIds[0] ?? null;
+      setActiveCompanyIdState(next);
+      if (next) storeCompanyId(user.uid, next);
+    } catch {
+      // Mantener estado previo; evita dejar la sesión sin empresa activa por errores transitorios.
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, user?.uid, profile?.usersDocId]);
 
   useEffect(() => {
     void refresh();

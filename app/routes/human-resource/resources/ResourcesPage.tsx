@@ -3,8 +3,9 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getResources, deleteResources, type ResourceRecord } from "~/features/human-resource/resources";
 import type { Route } from "./+types/ResourcesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
 import { RESOURCE_ENGAGEMENT_TYPE, RESOURCE_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import ResourceDialog from "./ResourceDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -16,17 +17,7 @@ export function meta({}: Route.MetaArgs) {
 
 type ResourceRow = ResourceRecord & { fullName: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "fullName", order: 2, display: true, filter: true },
-  { header: "Tipo Doc",    column: "documentType",   order: 3, display: true, filter: true },
-  { header: "Nº Doc",      column: "documentNo",     order: 4, display: true, filter: true },
-  { header: "Cargo", column: "position", order: 5, display: true, filter: true },
-  { header: "F. Ingreso", column: "hireDate", order: 6, display: true, filter: true, type: "date" },
-  { header: "Vinculación", column: "engagementType", order: 7, display: true, filter: true, type: "label", typeOptions: RESOURCE_ENGAGEMENT_TYPE },
-  { header: "Estado", column: "status", order: 8, display: true, filter: true, type: "status", typeOptions: RESOURCE_STATUS },
-  { header: "Costos", column: "costs", order: 9, display: true, filter: false },
-];
+const TABLE_DEF = moduleTableDef("resource", { engagementType: RESOURCE_ENGAGEMENT_TYPE, status: RESOURCE_STATUS });
 
 export async function clientLoader() {
   const { items } = await getResources();

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { Button } from "primereact/button";
 import {
   getTrips,
@@ -16,6 +16,7 @@ import {
 import { getVehicles } from "~/features/transport/vehicles";
 import { getTransportServices } from "~/features/transport/transport-services";
 import type { Route } from "./+types/TripsPage";
+import { withUrlSearch } from "~/lib/url-search";
 import {
   DpContent,
   DpContentFilter,
@@ -27,10 +28,11 @@ import {
   type DpFilterDef,
 } from "~/components/DpContent";
 import { DpInput } from "~/components/DpInput";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import TripDialog from "./TripDialog";
 
 const TRIP_STATUS_SELECT_OPTIONS = statusToSelectOptions(TRIP_STATUS);
@@ -79,36 +81,11 @@ function scheduledStartToTime(value: string): number {
   return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Ruta", column: "routeDisplay", order: 2, display: true, filter: true, sort: true },
-  { header: "Servicio", column: "transportServiceDisplay", order: 3, display: true, filter: true },
-  { header: "Cliente", column: "clientDisplay", order: 4, display: true, filter: true },
-  { header: "Guía", column: "transportGuide", order: 5, display: true, filter: true },
-  { header: "Vehículo", column: "vehicle", order: 6, display: true, filter: true },
-  {
-    header: "Estado",
-    column: "status",
-    order: 7,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: TRIP_STATUS,
-  },
-  {
-    header: "Inicio programado",
-    column: "scheduledStart",
-    order: 8,
-    display: true,
-    filter: true,
-    sort: true,
-    type: "datetime",
-  },
-  { header: "Paradas", column: "tripStops", order: 9, display: true, filter: false },
-  { header: "Asignaciones", column: "tripAssignments", order: 10, display: true, filter: false },
-  { header: "Cargos", column: "tripCharges", order: 11, display: true, filter: false },
-  { header: "Costos", column: "tripCosts", order: 12, display: true, filter: false },
-];
+// Columnas del catálogo + sort en routeDisplay y scheduledStart
+const TABLE_DEF = moduleTableDef("trip", { status: TRIP_STATUS }).map((col) => {
+  if (col.column === "routeDisplay" || col.column === "scheduledStart") return { ...col, sort: true };
+  return col;
+});
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const requestArg = (args as Route.ClientLoaderArgs & { request?: Request }).request;
@@ -174,6 +151,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 
 export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<TripRow>>(null);
@@ -182,6 +160,8 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
   const isAdd = !!useMatch("/transport/trips/add");
   const editMatch = useMatch("/transport/trips/edit/:id");
   const editId = editMatch?.params.id ?? null;
+  /** Query de la lista (filtros) reutilizada en add/edit para no perderla al cerrar o compartir URL. */
+  const listQuery = location.search;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -306,9 +286,9 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
     navigate(qs ? `/transport/trips?${qs}` : "/transport/trips");
   };
 
-  const openAdd = () => navigate("/transport/trips/add");
+  const openAdd = () => navigate(withUrlSearch("/transport/trips/add", listQuery));
   const openEdit = (row: TripRow) =>
-    navigate(`/transport/trips/edit/${encodeURIComponent(row.id)}`);
+    navigate(withUrlSearch(`/transport/trips/edit/${encodeURIComponent(row.id)}`, listQuery));
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -404,13 +384,18 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
 
   const handleSuccess = (createdTripId?: string) => {
     if (createdTripId?.trim()) {
-      navigate(`/transport/trips/${encodeURIComponent(createdTripId.trim())}/trip-assignments`);
+      navigate(
+        withUrlSearch(
+          `/transport/trips/${encodeURIComponent(createdTripId.trim())}/trip-assignments`,
+          listQuery
+        )
+      );
     } else {
-      navigate("/transport/trips");
+      navigate(withUrlSearch("/transport/trips", listQuery));
     }
     revalidator.revalidate();
   };
-  const handleHide = () => navigate("/transport/trips");
+  const handleHide = () => navigate(withUrlSearch("/transport/trips", listQuery));
 
   return (
     <DpContent
@@ -470,7 +455,11 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
           {(row) => (
             <button
               type="button"
-              onClick={() => navigate(`/transport/trips/${encodeURIComponent(row.id)}/trip-stops`)}
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/transport/trips/${encodeURIComponent(row.id)}/trip-stops`, listQuery)
+                )
+              }
               className="p-button p-button-text p-button-rounded p-button-icon-only"
               aria-label="Paradas del viaje"
               title="Paradas"
@@ -483,7 +472,11 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
           {(row) => (
             <button
               type="button"
-              onClick={() => navigate(`/transport/trips/${encodeURIComponent(row.id)}/trip-assignments`)}
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/transport/trips/${encodeURIComponent(row.id)}/trip-assignments`, listQuery)
+                )
+              }
               className="p-button p-button-text p-button-rounded p-button-icon-only"
               aria-label="Asignaciones"
               title="Asignaciones"
@@ -496,7 +489,11 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
           {(row) => (
             <button
               type="button"
-              onClick={() => navigate(`/transport/trips/${encodeURIComponent(row.id)}/trip-charges`)}
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/transport/trips/${encodeURIComponent(row.id)}/trip-charges`, listQuery)
+                )
+              }
               className="p-button p-button-text p-button-rounded p-button-icon-only"
               aria-label="Cargos"
               title="Cargos"
@@ -509,7 +506,11 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
           {(row) => (
             <button
               type="button"
-              onClick={() => navigate(`/transport/trips/${encodeURIComponent(row.id)}/trip-costs`)}
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/transport/trips/${encodeURIComponent(row.id)}/trip-costs`, listQuery)
+                )
+              }
               className="p-button p-button-text p-button-rounded p-button-icon-only"
               aria-label="Costos"
               title="Costos"

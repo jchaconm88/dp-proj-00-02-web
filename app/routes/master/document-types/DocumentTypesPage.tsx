@@ -3,9 +3,10 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getDocumentTypes, deleteDocumentType, deleteDocumentTypes, type DocumentTypeRecord } from "~/features/master/document-types";
 import type { Route } from "./+types/DocumentTypesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { DOCUMENT_TYPE_CATEGORY } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import DocumentTypeDialog from "./DocumentTypeDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -17,11 +18,7 @@ export function meta({ }: Route.MetaArgs) {
 
 type DocumentTypeRow = DocumentTypeRecord;
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Nombre", column: "name", order: 1, display: true, filter: true },
-  { header: "Descripción", column: "description", order: 2, display: true, filter: true },
-  { header: "Categoría", column: "type", order: 3, display: true, filter: true, type: "status", typeOptions: DOCUMENT_TYPE_CATEGORY },
-];
+const TABLE_DEF = moduleTableDef("document-type", { type: DOCUMENT_TYPE_CATEGORY });
 
 export async function clientLoader() {
   const { items } = await getDocumentTypes();

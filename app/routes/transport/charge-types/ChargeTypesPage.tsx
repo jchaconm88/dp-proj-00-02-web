@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import type { Route } from "./+types/ChargeTypesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import {
   getChargeTypes,
   deleteChargeTypes,
@@ -13,6 +13,7 @@ import {
   CHARGE_TYPE_SOURCE,
   CHARGE_TYPE_CATEGORY,
 } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import ChargeTypeDialog from "./ChargeTypeDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -22,14 +23,7 @@ export function meta({ }: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 3, display: true, filter: true, type: "status", typeOptions: CHARGE_TYPE_KIND },
-  { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: CHARGE_TYPE_SOURCE },
-  { header: "Categoría", column: "category", order: 5, display: true, filter: true, type: "label", typeOptions: CHARGE_TYPE_CATEGORY },
-  { header: "Activo", column: "active", order: 6, display: true, filter: false, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("charge-type", { type: CHARGE_TYPE_KIND, source: CHARGE_TYPE_SOURCE, category: CHARGE_TYPE_CATEGORY });
 
 export async function clientLoader() {
   const { items } = await getChargeTypes();

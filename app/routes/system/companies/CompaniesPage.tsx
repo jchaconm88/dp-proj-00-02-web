@@ -3,9 +3,10 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getCompanies, deleteCompany, type CompanyRecord } from "~/features/system/companies";
 import type { Route } from "./+types/CompaniesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import CompanyDialog from "./CompanyDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import type { StatusOption } from "~/constants/status-options";
 import { useTheme } from "~/lib/theme-context";
 
@@ -13,6 +14,8 @@ const COMPANY_STATUS_MAP: Record<string, StatusOption> = {
   active: { label: "Activo", severity: "success" },
   inactive: { label: "Inactivo", severity: "secondary" },
 };
+
+const TABLE_DEF = moduleTableDef("company", { status: COMPANY_STATUS_MAP });
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -25,23 +28,6 @@ export async function clientLoader() {
   const items = await getCompanies();
   return { rows: items };
 }
-
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Logo", column: "logoUrl", order: 0, display: true, filter: false },
-  { header: "Nombre", column: "name", order: 1, display: true, filter: true },
-  { header: "Código", column: "code", order: 2, display: true, filter: true },
-  { header: "RUC / ID fiscal", column: "taxId", order: 3, display: true, filter: true },
-  { header: "Miembros", column: "companyMembers", order: 4, display: true, filter: false },
-  {
-    header: "Estado",
-    column: "status",
-    order: 5,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: COMPANY_STATUS_MAP,
-  },
-];
 
 export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
   const { theme } = useTheme();

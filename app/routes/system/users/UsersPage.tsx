@@ -8,8 +8,9 @@ import {
 } from "~/features/system/users";
 import type { Route } from "./+types/UsersPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -24,10 +25,7 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
   return { users: items };
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Nombre", column: "displayName", order: 1, display: true, filter: true },
-  { header: "Correo", column: "email", order: 2, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("user");
 
 export default function Users({ loaderData }: Route.ComponentProps) {
   const navigation = useNavigation();

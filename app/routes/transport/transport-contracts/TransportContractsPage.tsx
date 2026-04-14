@@ -9,8 +9,9 @@ import {
 } from "~/features/transport/transport-contracts";
 import type { Route } from "./+types/TransportContractsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
 import { CONTRACT_STATUS, BILLING_CYCLE, CURRENCY } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import TransportContractDialog from "./TransportContractDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -22,16 +23,7 @@ export function meta({ }: Route.MetaArgs) {
 
 type ContractRow = ContractRecord & { validityStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "contractCode", order: 1, display: true, filter: true },
-  { header: "Cliente", column: "client", order: 2, display: true, filter: true },
-  { header: "Descripción", column: "description", order: 3, display: true, filter: true },
-  { header: "Moneda", column: "currency", order: 4, display: true, filter: true, type: "status", typeOptions: CURRENCY },
-  { header: "Vigencia", column: "validityStr", order: 5, display: true, filter: true },
-  { header: "Facturación", column: "billingCycle", order: 6, display: true, filter: true, type: "status", typeOptions: BILLING_CYCLE },
-  { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: CONTRACT_STATUS },
-  { header: "Tarifario", column: "rateRules", order: 8, display: true, filter: false },
-];
+const TABLE_DEF = moduleTableDef("transport-contract", { currency: CURRENCY, billingCycle: BILLING_CYCLE, status: CONTRACT_STATUS });
 
 export async function clientLoader() {
   const { items } = await getContracts();

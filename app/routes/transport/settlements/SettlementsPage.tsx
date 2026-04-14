@@ -9,7 +9,7 @@ import {
 } from "~/features/transport/settlements";
 import type { Route } from "./+types/SettlementsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import {
@@ -19,6 +19,7 @@ import {
   SETTLEMENT_PAYMENT_STATUS,
 } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
+import { moduleTableDef } from "~/data/system-modules";
 import SettlementDialog from "./SettlementDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -34,49 +35,12 @@ type SettlementRow = Settlement & {
   periodLabel: string;
 };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  {
-    header: "Tipo",
-    column: "type",
-    order: 2,
-    display: true,
-    filter: true,
-    type: "label",
-    typeOptions: SETTLEMENT_TYPE,
-  },
-  {
-    header: "Categoría",
-    column: "category",
-    order: 3,
-    display: true,
-    filter: true,
-    type: "label",
-    typeOptions: SETTLEMENT_CATEGORY,
-  },
-  { header: "Entidad", column: "entityDisplay", order: 4, display: true, filter: true },
-  { header: "Periodo", column: "periodLabel", order: 5, display: true, filter: true },
-  { header: "Bruto", column: "grossFormatted", order: 6, display: true, filter: true },
-  {
-    header: "Estado",
-    column: "status",
-    order: 7,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: SETTLEMENT_STATUS,
-  },
-  {
-    header: "Pago",
-    column: "paymentStatus",
-    order: 8,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: SETTLEMENT_PAYMENT_STATUS,
-  },
-  { header: "Ítems", column: "itemsLink", order: 9, display: true, filter: false },
-];
+const TABLE_DEF = moduleTableDef("settlement", {
+  type: SETTLEMENT_TYPE,
+  category: SETTLEMENT_CATEGORY,
+  status: SETTLEMENT_STATUS,
+  paymentStatus: SETTLEMENT_PAYMENT_STATUS,
+});
 
 export async function clientLoader() {
   const items = await getSettlements();

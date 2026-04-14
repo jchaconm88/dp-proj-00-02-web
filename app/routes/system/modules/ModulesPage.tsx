@@ -4,8 +4,9 @@ import { getModules, deleteModule, type ModuleRecord } from "~/features/system/m
 import { getActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/ModulesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import ModuleDialog from "./ModuleDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -25,10 +26,7 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
   return { modules: items, companyId };
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Colecciรณn", column: "id", order: 1, display: true, filter: true },
-  { header: "Descripciรณn", column: "description", order: 2, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("module");
 
 export default function Modules({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();

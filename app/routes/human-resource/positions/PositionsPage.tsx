@@ -3,14 +3,11 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getPositions, deletePositions, type PositionRecord } from "~/features/human-resource/positions";
 import type { Route } from "./+types/PositionsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { moduleTableDef } from "~/data/system-modules";
 import PositionDialog from "./PositionDialog";
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Activo", column: "active", order: 3, display: true, filter: true, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("position");
 
 export async function clientLoader() {
   const { items } = await getPositions();

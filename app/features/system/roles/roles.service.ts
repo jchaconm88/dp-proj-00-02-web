@@ -1,15 +1,33 @@
-import { where } from "firebase/firestore";
 import { ROLES_COLLECTION } from "~/lib/auth-context";
 import {
   getDocument,
-  getCollection,
   addDocument,
   updateDocument,
   deleteDocument,
-  getCollectionWithMultiFilter,
 } from "~/lib/firestore.service";
-import { getCompanyById } from "~/features/system/companies";
+import { apiListRolesByCompany } from "~/features/system/system-store/system-store.api";
 import type { RoleRecord, RolePermissions } from "./roles.types";
+
+function getErrorCode(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code?: unknown }).code ?? "").trim();
+  }
+  return "";
+}
+
+function mapRolePermissionError(err: unknown, actionLabel: string, requiredPermission: string): Error {
+  const code = getErrorCode(err);
+  if (code.includes("permission-denied")) {
+    return new Error(
+      `No tienes permisos para ${actionLabel}. Permiso requerido: ${requiredPermission} (o *).`
+    );
+  }
+  if (code.includes("unauthenticated")) {
+    return new Error("Tu sesión expiró. Inicia sesión nuevamente.");
+  }
+  if (err instanceof Error && err.message.trim()) return err;
+  return new Error("Error al procesar roles.");
+}
 
 async function accountIdForCompany(companyId: string): Promise<string> {
   const c = await getCompanyById(companyId.trim());
@@ -67,27 +85,17 @@ export async function getRoles(opts?: {
   pageSize?: number;
   last?: unknown;
 }): Promise<{ items: RoleRecord[]; last: null }> {
-  const rows =
-    opts?.companyId ?
-      await getCollectionWithMultiFilter<RoleDoc>(ROLES_COLLECTION, [
-        where("companyId", "==", opts.companyId),
-        where("accountId", "==", await accountIdForCompany(opts.companyId)),
-      ])
-    : await getCollection<RoleDoc>(ROLES_COLLECTION, opts?.pageSize ?? 200);
-  const items = rows.map((r) => toRoleRecord(r.id, r));
-  items.sort((a, b) => a.name.localeCompare(b.name));
-  return { items, last: null };
+  if (opts?.companyId) {
+    const { items } = await apiListRolesByCompany(opts.companyId);
+    return { items, last: null };
+  }
+  // Sin companyId: no hay callable para listar todos — devolver vacío
+  return { items: [], last: null };
 }
 
 /** Obtiene todos los roles para resolver permisos del usuario. */
 export async function getAllRoles(companyId: string): Promise<RoleRecord[]> {
-  const accountId = await accountIdForCompany(companyId);
-  const rows = await getCollectionWithMultiFilter<RoleDoc>(ROLES_COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  const items = rows.map((r) => toRoleRecord(r.id, r));
-  items.sort((a, b) => a.name.localeCompare(b.name));
+  const { items } = await apiListRolesByCompany(companyId);
   return items;
 }
 
@@ -97,43 +105,59 @@ export async function addRole(data: {
   name: string;
   description: string | null;
 }): Promise<string> {
-  if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
-  const accountId = await accountIdForCompany(data.companyId);
-  return addDocument(ROLES_COLLECTION, {
-    companyId: data.companyId.trim(),
-    accountId,
-    name: data.name,
-    description: data.description ?? "",
-    permissions: {},
-  });
+  try {
+    if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
+    const accountId = await accountIdForCompany(data.companyId);
+    return addDocument(ROLES_COLLECTION, {
+      companyId: data.companyId.trim(),
+      accountId,
+      name: data.name,
+      description: data.description ?? "",
+      permissions: {},
+    });
+  } catch (err) {
+    throw mapRolePermissionError(err, "crear roles", "role:create");
+  }
 }
 
 /** Actualiza campos parciales de un rol. */
 export async function updateRole(id: string, data: Partial<Omit<RoleRecord, "id">>): Promise<void> {
-  await updateDocument(ROLES_COLLECTION, id, data);
+  try {
+    await updateDocument(ROLES_COLLECTION, id, data);
+  } catch (err) {
+    throw mapRolePermissionError(err, "editar roles", "role:edit");
+  }
 }
 
 /** @deprecated Usar addRole/updateRole */
 export async function saveRole(id: string, data: Omit<RoleRecord, "id">): Promise<string> {
-  const payload = {
-    companyId: data.companyId,
-    name: data.name,
-    description: data.description,
-    permissions: data.permissions ?? {},
-  };
-  if (!id) {
-    if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
-    const accountId = await accountIdForCompany(data.companyId);
-    return addDocument(ROLES_COLLECTION, {
-      ...payload,
-      companyId: data.companyId!.trim(),
-      accountId,
-    });
+  try {
+    const payload = {
+      companyId: data.companyId,
+      name: data.name,
+      description: data.description,
+      permissions: data.permissions ?? {},
+    };
+    if (!id) {
+      if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
+      const accountId = await accountIdForCompany(data.companyId);
+      return addDocument(ROLES_COLLECTION, {
+        ...payload,
+        companyId: data.companyId!.trim(),
+        accountId,
+      });
+    }
+    await updateDocument(ROLES_COLLECTION, id, payload);
+    return id;
+  } catch (err) {
+    throw mapRolePermissionError(err, id ? "editar roles" : "crear roles", id ? "role:edit" : "role:create");
   }
-  await updateDocument(ROLES_COLLECTION, id, payload);
-  return id;
 }
 
 export async function deleteRole(id: string): Promise<void> {
-  await deleteDocument(ROLES_COLLECTION, id);
+  try {
+    await deleteDocument(ROLES_COLLECTION, id);
+  } catch (err) {
+    throw mapRolePermissionError(err, "eliminar roles", "role:delete");
+  }
 }

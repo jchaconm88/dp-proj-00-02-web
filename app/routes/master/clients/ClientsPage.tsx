@@ -7,8 +7,9 @@ import {
 } from "~/features/master/clients";
 import type { Route } from "./+types/ClientsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
 import { CLIENT_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import ClientDialog from "./ClientDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -20,16 +21,7 @@ export function meta({ }: Route.MetaArgs) {
 
 type ClientRow = ClientRecord & { contactName: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-    { header: "Código", column: "code", order: 1, display: true, filter: true },
-    { header: "Razón social", column: "businessName", order: 2, display: true, filter: true },
-    { header: "Nombre comercial", column: "commercialName", order: 3, display: true, filter: true },
-    { header: "Tipo doc", column: "documentType", order: 4, display: true, filter: true },
-    { header: "Nº documento", column: "documentNumber", order: 5, display: true, filter: true },
-    { header: "Contacto", column: "contactName", order: 6, display: true, filter: true },
-    { header: "Estado", column: "status", order: 7, display: true, filter: true, type: "status", typeOptions: CLIENT_STATUS },
-    { header: "Ubicaciones", column: "locations", order: 8, display: true, filter: false },
-];
+const TABLE_DEF = moduleTableDef("client", { status: CLIENT_STATUS });
 
 export async function clientLoader() {
     const { items } = await getClients();

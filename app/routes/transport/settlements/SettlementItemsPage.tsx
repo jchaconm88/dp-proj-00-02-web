@@ -19,12 +19,12 @@ import {
 import {
   DpTable,
   type DpTableRef,
-  type DpTableDefColumn,
   type DpTableFooterTotals,
 } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { SETTLEMENT_MOVEMENT_TYPE } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
+import { moduleTableDef } from "~/data/system-modules";
 import SettlementItemDialog from "./SettlementItemDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -67,30 +67,7 @@ function tripStartToTime(value: string): number {
   return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Viaje", column: "tripCode", order: 1, display: true, filter: true },
-  { header: "Ruta", column: "tripRouteDisplay", order: 2, display: true, filter: true },
-  {
-    header: "Fecha",
-    column: "tripStartDate",
-    order: 3,
-    display: true,
-    filter: true,
-    type: "date",
-  },
-  {
-    header: "Tipo de movimiento",
-    column: "movementDisplay",
-    order: 4,
-    display: true,
-    filter: true,
-  },
-  { header: "Tipo cargo", column: "chargeType", order: 5, display: true, filter: true },
-  { header: "Concepto", column: "concept", order: 6, display: true, filter: true },
-  { header: "Monto", column: "amountFormatted", order: 7, display: true, filter: true },
-  { header: "Liquidado", column: "settledFormatted", order: 8, display: true, filter: true },
-  { header: "Pendiente", column: "pendingFormatted", order: 9, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("settlement-item");
 
 const FOOTER: DpTableFooterTotals = {
   label: "Total:",

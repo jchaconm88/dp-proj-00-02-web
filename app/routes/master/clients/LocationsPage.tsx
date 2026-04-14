@@ -8,7 +8,8 @@ import {
 } from "~/features/master/clients";
 import type { Route } from "./+types/LocationsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { moduleTableDef } from "~/data/system-modules";
 import LocationDialog from "./LocationDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -20,17 +21,7 @@ export function meta({ }: Route.MetaArgs) {
 
 type LocationRow = ClientLocationRecord & { deliveryWindowStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-    { header: "Nombre", column: "name", order: 1, display: true, filter: true },
-    { header: "Tipo", column: "type", order: 2, display: true, filter: true },
-    { header: "Dirección", column: "address", order: 3, display: true, filter: true },
-    { header: "Distrito", column: "district", order: 4, display: true, filter: true },
-    { header: "Ciudad", column: "city", order: 5, display: true, filter: true },
-    { header: "País", column: "country", order: 6, display: true, filter: true },
-    { header: "Ventana entrega", column: "deliveryWindowStr", order: 7, display: true, filter: true },
-    { header: "Tiempo serv. (min)", column: "serviceTimeMin", order: 8, display: true, filter: true },
-    { header: "Activo", column: "active", order: 9, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("client-location");
 
 export async function clientLoader({ params }: Route.LoaderArgs) {
     const { id } = params;

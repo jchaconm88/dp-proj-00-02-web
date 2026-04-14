@@ -8,8 +8,9 @@ import {
 } from "~/features/transport/routes";
 import type { Route } from "./+types/RoutesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import RouteDialog from "./RouteDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -21,32 +22,7 @@ export function meta({}: Route.MetaArgs) {
 
 type RouteRow = RouteRecord & { planCodeDisplay?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  {
-    header: "Plan",
-    column: "planCodeDisplay",
-    order: 3,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Km estimados",
-    column: "totalEstimatedKm",
-    order: 4,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Horas estimadas",
-    column: "totalEstimatedHours",
-    order: 5,
-    display: true,
-    filter: true,
-  },
-  { header: "Activo", column: "active", order: 6, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("route");
 
 export async function clientLoader() {
   const { items } = await getRoutes();

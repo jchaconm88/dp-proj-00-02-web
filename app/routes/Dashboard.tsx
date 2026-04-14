@@ -1,5 +1,5 @@
-import { useMemo, useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate, redirect } from "react-router";
+import { useMemo, useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigation, useRevalidator, redirect } from "react-router";
 import { useAuth } from "~/lib/auth-context";
 import { useCompany } from "~/lib/company-context";
 import { useTheme } from "~/lib/theme-context";
@@ -8,6 +8,7 @@ import menuData from "~/data/menu.json";
 import { COMPANY_ADMIN_ROLE_MARKER } from "~/features/system/company-users";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
 import { isGranted } from "~/lib/accessService";
+import { collectPermissionCodes } from "~/lib/permission-codes";
 import { Dropdown } from "primereact/dropdown";
 import { getAuthUser } from "~/lib/get-auth-user";
 
@@ -46,38 +47,6 @@ function primeIconClass(name?: string, className = "h-5 w-5 shrink-0"): string {
 
 const HEADER_HEIGHT = 48;
 
-function collectRolePermissionCodes(role: RoleRecord): string[] {
-  const out = new Set<string>();
-
-  // Legacy array: ["module", "module:view", "*", ...]
-  for (const p of role.permission ?? []) {
-    const code = String(p ?? "").trim();
-    if (code) out.add(code);
-  }
-
-  // Nuevo mapeo: permissions = { module: ["view","edit","*"], "*": ["*"] }
-  const mapped = role.permissions ?? {};
-  for (const [moduleKey, actions] of Object.entries(mapped)) {
-    const moduleName = String(moduleKey ?? "").trim();
-    if (!moduleName || !Array.isArray(actions)) continue;
-    for (const actionRaw of actions) {
-      const action = String(actionRaw ?? "").trim();
-      if (!action) continue;
-      if (moduleName === "*" && action === "*") {
-        out.add("*");
-        continue;
-      }
-      if (action === "*") {
-        out.add(`*:${moduleName}`);
-        continue;
-      }
-      out.add(`${moduleName}:${action}`);
-    }
-  }
-
-  return Array.from(out);
-}
-
 /**
  * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
  * Fuente de roleIds: solo `company-users` de la empresa activa.
@@ -95,13 +64,13 @@ function getEffectivePermissions(
   for (const rid of membershipRoleIds) {
     if (rid === COMPANY_ADMIN_ROLE_MARKER) continue;
     const role = roleMap.get(rid) ?? byName.get(rid.toLowerCase());
-    const perms = role ? collectRolePermissionCodes(role) : [];
+    const perms = role ? collectPermissionCodes(role) : [];
     if (perms.includes("*")) hasWildcard = true;
     perms.forEach((p) => set.add(p));
   }
   for (const roleName of membershipRoleNames) {
     const role = byName.get(String(roleName).toLowerCase());
-    const perms = role ? collectRolePermissionCodes(role) : [];
+    const perms = role ? collectPermissionCodes(role) : [];
     if (perms.includes("*")) hasWildcard = true;
     perms.forEach((p) => set.add(p));
   }
@@ -113,10 +82,9 @@ function canShowItem(permission: string[] | undefined, effectivePermissions: str
   if (effectivePermissions.includes("*")) return true;
   if (!permission?.length) return true;
   if (effectivePermissions.length === 0) return false;
-  if (permission.length >= 2) {
-    return isGranted(effectivePermissions, permission[0], permission[1]);
-  }
-  return effectivePermissions.some((p) => permission.includes(p));
+  const action = permission[0];
+  const moduleName = permission[1] ?? permission[0];
+  return isGranted(effectivePermissions, action, moduleName);
 }
 
 function filterMenu(items: MenuItemJson[], effectivePermissions: string[]): MenuItemJson[] {
@@ -133,7 +101,12 @@ function filterMenu(items: MenuItemJson[], effectivePermissions: string[]): Menu
       }
       return item;
     })
-    .filter((item) => !item.children?.length || (item.children?.length ?? 0) > 0);
+    .filter((item) => {
+      // Hoja: sin submenú.
+      if (item.children == null) return true;
+      // Padre: solo si queda al menos un hijo (p. ej. tras filtrar por permisos).
+      return item.children.length > 0;
+    });
 }
 
 export function meta({ }: Route.MetaArgs) {
@@ -157,6 +130,9 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     useCompany();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  const revalidator = useRevalidator();
+  const lastRevalidatedCompanyId = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -260,6 +236,15 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   useEffect(() => {
     if (activeMenuTitle) setExpandedKeys(new Set([activeMenuTitle]));
   }, [activeMenuTitle]);
+
+  useEffect(() => {
+    if (companyLoading) return;
+    if (!activeCompanyId) return;
+    if (lastRevalidatedCompanyId.current === activeCompanyId) return;
+    if (navigation.state !== "idle" || revalidator.state !== "idle") return;
+    lastRevalidatedCompanyId.current = activeCompanyId;
+    revalidator.revalidate();
+  }, [companyLoading, activeCompanyId, navigation.state, revalidator]);
 
   // clientLoader ya garantizó que hay usuario autenticado antes de renderizar.
   // Este guard cubre el breve instante inicial en que AuthProvider aún no actualizó su estado React.

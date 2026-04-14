@@ -9,8 +9,9 @@ import {
 } from "~/features/human-resource/resources";
 import type { Route } from "./+types/CostsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { RESOURCE_COST_TYPE, CURRENCY } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import ResourceCostDialog from "./ResourceCostDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -21,14 +22,7 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Tipo", column: "type", order: 2, display: true, filter: true, type: "status", typeOptions: RESOURCE_COST_TYPE },
-  { header: "Monto", column: "amount", order: 3, display: true, filter: true },
-  { header: "Moneda", column: "currency", order: 4, display: true, filter: true, type: "status", typeOptions: CURRENCY },
-  { header: "Vigente desde", column: "effectiveFrom", order: 5, display: true, filter: true, type: "date" },
-  { header: "Activo", column: "active", order: 6, display: true, filter: true, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("resource-cost", { type: RESOURCE_COST_TYPE, currency: CURRENCY });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const resourceId = params.id as string;

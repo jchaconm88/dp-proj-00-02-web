@@ -3,8 +3,9 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getEmployees, deleteEmployee, deleteEmployees, type EmployeeRecord } from "~/features/human-resource/employees";
 import type { Route } from "./+types/EmployeesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { EMPLOYEE_STATUS, CURRENCY } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import EmployeeDialog from "./EmployeeDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -16,16 +17,7 @@ export function meta({}: Route.MetaArgs) {
 
 type EmployeeRow = EmployeeRecord & { fullName: string; salaryDisplay: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código",      column: "code",          order: 1, display: true, filter: true },
-  { header: "Nombre",      column: "fullName",       order: 2, display: true, filter: true },
-  { header: "Tipo Doc",    column: "documentType",   order: 3, display: true, filter: true },
-  { header: "Nº Doc",      column: "documentNo",     order: 4, display: true, filter: true },
-  { header: "Cargo",       column: "position",       order: 5, display: true, filter: true },
-  { header: "F. Ingreso",  column: "hireDate",       order: 6, display: true, filter: true, type: "date" },
-  { header: "Estado",      column: "status",         order: 7, display: true, filter: true, type: "status", typeOptions: EMPLOYEE_STATUS },
-  { header: "Salario",     column: "salaryDisplay",  order: 8, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("employee", { status: EMPLOYEE_STATUS });
 
 export async function clientLoader() {
   const { items } = await getEmployees();

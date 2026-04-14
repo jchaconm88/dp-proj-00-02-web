@@ -9,8 +9,9 @@ import {
 } from "~/features/transport/transport-contracts";
 import type { Route } from "./+types/TransportRateRulesPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { CALCULATION_TYPE, RATE_RULE_TYPE } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import RateRuleDialog from "./TransportRateRuleDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -23,18 +24,7 @@ export function meta({ data }: Route.MetaArgs) {
 
 type RateRuleRow = RateRuleRecord & { validityStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Tipo regla", column: "ruleType", order: 3, display: true, filter: true, type: "status", typeOptions: RATE_RULE_TYPE },
-  { header: "Prioridad", column: "priority", order: 4, display: true, filter: true },
-  { header: "Cálculo", column: "calculationType", order: 5, display: true, filter: true, type: "status", typeOptions: CALCULATION_TYPE },
-  { header: "Servicio", column: "transportService", order: 6, display: true, filter: true },
-  { header: "Vehículo", column: "vehicleType", order: 7, display: true, filter: true },
-  { header: "Vigencia", column: "validityStr", order: 8, display: true, filter: true },
-  { header: "Apilable", column: "stackable", order: 9, display: true, filter: false, type: "bool" },
-  { header: "Activo", column: "active", order: 10, display: true, filter: true, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("transport-rate-rule", { ruleType: RATE_RULE_TYPE, calculationType: CALCULATION_TYPE });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const contractId = params.id as string;

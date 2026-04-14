@@ -8,9 +8,10 @@ import {
 } from "~/features/transport/plans";
 import type { Route } from "./+types/PlansPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { PLAN_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import PlanDialog from "./PlanDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -22,34 +23,7 @@ export function meta({}: Route.MetaArgs) {
 
 type PlanRow = PlanRecord & { orderIdsStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Fecha", column: "date", order: 2, display: true, filter: true },
-  { header: "Zona", column: "zone", order: 3, display: true, filter: true },
-  {
-    header: "Tipo vehículo",
-    column: "vehicleType",
-    order: 4,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Pedidos",
-    column: "orderIdsStr",
-    order: 5,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Estado",
-    column: "status",
-    order: 6,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: PLAN_STATUS,
-  },
-];
+const TABLE_DEF = moduleTableDef("plan", { status: PLAN_STATUS });
 
 export async function clientLoader() {
   const { items } = await getPlans();

@@ -9,8 +9,9 @@ import {
 } from "~/features/transport/transport-services";
 import type { Route } from "./+types/TransportServicesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { SERVICE_TYPE_CATEGORY, CALCULATION_TYPE } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import TransportServiceDialog from "./TransportServiceDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -20,17 +21,7 @@ export function meta({ }: Route.MetaArgs) {
     ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-    { header: "Código", column: "code", order: 1, display: true, filter: true },
-    { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-    { header: "Descripción", column: "description", order: 3, display: true, filter: true },
-    { header: "Categoría", column: "category", order: 4, display: true, filter: true, type: "status", typeOptions: SERVICE_TYPE_CATEGORY },
-    { header: "Tiempo (min)", column: "defaultServiceTimeMin", order: 5, display: true, filter: true },
-    { header: "Cálculo", column: "calculationType", order: 6, display: true, filter: true, type: "status", typeOptions: CALCULATION_TYPE },
-    { header: "Cita req.", column: "requiresAppointment", order: 7, display: true, filter: false, type: "bool" },
-    { header: "Consolida", column: "allowConsolidation", order: 8, display: true, filter: false, type: "bool" },
-    { header: "Activo", column: "active", order: 9, display: true, filter: true, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("transport-service", { category: SERVICE_TYPE_CATEGORY, calculationType: CALCULATION_TYPE });
 
 export async function clientLoader() {
     const { items } = await getTransportServices();

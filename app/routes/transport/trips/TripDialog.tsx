@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useNavigation } from "react-router";
+import { useLocation, useNavigate, useNavigation } from "react-router";
 import { Button } from "primereact/button";
 import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
@@ -18,6 +18,7 @@ import { getTransportServices } from "~/features/transport/transport-services";
 import { getClients } from "~/features/master/clients";
 import { getVehicles } from "~/features/transport/vehicles";
 import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/constants/status-options";
+import { withUrlSearch } from "~/lib/url-search";
 
 export interface TripDialogProps {
   visible: boolean;
@@ -41,6 +42,7 @@ export default function TripDialog({
 }: TripDialogProps) {
   const isEdit = !!tripId;
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const isNavigating = navigation.state !== "idle";
 
@@ -400,7 +402,11 @@ export default function TripDialog({
             <Button
               label="Gestionar paradas del viaje"
               severity="secondary"
-              onClick={() => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`)}
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/transport/trips/${encodeURIComponent(tripId)}/trip-stops`, location.search)
+                )
+              }
               className="w-full"
             />
           )}

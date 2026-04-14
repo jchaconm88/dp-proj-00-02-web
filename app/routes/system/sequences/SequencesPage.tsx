@@ -3,10 +3,13 @@ import { useNavigate, useMatch, Outlet, useNavigation, useRevalidator } from "re
 import { getSequences, deleteSequence, type SequenceRecord } from "~/features/system/sequences";
 import type { Route } from "./+types/SequencesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import SequenceDialog from "./SequenceDialog";
 import { RESET_PERIOD } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
+
+const TABLE_DEF = moduleTableDef("sequence", { resetPeriod: RESET_PERIOD });
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -15,31 +18,10 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-// clientLoader: carga datos antes de renderizar el componente.
-// El PaceLoader se activa automáticamente via useNavigation() durante la transición.
 export async function clientLoader({}: Route.ClientLoaderArgs) {
   const { items } = await getSequences();
   return { sequences: items };
 }
-
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Entidad", column: "entity", order: 1, display: true, filter: true },
-  { header: "Prefijo", column: "prefix", order: 2, display: true, filter: true },
-  { header: "Dígitos", column: "digits", order: 3, display: true, filter: true },
-  { header: "Formato", column: "format", order: 4, display: true, filter: true },
-  {
-    header: "Reinicio",
-    column: "resetPeriod",
-    order: 5,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: RESET_PERIOD,
-  },
-  { header: "Override manual", column: "allowManualOverride", order: 6, display: true, filter: false, type: "bool" },
-  { header: "Evitar huecos", column: "preventGaps", order: 7, display: true, filter: false, type: "bool" },
-  { header: "Activo", column: "active", order: 8, display: true, filter: true, type: "bool" },
-];
 
 export default function Sequences({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();

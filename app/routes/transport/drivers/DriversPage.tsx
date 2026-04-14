@@ -4,14 +4,15 @@ import {
     getDrivers,
     deleteDrivers,
     type DriverRecord,
-    type DriverStatus,
-    type DriverRelationshipType,
 } from "~/features/transport/drivers";
 import type { Route } from "./+types/DriversPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DRIVER_STATUS, DRIVER_RELATIONSHIP } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import DriverDialog from "./DriverDialog";
+
+const TABLE_DEF = moduleTableDef("driver", { relationshipType: DRIVER_RELATIONSHIP, status: DRIVER_STATUS });
 
 export function meta({ }: Route.MetaArgs) {
     return [
@@ -19,20 +20,6 @@ export function meta({ }: Route.MetaArgs) {
         { name: "description", content: "Gestión de conductores" },
     ];
 }
-
-const TABLE_DEF: DpTableDefColumn[] = [
-    { header: "Nombre", column: "firstName", order: 2, display: true, filter: true },
-    { header: "Apellido", column: "lastName", order: 3, display: true, filter: true },
-    { header: "Nº Doc", column: "documentNo", order: 4, display: true, filter: true },
-    { header: "Tipo doc", column: "documentType", order: 5, display: true, filter: true },
-    { header: "Teléfono", column: "phoneNo", order: 6, display: true, filter: true },
-    { header: "Licencia", column: "licenseNo", order: 7, display: true, filter: true },
-    { header: "Categoría", column: "licenseCategory", order: 8, display: true, filter: true },
-    { header: "Venc. licencia", column: "licenseExpiration", order: 9, display: true, filter: true, type: "date" },
-    { header: "Vínculo", column: "relationshipType", order: 10, display: true, filter: true, type: "label", typeOptions: DRIVER_RELATIONSHIP },
-    { header: "Estado", column: "status", order: 11, display: true, filter: true, type: "status", typeOptions: DRIVER_STATUS },
-    { header: "Viaje actual", column: "currentTripId", order: 12, display: true, filter: true },
-];
 
 export async function clientLoader() {
     const { items } = await getDrivers();

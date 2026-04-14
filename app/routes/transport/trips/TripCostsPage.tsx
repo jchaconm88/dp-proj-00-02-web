@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
 import {
   getTripCosts,
@@ -8,19 +8,19 @@ import {
   type TripCostRecord,
 } from "~/features/transport/trip-costs";
 import type { Route } from "./+types/TripCostsPage";
+import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import {
   DpTable,
   type DpTableRef,
-  type DpTableDefColumn,
   type DpTableFooterTotals,
 } from "~/components/DpTable";
 import {
-  TRIP_COST_TYPE,
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
 } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
+import { moduleTableDef } from "~/data/system-modules";
 import TripCostDialog from "./TripCostDialog";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 
@@ -34,14 +34,7 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Tipo", column: "chargeTypeLabel", order: 2, display: true, filter: true },
-  { header: "Nombre", column: "displayName", order: 3, display: true, filter: true },
-  { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_COST_SOURCE },
-  { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
-  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_COST_STATUS },
-];
+const TABLE_DEF = moduleTableDef("trip-cost", { source: TRIP_COST_SOURCE, status: TRIP_COST_STATUS });
 
 const TRIP_COSTS_FOOTER_TOTALS: DpTableFooterTotals = {
   label: "Total:",
@@ -61,6 +54,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   const { trip, costs, tripId } = loaderData;
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<TripCostTableRow>>(null);
@@ -103,15 +97,17 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editCostId;
+  const listQuery = location.search;
+  const costsBase = `/transport/trips/${encodeURIComponent(tripId)}/trip-costs`;
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs/add`);
+  const openAdd = () => navigate(withUrlSearch(`${costsBase}/add`, listQuery));
   const openEdit = (row: TripCostTableRow) =>
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs/edit/${encodeURIComponent(row.id)}`);
+    navigate(withUrlSearch(`${costsBase}/edit/${encodeURIComponent(row.id)}`, listQuery));
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -145,11 +141,11 @@ export default function TripCostsPage({ loaderData }: Route.ComponentProps) {
   };
 
   const handleSuccess = () => {
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs`);
+    navigate(withUrlSearch(costsBase, listQuery));
     revalidator.revalidate();
   };
-  const handleHide = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-costs`);
-  const onBack = () => navigate("/transport/trips");
+  const handleHide = () => navigate(withUrlSearch(costsBase, listQuery));
+  const onBack = () => navigate(withUrlSearch("/transport/trips", listQuery));
 
   return (
     <DpContentInfo

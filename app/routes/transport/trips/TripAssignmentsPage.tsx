@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
 import {
   getTripAssignments,
@@ -8,10 +8,12 @@ import {
   type TripAssignmentRecord,
 } from "~/features/transport/trip-assignments";
 import type { Route } from "./+types/TripAssignmentsPage";
+import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { TRIP_ASSIGNMENT_ENTITY_TYPE, TRIP_ASSIGNMENT_TYPE } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import TripAssignmentDialog from "./TripAssignmentDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -24,14 +26,7 @@ export function meta({ data }: Route.MetaArgs) {
 
 type AssignmentRow = TripAssignmentRecord & { scopeSummary: string; assignmentTypeLabel: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Tipo asignación", column: "assignmentTypeLabel", order: 2, display: true, filter: true },
-  { header: "Nombre", column: "displayName", order: 3, display: true, filter: true },
-  { header: "Tipo entidad", column: "entityType", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_ASSIGNMENT_ENTITY_TYPE },
-  { header: "Posición", column: "position", order: 5, display: true, filter: true },
-  { header: "Alcance", column: "scopeSummary", order: 6, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("trip-assignment", { entityType: TRIP_ASSIGNMENT_ENTITY_TYPE });
 
 function scopeSummaryRow(a: TripAssignmentRecord): string {
   if (a.scope?.type === "trip") return "Todo el viaje";
@@ -59,6 +54,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps) {
   const { trip, assignments, tripId } = loaderData;
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<AssignmentRow>>(null);
@@ -75,15 +71,17 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editAssignmentId;
+  const listQuery = location.search;
+  const assignmentsBase = `/transport/trips/${encodeURIComponent(tripId)}/trip-assignments`;
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments/add`);
+  const openAdd = () => navigate(withUrlSearch(`${assignmentsBase}/add`, listQuery));
   const openEdit = (row: AssignmentRow) =>
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments/edit/${encodeURIComponent(row.id)}`);
+    navigate(withUrlSearch(`${assignmentsBase}/edit/${encodeURIComponent(row.id)}`, listQuery));
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -117,11 +115,11 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
   };
 
   const handleSuccess = () => {
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments`);
+    navigate(withUrlSearch(assignmentsBase, listQuery));
     revalidator.revalidate();
   };
-  const handleHide = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-assignments`);
-  const onBack = () => navigate("/transport/trips");
+  const handleHide = () => navigate(withUrlSearch(assignmentsBase, listQuery));
+  const onBack = () => navigate(withUrlSearch("/transport/trips", listQuery));
 
   return (
     <DpContentInfo

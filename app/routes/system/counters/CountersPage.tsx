@@ -3,8 +3,9 @@ import { useNavigate, useMatch, Outlet, useNavigation, useRevalidator } from "re
 import { getCounters, deleteCounter, type CounterRecord } from "~/features/system/counters";
 import type { Route } from "./+types/CountersPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import CounterDialog from "./CounterDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -20,12 +21,7 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
   return { counters: items };
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Secuencia", column: "sequence", order: 1, display: true, filter: true },
-  { header: "Periodo", column: "period", order: 2, display: true, filter: true },
-  { header: "Último número", column: "lastNumber", order: 3, display: true, filter: true },
-  { header: "Activo", column: "active", order: 4, display: true, filter: true, type: "bool" },
-];
+const TABLE_DEF = moduleTableDef("counter");
 
 export default function Counters({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();

@@ -2,79 +2,86 @@
 description: Crear una nueva feature completa (types + service + rutas + dialog)
 ---
 
-# Workflow: Nueva Feature
+# Workflow: Nueva feature
 
-Sigue estos pasos en orden para crear una feature nueva siguiendo los estándares del proyecto.
+Pasos alineados con **`AGENTS.md`** (carpeta `dp-proj-00-02-web`). Sustituye `{module}`, `{feature}` y nombres en PascalCase según el dominio.
 
-## Paso 1 — Crear el modelo y servicio en `features/`
+## Paso 1 — Modelo y servicio en `app/features/{module}/{feature}/`
 
-// turbo
-1. Crear las carpetas necesarias:
+1. Crear carpetas, por ejemplo:
+
 ```powershell
-New-Item -ItemType Directory -Force "app/features/{feature}"
+New-Item -ItemType Directory -Force "app/features/{module}/{feature}"
 ```
 
-2. Crear `app/features/{feature}/{feature}.types.ts` con las interfaces del dominio.
+2. Crear **`{feature}.types.ts`** con interfaces del dominio.
 
-3. Crear `app/features/{feature}/{feature}.service.ts` con las funciones CRUD.
-   - Importar `db` de `~/lib/firebase`
-   - Importar tipos desde `./{feature}.types`
-   - Nunca importar de `~/lib/firestore-*` (esos archivos ya no existen)
+3. Crear **`{feature}.service.ts`** con CRUD u operaciones de negocio.
+   - Usar **`~/lib/firestore.service.ts`** (`getCollection`, `addDocument`, `updateDocument`, …) salvo que el feature ya use otro patrón aprobado (p. ej. callables vía **`~/lib/functions.service.ts`**).
+   - Importar tipos desde **`./{feature}.types`**.
+   - No importar desde rutas tipo **`~/lib/firestore-*`** obsoletas.
 
-4. Crear `app/features/{feature}/index.ts` (barrel):
-   ```typescript
-   export * from "./{feature}.types";
-   export * from "./{feature}.service";
-   ```
+4. Crear **`index.ts`** (barrel):
 
-## Paso 2 — Crear las rutas en `routes/{module}/{feature}/`
+```typescript
+export * from "./{feature}.types";
+export * from "./{feature}.service";
+```
 
-Nota: `{module}` debe coincidir con los grupos en `app/data/menu.json` (ej. `system`, `human-resources`, `masters`, etc.).
+## Paso 2 — Rutas en `app/routes/{module}/{feature}/`
 
-// turbo
-5. Crear las carpetas:
+**`{module}`** debe coincidir con rutas y menú: `system`, `human-resource`, `master`, `logistic`, `transport`, etc. (ver **`app/data/menu.json`**).
+
+5. Crear carpeta de rutas:
+
 ```powershell
 New-Item -ItemType Directory -Force "app/routes/{module}/{feature}"
 ```
 
-6. Crear `app/routes/{module}/{feature}/page.tsx`:
-   - Exportar `clientLoader` que llama al servicio
-   - Componente recibe `{ loaderData }: Route.ComponentProps`
-   - Usar `useRevalidator` para refrescar, NO `useEffect`
-   - Usar `useMatch` para detectar rutas hijo (add/edit) ej: `useMatch("/{module}/{feature}/add")`
-   - Si la ruta es principal usar `<DpContent>`, si es anidada o de detalle (ej. `/:id/locations`) usar `<DpContentInfo>` con prop `onBack`.
-   - `DpTable` con prop `data={loaderData.items}` y `loading={isLoading}`
+6. Crear **`{Features}Page.tsx`** (lista en plural, p. ej. `ClientsPage.tsx`):
+   - Exportar **`clientLoader`** que llama al servicio de la feature.
+   - Componente con **`{ loaderData }: Route.ComponentProps`**.
+   - **`useRevalidator`** para refrescar tras mutaciones; no usar **`useEffect`** para carga inicial.
+   - **`useMatch`** para rutas hijo (`add` / `edit/:id`), p. ej. `useMatch("/{module}/{ruta-de-lista}/add")` según cómo quede en **`routes.ts`**.
+   - Lista: **`<DpContent>`** + **`DpContentHeader`** + **`DpTable`** con **`data={...}`** y **`loading={isLoading}`**.
+   - Detalle o sub-módulo con botón atrás: **`<DpContentInfo onBack={...}>`** (ver `AGENTS.md` §8).
 
-7. Crear `app/routes/{module}/{feature}/add.tsx` — solo `meta()` + `return null`
+7. Crear **`{Feature}Add.tsx`** — `meta()` + `export default function …() { return null; }`.
 
-8. Crear `app/routes/{module}/{feature}/edit.tsx` — solo `meta()` + `return null`
+8. Crear **`{Feature}Edit.tsx`** — igual, ruta hija solo para URL/modal.
 
-9. Crear `app/routes/{module}/{feature}/{feature}-dialog.tsx`:
-   - Importar `useNavigation` de `react-router`
-   - `const isNavigating = navigation.state !== "idle"`
-   - `<DpContentSet saving={saving || isNavigating} saveDisabled={!valid || isNavigating}>`
-   - Usar `DpInput` para todos los campos (type: input, select, check, number, date)
+9. Crear **`{Feature}Dialog.tsx`** (formulario modal):
+   - **`useNavigation`**: `saving={saving || navigation.state !== "idle"}` en **`DpContentSet`**.
+   - Campos con **`DpInput`** / **`DpCodeInput`** según reglas del proyecto.
 
-## Paso 3 — Registrar la ruta
+Si la lista **persiste filtros en la URL**, al navegar a add/edit o sub-rutas usar **`withUrlSearch`** desde **`~/lib/url-search.ts`** (ver **`AGENTS.md`** §6 y **`.cursor/rules/dp-web-url-list-filters.mdc`** en la raíz del monorepo).
 
-10. Agregar a `app/routes.ts`:
-    ```typescript
-    route("{module}/{feature}", "routes/{module}/{feature}/page.tsx", [
-      route("add",      "routes/{module}/{feature}/add.tsx"),
-      route("edit/:id", "routes/{module}/{feature}/edit.tsx"),
-    ]),
-    ```
+## Paso 3 — Registrar en `app/routes.ts`
+
+10. Añadir la entrada `route(...)` con paths a los archivos anteriores (mismo patrón que el resto del archivo), por ejemplo:
+
+```typescript
+route("{module}/{ruta}", "routes/{module}/{feature}/{Features}Page.tsx", [
+  route("add", "routes/{module}/{feature}/{Feature}Add.tsx"),
+  route("edit/:id", "routes/{module}/{feature}/{Feature}Edit.tsx"),
+]),
+```
+
+Los paths son relativos a **`app/`** (sin prefijo `app/` en el string).
 
 ## Paso 4 — Verificar
 
-// turbo
-11. Regenerar tipos y verificar TypeScript:
+11. Desde la carpeta **`dp-proj-00-02-web`**:
+
 ```powershell
-npx react-router typegen; npx tsc --noEmit
+npm run typecheck
 ```
+
+Equivale a typegen de React Router + **`tsc`**.
 
 ## Notas importantes
 
-- Los imports de servicios usan el barrel: `import { get{Feature}s } from "~/features/{feature}"`
-- La autenticación está en el `clientLoader` del dashboard — no agregar guards en las páginas hijas
-- Consultar `AGENTS.md` en la raíz del proyecto para la referencia completa de componentes
+- Imports desde el barrel de la feature: **`import { getX } from "~/features/{module}/{feature}"`** (ajusta `module` y carpeta reales).
+- La autenticación global está en el **`clientLoader`** de **`routes/Dashboard.tsx`**; no duplicar guards en cada página hija salvo casos excepcionales.
+- Convenciones completas: **`AGENTS.md`** en esta carpeta.
+- Reglas Cursor del monorepo: **`.cursor/rules/`** en **`dp-proj-00-02`** (raíz del repo que contiene `dp-proj-00-02-web`).

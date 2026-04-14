@@ -11,8 +11,9 @@ import { getProfiles } from "~/features/system/users";
 import { getAllRoles } from "~/features/system/roles";
 import type { Route } from "./+types/CompanyMembersPage";
 import { DpContentHeader, DpContentInfo } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { moduleTableDef } from "~/data/system-modules";
 import CompanyMemberDialog from "./CompanyMemberDialog";
 import type { StatusOption } from "~/constants/status-options";
 
@@ -156,19 +157,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   return { companyId, companyName: company?.name ?? "", rows };
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Usuario", column: "emailLabel", order: 1, display: true, filter: true },
-  { header: "Roles", column: "rolesLabel", order: 2, display: true, filter: true },
-  {
-    header: "Activo",
-    column: "status",
-    order: 3,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: MEMBER_STATUS_MAP,
-  },
-];
+const TABLE_DEF = moduleTableDef("company-member", { status: MEMBER_STATUS_MAP });
 
 export default function CompanyMembersPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();

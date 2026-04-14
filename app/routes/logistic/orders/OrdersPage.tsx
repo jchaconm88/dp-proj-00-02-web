@@ -8,9 +8,10 @@ import {
 } from "~/features/logistic/orders";
 import type { Route } from "./+types/OrdersPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { ORDER_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import OrderDialog from "./OrderDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -22,42 +23,7 @@ export function meta({}: Route.MetaArgs) {
 
 type OrderRow = OrderRecord & { locationStr?: string; windowStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Cliente", column: "client", order: 2, display: true, filter: true },
-  {
-    header: "Dirección entrega",
-    column: "deliveryAddress",
-    order: 3,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Ubicación",
-    column: "locationStr",
-    order: 4,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Ventana",
-    column: "windowStr",
-    order: 5,
-    display: true,
-    filter: true,
-  },
-  { header: "Peso", column: "weight", order: 6, display: true, filter: true },
-  { header: "Volumen", column: "volume", order: 7, display: true, filter: true },
-  {
-    header: "Estado",
-    column: "status",
-    order: 8,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: ORDER_STATUS,
-  },
-];
+const TABLE_DEF = moduleTableDef("order", { status: ORDER_STATUS });
 
 export async function clientLoader() {
   const { items } = await getOrders();

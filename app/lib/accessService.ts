@@ -1,3 +1,5 @@
+import { hasPermissionCode } from "~/lib/permission-codes";
+
 /**
  * Validación de acceso (como dp-proj-00-01).
  * permission en menú es [action, module] ej. ["view", "user"].
@@ -18,10 +20,5 @@ export function isGranted(
   permission: string,
   module: string
 ): boolean {
-  if (effectivePermissions.includes("*")) return true;
-  if (effectivePermissions.includes(module)) return true;
-  const exact = toResolvedPermission(permission, module);
-  if (effectivePermissions.includes(exact)) return true;
-  if (effectivePermissions.includes("*:" + module)) return true;
-  return false;
+  return hasPermissionCode(effectivePermissions, permission, module);
 }

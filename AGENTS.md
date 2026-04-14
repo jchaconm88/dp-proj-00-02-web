@@ -8,29 +8,41 @@ Este proyecto es una SPA de administración construida con **React Router v7 (fr
 
 ```
 app/
-├── features/          ← lógica de dominio (tipos + servicios)
-│   ├── {module}/      ← agrupado por módulo (system, human-resource, master, logistic, transport)
-│   │   ├── {feature}/
-│   │   │   ├── {feature}.types.ts    ← interfaces/types SOLO
-│   │   │   ├── {feature}.service.ts  ← funciones CRUD/Firestore
-│   │   │   └── index.ts              ← barrel: export * from types + service
-├── routes/
-│   ├── dashboard.tsx             ← layout protegido (auth en clientLoader)
-│   └── {module}/                 ← agrupado por módulo según menu.json (system, human-resources, etc.)
+├── components/        ← UI reutilizable (DpContent, DpTable, DpInput, …)
+├── constants/         ← p. ej. status-options, currency-format
+├── data/               ← menu.json y datos estáticos de navegación
+├── features/           ← lógica de dominio (tipos + servicios)
+│   └── {module}/       ← system, transport, master, logistic, human-resource, reports, …
 │       └── {feature}/
-│           ├── {Features}Page.tsx       ← lista principal (Plural) con clientLoader + DpTable
-│           ├── {Feature}Add.tsx         ← ruta hijo (Singular), solo retorna null
-│           ├── {Feature}Edit.tsx        ← ruta hijo (Singular), solo retorna null
-│           └── {Feature}Dialog.tsx      ← formulario modal (Singular) con DpContentSet
-└── placeholder/              ← rutas futuras sin implementar
-├── lib/               ← infraestructura compartida (NO lógica de dominio)
+│           ├── {feature}.types.ts
+│           ├── {feature}.service.ts
+│           └── index.ts
+├── lib/                ← infraestructura (NO lógica de dominio de negocio)
 │   ├── firebase.ts
+│   ├── firestore.service.ts
+│   ├── functions.service.ts
+│   ├── url-search.ts       ← withUrlSearch (filtros en URL)
+│   ├── get-auth-user.ts
+│   ├── accessService.ts
+│   ├── permission-codes.ts
+│   ├── tenant.ts
 │   ├── auth-context.tsx
 │   ├── theme-context.tsx
-│   ├── firestore.service.ts
-│   ├── accessService.ts
-│   └── get-auth-user.ts
-└── routes.ts          ← tabla de rutas (config-based routing)
+│   ├── company-context.tsx
+│   ├── account-context.tsx
+│   ├── loading-context.tsx
+│   └── use-data-loader.ts  ← legacy; en UI nueva usar clientLoader + useRevalidator (§8)
+├── routes/
+│   ├── Dashboard.tsx       ← layout autenticado (clientLoader auth) + shell + <Outlet />
+│   ├── placeholder/       ← stubs de plantilla; no son el menú productivo
+│   └── {module}/           ← alineado con app/data/menu.json
+│       └── {feature}/
+│           ├── {Features}Page.tsx
+│           ├── {Feature}Add.tsx
+│           ├── {Feature}Edit.tsx
+│           └── {Feature}Dialog.tsx
+├── routes.ts
+└── root.tsx
 ```
 
 ---
@@ -72,11 +84,11 @@ useEffect(() => { fetchItems(); }, []);
 ## 3. Importar de `features/` y usar abstracciones de Firestore
 
 ```tsx
-// ✅ CORRECTO — usar barrel index de la feature
-import { getSequences, type SequenceRecord } from "~/features/sequences";
-import { getRoles, addRole, type RoleRecord } from "~/features/roles";
+// ✅ CORRECTO — barrel por módulo + feature (ruta real bajo app/features/)
+import { getSequences, type SequenceRecord } from "~/features/system/sequences";
+import { getRoles, addRole, type RoleRecord } from "~/features/system/roles";
 
-// ❌ INCORRECTO — los archivos firestore-*.ts ya no existen
+// ❌ INCORRECTO — los archivos firestore-*.ts en lib ya no existen
 import { getSequences } from "~/lib/firestore-sequences";
 ```
 
@@ -181,15 +193,15 @@ route("{module}/{feature}", "routes/{module}/{feature}/{Features}Page.tsx", [
 
 ---
 
-## 5. Autenticación (`dashboard.tsx`)
+## 5. Autenticación (`routes/Dashboard.tsx`)
 
-El dashboard tiene `clientLoader` que verifica auth antes de renderizar:
+El layout del dashboard tiene `clientLoader` que verifica auth antes de renderizar:
 
 ```typescript
 // lib/get-auth-user.ts — Firebase auth como Promise
 export function getAuthUser(): Promise<User | null> { ... }
 
-// dashboard.tsx
+// routes/Dashboard.tsx
 export async function clientLoader() {
   const user = await getAuthUser();
   if (!user) throw redirect("/login"); // redirect ANTES de renderizar
@@ -225,8 +237,33 @@ export async function clientLoader() {
   onEdit={(row) => openDialog(row.id)}
   onDelete={handleDelete}
 />
+```
 
-// DpInput — tipo unificado
+### moduleTableDef — fuente única de columnas
+
+**NUNCA** definir `TABLE_DEF` manualmente en las páginas. Usar siempre `moduleTableDef` desde `~/data/system-modules`. El catálogo `SYSTEM_MODULES_CATALOG` en ese archivo es la única fuente de verdad para las columnas de cada módulo.
+
+```ts
+import { moduleTableDef } from "~/data/system-modules";
+
+// Sin typeOptions (columnas sin status/label)
+const TABLE_DEF = moduleTableDef("position");
+
+// Con typeOptions para columnas con format: "status" o "label"
+const TABLE_DEF = moduleTableDef("vehicle", { type: VEHICLE_TYPE, status: VEHICLE_STATUS });
+
+// Con override post-map para propiedades extra no en ModuleColumn (ej. sort)
+const TABLE_DEF = moduleTableDef("trip", { status: TRIP_STATUS }).map((col) => {
+  if (col.column === "scheduledStart") return { ...col, sort: true };
+  return col;
+});
+```
+
+`moduleTableDef(moduleId, typeOptions?)` convierte `ModuleColumn[]` del catálogo a `DpTableDefColumn[]`:
+- `name` → `column`, `format` → `type` (`"status"`, `"label"`, `"bool"`, `"date"`, `"datetime"`)
+- `typeOptions[col.name]` → `typeOptions` de la columna (solo para columnas con `format: "status"` o `"label"`)
+
+```tsx
 <DpInput type="input" label="Nombre" name="name" value={name} onChange={setName} />
 <DpInput type="select" label="Estado" name="status" value={status} onChange={setStatus} options={opts} />
 <DpInput type="check" label="Activo" name="active" value={active} onChange={setActive} />
@@ -292,6 +329,20 @@ Alinear **`TripCostsPage`** y **`TripChargesPage`** (y futuras listas similares 
 3. **`DpTable`**: `paginator={false}`; **`footerTotals`** con `sumColumns: ["amountFormatted"]`, **`sumValueKey: { amountFormatted: "amount" }`** y `formatSum` coherente con el formato de fila.
 4. **Imports y constantes**: todo lo usado en `TABLE_DEF` o en el componente debe existir (`import` o `const` en el mismo archivo). Un `ReferenceError` al evaluar el módulo puede provocar en runtime el error opaco *«No result returned from dataStrategy»* de React Router.
 5. Si se usa **`CURRENCY`** en `typeOptions` de una columna, debe importarse desde **`~/constants/status-options`**. Si la moneda solo va en `amountFormatted`, no hace falta columna Moneda.
+
+### Preservar `location.search` al navegar (filtros en URL + rutas hijas)
+
+Si el **`clientLoader`** o la lista leen filtros desde **`request.url` / `URLSearchParams`** y el usuario puede ir a **add**, **edit** o **sub-rutas** (detalle, paradas, etc.), hay que **propagar la misma query** en esos `navigate()` para que al volver la lista siga con los mismos filtros y la URL siga siendo compartible.
+
+1. **`useLocation()`** → `const listQuery = location.search` (o nombre equivalente).
+2. **`withUrlSearch(path, listQuery)`** desde **`~/lib/url-search.ts`**: concatena `search` al `path` si no está vacío.
+3. Aplicar en **todos** los saltos relevantes: `openAdd`, `openEdit`, `handleHide`, `handleSuccess` hacia la lista, botones a sub-módulos, **`onBack`** de **`DpContentInfo`** hacia la lista padre, y diálogos que hagan `navigate` a rutas hijas.
+
+**Referencia:** `TripsPage.tsx`, `TripDialog.tsx`, `TripAssignmentsPage.tsx`, `TripStopsPage.tsx`, `TripCostsPage.tsx`, `TripChargesPage.tsx`.
+
+**Estado del repo:** hoy solo **viajes** (`TripsPage`) persiste filtros en la query en el loader; el resto de listados no requiere este patrón hasta que sincronicen filtros con la URL.
+
+Regla Cursor en repo raíz: **`.cursor/rules/dp-web-url-list-filters.mdc`**.
 
 ### Confirmar eliminación en páginas de lista
 
@@ -372,9 +423,12 @@ Los asistentes y el código deben tratar este archivo como **la única fuente** 
 - **Firestore Service** — NUNCA importar `firebase/firestore` directamente en los .service.ts. Se deben usar OBLIGATORIAMENTE las funciones expuestas en `~/lib/firestore.service.ts` (`getDocument`, `addDocument`, `updateDocument`, etc.) ya que éstas inyectan campos de auditoría automáticamente de forma segura.
 - **Cloud Functions (callable)** — No usar `httpsCallable` directamente en features: usar `callHttpsFunction` y `mapCallableError` desde `~/lib/functions.service.ts`. Los DTO request/response de cada callable viven en el `*.types.ts` del feature correspondiente (mantenerlos alineados con `dp-proj-00-02-functions`).
 - **Diccionarios de constantes y opciones** — Ver **§7. Estados y claves (`status-options.ts`)**; allí vive la política de fuente única, `parseStatus` y `statusDefaultKey`. En tablas y formularios usar el mapa correspondiente con `typeOptions` / `statusToSelectOptions(MAPA)`.
+- **Columnas de tabla (`TABLE_DEF`)** — **NUNCA** definir `TABLE_DEF` manualmente en páginas. Usar siempre **`moduleTableDef(moduleId, typeOptions?)`** desde `~/data/system-modules`. El catálogo `SYSTEM_MODULES_CATALOG` es la única fuente de verdad para columnas. Ver sección 6 *«moduleTableDef»*.
 - **Nomenclatura de Colecciones en Firestore** — El nombre de las colecciones OMITIRÁ SIEMPRE el prefijo del módulo en el que se encuentran. Solo deben llevar el nombre de su entidad representativa en kebab-case pluralizado (Ej. usar `const COLLECTION = "document-types"` en vez de `master-document-types` y `const COLLECTION = "vehicles"` en vez de `transport-vehicles`). Esto asegura el desacoplamiento Front-Back.
 - **Servicio Agnóstico por Feature** — Cada feature debe exponer una única superficie en `*.service.ts` (más `*.types.ts` + `index.ts`). Evitar separar infraestructura por proveedor en archivos públicos como `*.functions.ts` o `*.api.ts` consumidos por UI. Los componentes/rutas deben importar únicamente desde el servicio de la feature; cualquier cambio de backend (Firestore, Cloud Functions, REST, etc.) se resuelve internamente en el `*.service.ts` conservando las mismas firmas públicas.
 - **Confirmar borrado en UI** — En listados con eliminación masiva, usar siempre `DpConfirmDialog`; nunca `confirm()` del navegador (ver sección 6 y `.cursor/rules/dp-confirm-dialog.mdc`).
 - **Tablas de montos en viajes** — Ver sección 6 *«Listados con montos bajo un viaje»* y regla Cursor **`.cursor/rules/dp-web-trip-money-tables.mdc`** (raíz del monorepo).
 - **DpInput select / DpContentSet dialog** — Ver sección 6 *«DpInput select + DpContentSet»* y **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`** (raíz del monorepo).
 - **Barra de lista con acciones extra** — Usar **`DpContentHeaderAction`** dentro de **`DpContentHeader`** (sección 6 *«DpContentHeaderAction»*); ejemplo **`TripsPage`** (cambio masivo de estado).
+- **Filtros en URL y rutas hijas** — Si la lista escribe filtros en `location.search`, propagar la query al navegar a add/edit/sub-rutas con **`withUrlSearch`** (sección 6 *«Preservar location.search»*) y regla **`.cursor/rules/dp-web-url-list-filters.mdc`**.
+- **Workflows de agente** — En **`dp-proj-00-02-web/.agents/workflows/`** hay guías resumidas (p. ej. nueva feature); **`AGENTS.md`** sigue siendo la fuente normativa.

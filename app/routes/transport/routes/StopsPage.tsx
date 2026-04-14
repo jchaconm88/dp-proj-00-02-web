@@ -9,9 +9,10 @@ import {
 } from "~/features/transport/routes";
 import type { Route } from "./+types/StopsPage";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { STOP_TYPE, STOP_STATUS } from "~/constants/status-options";
+import { moduleTableDef } from "~/data/system-modules";
 import StopDialog from "./StopDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -24,40 +25,7 @@ export function meta({ data }: Route.MetaArgs) {
 
 type StopRow = StopRecord & { arrivalWindowStr?: string };
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Pedido", column: "orderId", order: 1, display: true, filter: true },
-  { header: "Secuencia", column: "sequence", order: 2, display: true, filter: true },
-  { header: "ETA", column: "eta", order: 3, display: true, filter: true },
-  {
-    header: "Ventana",
-    column: "arrivalWindowStr",
-    order: 4,
-    display: true,
-    filter: true,
-  },
-  {
-    header: "Estado",
-    column: "status",
-    order: 5,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: STOP_STATUS,
-  },
-  {
-    header: "Tipo",
-    column: "type",
-    order: 6,
-    display: true,
-    filter: true,
-    type: "status",
-    typeOptions: STOP_TYPE,
-  },
-  { header: "Nombre", column: "name", order: 7, display: true, filter: true },
-  { header: "Dirección", column: "address", order: 8, display: true, filter: true },
-  { header: "Lat", column: "lat", order: 9, display: true, filter: true },
-  { header: "Lng", column: "lng", order: 10, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("route-stop", { status: STOP_STATUS, type: STOP_TYPE });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const routeId = (params?.id ?? "") as string;

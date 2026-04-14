@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getTripById } from "~/features/transport/trips";
 import {
   getTripCharges,
@@ -8,21 +8,21 @@ import {
   type TripChargeRecord,
 } from "~/features/transport/trip-charges";
 import type { Route } from "./+types/TripChargesPage";
+import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import {
   DpTable,
   type DpTableRef,
-  type DpTableDefColumn,
   type DpTableFooterTotals,
 } from "~/components/DpTable";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import {
-  TRIP_CHARGE_TYPE,
   TRIP_CHARGE_SOURCE,
   TRIP_CHARGE_STATUS,
 } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
+import { moduleTableDef } from "~/data/system-modules";
 import TripChargeDialog from "./TripChargeDialog";
 
 type TripChargeTableRow = TripChargeRecord & { amountFormatted: string; chargeTypeLabel: string };
@@ -35,15 +35,7 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF: DpTableDefColumn[] = [
-  { header: "Código", column: "code", order: 1, display: true, filter: true },
-  { header: "Nombre", column: "name", order: 2, display: true, filter: true },
-  { header: "Tipo", column: "chargeTypeLabel", order: 3, display: true, filter: true },
-  { header: "Origen", column: "source", order: 4, display: true, filter: true, type: "label", typeOptions: TRIP_CHARGE_SOURCE },
-  { header: "Monto", column: "amountFormatted", order: 5, display: true, filter: true },
-  { header: "Estado", column: "status", order: 6, display: true, filter: true, type: "status", typeOptions: TRIP_CHARGE_STATUS },
-  { header: "Liquidación", column: "settlement", order: 7, display: true, filter: true },
-];
+const TABLE_DEF = moduleTableDef("trip-charge", { source: TRIP_CHARGE_SOURCE, status: TRIP_CHARGE_STATUS });
 
 const TRIP_CHARGES_FOOTER_TOTALS: DpTableFooterTotals = {
   label: "Total:",
@@ -63,6 +55,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   const { trip, charges, tripId } = loaderData;
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<TripChargeTableRow>>(null);
@@ -103,15 +96,17 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const dialogVisible = isAdd || !!editChargeId;
+  const listQuery = location.search;
+  const chargesBase = `/transport/trips/${encodeURIComponent(tripId)}/trip-charges`;
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges/add`);
+  const openAdd = () => navigate(withUrlSearch(`${chargesBase}/add`, listQuery));
   const openEdit = (row: TripChargeTableRow) =>
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges/edit/${encodeURIComponent(row.id)}`);
+    navigate(withUrlSearch(`${chargesBase}/edit/${encodeURIComponent(row.id)}`, listQuery));
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -145,11 +140,11 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
   };
 
   const handleSuccess = () => {
-    navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges`);
+    navigate(withUrlSearch(chargesBase, listQuery));
     revalidator.revalidate();
   };
-  const handleHide = () => navigate(`/transport/trips/${encodeURIComponent(tripId)}/trip-charges`);
-  const onBack = () => navigate("/transport/trips");
+  const handleHide = () => navigate(withUrlSearch(chargesBase, listQuery));
+  const onBack = () => navigate(withUrlSearch("/transport/trips", listQuery));
 
   return (
     <DpContentInfo

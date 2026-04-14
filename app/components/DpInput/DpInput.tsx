@@ -113,6 +113,8 @@ export interface DpInputSelectProps extends DpInputPropsBase {
   optionValue?: string;
   placeholder?: string;
   filter?: boolean;
+  /** Texto del campo de filtro cuando `filter` es true (PrimeReact Dropdown). */
+  filterPlaceholder?: string;
   onRefresh?: () => void;
   refreshing?: boolean;
   refreshAriaLabel?: string;
@@ -190,6 +192,7 @@ export default function DpInput(props: DpInputProps) {
       optionValue = "value",
       placeholder,
       filter,
+      filterPlaceholder,
       onRefresh,
       refreshing = false,
       refreshAriaLabel = "Refrescar opciones",
@@ -209,6 +212,7 @@ export default function DpInput(props: DpInputProps) {
             onChange={(e: DropdownChangeEvent) => onChange(e.value ?? "")}
             placeholder={placeholder}
             filter={filter}
+            filterPlaceholder={filterPlaceholder}
             disabled={disabled}
             className="w-full"
           />

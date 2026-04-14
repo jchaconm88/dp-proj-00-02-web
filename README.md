@@ -1,6 +1,6 @@
 # dp-proj-00-02-web — Panel de Administración
 
-Aplicación de administración tipo back-office construida con **React Router v7** (SPA), **Firebase** (Auth + Firestore) y **PrimeReact**. Incluye gestión de usuarios, roles y módulos del sistema con layout responsivo, temas claro/oscuro y barra de progreso global.
+Aplicación de administración tipo back-office construida con **React Router v7** (SPA), **Firebase** (Auth + Firestore + Storage) y **PrimeReact**. Cubre sistema multiempresa, maestros, RR. HH., logística, transporte (incl. viajes con filtros en URL), reportes y más, con layout responsivo, temas claro/oscuro y barra de progreso global.
 
 🌐 **Demo en vivo:** [https://layout-admin.web.app](https://layout-admin.web.app)
 
@@ -186,35 +186,30 @@ dp-proj-00-02-web/
 │   │   ├── DpInput/            # Control de formulario unificado
 │   │   ├── DpTable/            # Tabla con filtro, selección y acciones
 │   │   └── PaceLoader.tsx      # Barra de progreso global (navegación + datos)
+│   ├── constants/              # Catálogos UI (status-options, currency-format, …)
+│   ├── data/                   # menu.json (sidebar) y datos estáticos
+│   ├── features/               # Dominio por módulo (system, transport, …) — ver AGENTS.md
 │   ├── lib/
-│   │   ├── firebase.ts         # Inicialización Firebase
-│   │   ├── auth-context.tsx    # Contexto de autenticación
-│   │   ├── loading-context.tsx # Contexto global de carga (PaceLoader)
-│   │   ├── use-data-loader.ts  # Hook para reportar fetch al PaceLoader
-│   │   ├── firestore-users.ts  # Servicio de usuarios
-│   │   ├── firestore-roles.ts  # Servicio de roles
-│   │   └── firestore-modules.ts # Servicio de módulos
-│   ├── routes/
-│   │   ├── dashboard.tsx       # Layout principal (sidebar, header, menú)
-│   │   ├── users.tsx           # Lista de usuarios
-│   │   ├── roles.tsx           # Lista de roles
-│   │   ├── roles.$id.tsx       # Detalle de rol (permisos por módulo)
-│   │   ├── modules.tsx         # Lista de módulos
-│   │   ├── modules.$id.tsx     # Detalle de módulo (permisos y columnas)
-│   │   ├── roles/              # Diálogos de roles
-│   │   │   ├── SetRoleDialog.tsx
-│   │   │   └── SetRolePermissionDialog.tsx
-│   │   └── modules/            # Diálogos de módulos
-│   │       ├── SetModuleDialog.tsx
-│   │       ├── SetPermissionDialog.tsx
-│   │       └── SetColumnDialog.tsx
-│   ├── routes.ts               # Configuración de rutas
-│   └── root.tsx                # Layout raíz (providers globales)
+│   │   ├── firebase.ts           # Inicialización Firebase
+│   │   ├── firestore.service.ts  # Acceso Firestore compartido (auditoría, etc.)
+│   │   ├── functions.service.ts  # Cloud Functions callable
+│   │   ├── url-search.ts         # withUrlSearch: conservar ?query al navegar (filtros en URL)
+│   │   ├── get-auth-user.ts
+│   │   ├── auth-context.tsx
+│   │   ├── theme-context.tsx
+│   │   ├── loading-context.tsx
+│   │   ├── tenant.ts
+│   │   └── …                     # Ver AGENTS.md para el árbol completo
+│   ├── routes/                   # Pantallas por dominio (system, transport, master, …)
+│   ├── routes.ts                 # Tabla de rutas (config-based routing)
+│   └── root.tsx                  # Layout raíz (providers globales)
 ├── .env                        # Variables de entorno (no subir a git)
 ├── .env.example                # Plantilla de variables de entorno
 ├── .firebaserc                 # Proyecto Firebase activo
 ├── firebase.json               # Configuración de Firebase Hosting
 ├── react-router.config.ts      # Configuración React Router (ssr: false)
+├── AGENTS.md                   # Convenciones para desarrolladores y asistentes IA
+├── docs/                       # Notas técnicas (API store, auth, bootstrap, …)
 └── package.json
 ```
 
@@ -222,14 +217,25 @@ dp-proj-00-02-web/
 
 ## Funcionalidades
 
+El menú lateral se construye desde **`app/data/menu.json`**; la visibilidad de ítems depende de permisos (`isGranted` en `~/lib/accessService`). Resumen por área:
+
+- **Inicio y reportes** — Home, definiciones de reporte y ejecuciones.
+- **Sistema** — Cuenta y facturación, métricas, empresas (y miembros por empresa en la ruta hija `…/company-members`), usuarios, roles, secuencias, contadores; módulos y permisos en **`/system/modules`** (rutas bajo `/system/...`).
+- **Maestros** — Tipos de documento, clientes y ubicaciones (`/master/...`).
+- **Recursos humanos** — Empleados, contratos, cargos, recursos externos y costos (`/human-resource/...`).
+- **Logística** — Pedidos (`/logistic/...`).
+- **Transporte** — Servicios, tipos de cobro, contratos y reglas tarifarias, vehículos, conductores, planes, rutas (y paradas), **viajes** (filtros de lista en query string; sub-rutas por viaje), liquidaciones (`/transport/...`).
+
+Varias entradas del JSON (enlaces `#`, secciones vacías o «UI Features») son **placeholders** de plantilla; no son módulos de negocio activos.
+
 ### Autenticación
 - Login / logout con Firebase Auth (email/password)
-- Protección de rutas — redirige a `/login` si no hay sesión
-- Perfil de usuario en sidebar
+- Protección de rutas — el `clientLoader` de **`routes/Dashboard.tsx`** redirige a `/login` si no hay sesión
+- Contexto de empresa / cuenta (`company-context`, `account-context`) donde aplica
 
 ### Módulo de Usuarios (`/system/users`)
-- Listado con filtro y selección múltiple
-- Edición inline de nombre y correo
+- Listado con filtro global de tabla y selección múltiple; eliminación con **`DpConfirmDialog`**
+- **Edición de nombre y correo** en un **modal** (no edición en celda); roles por empresa se gestionan en miembros de empresa
 
 ### Módulo de Roles (`/system/roles`)
 - Listado de roles con filtro
@@ -246,9 +252,26 @@ dp-proj-00-02-web/
   - Tabla de **columnas** (orden, nombre, encabezado, filtro, formato)
 
 ### UX Global
-- **PaceLoader** — barra de progreso azul/índigo en la parte superior que se activa tanto en transiciones de ruta como en cargas de datos (Firestore)
+- **PaceLoader** — barra de progreso en la parte superior en transiciones de ruta y recargas de datos
 - **Tema claro/oscuro** — persiste en localStorage
-- Sidebar colapsable con menú configurable por JSON
+- Sidebar colapsable con menú JSON y filtrado por permisos
+
+---
+
+## Documentación técnica adicional
+
+| Recurso | Contenido |
+|--------|------------|
+| **`AGENTS.md`** (esta carpeta) | Arquitectura, `clientLoader`, componentes, reglas de código y enlaces a reglas Cursor del monorepo |
+| **`docs/API-STORE-WAVE1.md`** | Gateway callable para usuarios/roles/company-users |
+| **`docs/AUTHORIZATION-CONTRACT.md`** | Contrato de autorización |
+| **`docs/BACKEND-ISGRANTED-MIGRATION.md`** | Migración `isGranted` |
+| **`docs/DASHBOARD-DENORMALIZATION-ROLLOUT.md`** | Métricas / desnormalización |
+| **`docs/ISGRANTED-ROLLOUT-CHECKLIST.md`** | Checklist despliegue permisos |
+| **`docs/MULTIEMPRESA-BOOTSTRAP.md`** | Bootstrap multiempresa |
+| **`docs/RULES-UNIFICATION-STRATEGY.md`** | Estrategia `firestore.rules` web vs functions |
+| **`.agents/workflows/nueva-feature.md`** | Workflow resumido nueva feature |
+| **`.cursor/rules/dp-web-*.mdc`** (carpeta **`dp-proj-00-02`** en el monorepo) | Reglas Cursor para la web (código, diálogos, viajes, filtros URL, etc.) |
 
 ---
 
@@ -390,6 +413,8 @@ const filterDefs: DpFilterDef[] = [
 />;
 ```
 
+Si esos filtros se reflejan en la barra de direcciones (`navigate` con `URLSearchParams`), al abrir edición o sub-pantallas conviene conservar la query: ver la sección **«Filtros en la URL y navegación anidada»** más abajo.
+
 ### Reglas predefinidas disponibles
 
 Importables desde `~/components/DpContent`:
@@ -403,6 +428,18 @@ Importables desde `~/components/DpContent`:
 - `createAtLeastOneSelectedRule(options?)`
 
 > Puedes combinar varias reglas en `validators: [ruleA, ruleB, ...]`.
+
+---
+
+## Filtros en la URL y navegación anidada
+
+Cuando los filtros del listado viven en la **query string** (como en **`TripsPage`**: `from`, `to`, `status`, `vehicleId`, `transportServiceId`), hay que **arrastrar `location.search`** al navegar a rutas hijas (`/transport/trips/edit/:id`, `/add`, sub-rutas `…/trip-stops`, etc.) y al volver; si no, al cambiar de URL se pierde el contexto.
+
+- **Helper:** `withUrlSearch(path, search)` en **`~/lib/url-search.ts`**, con `search` típicamente **`useLocation().search`**.
+- **Ejemplo de URL:** `/transport/trips/edit/<id>?from=2026-03-16&to=2026-03-31` — el id sigue en el path; los filtros en la query.
+- **Implementación de referencia:** `TripsPage.tsx`, `TripDialog.tsx`, y páginas bajo `/transport/trips/:id/` (`TripAssignmentsPage`, `TripStopsPage`, `TripCostsPage`, `TripChargesPage`) para `onBack` y modales add/edit.
+
+Convención para **nuevas pantallas:** si el `clientLoader` lee filtros desde `request.url`, replica el patrón en todos los `navigate` que salgan o vuelvan al listado. Detalle para asistentes: **`AGENTS.md`** (sección 6) y regla **`.cursor/rules/dp-web-url-list-filters.mdc`** en el monorepo.
 
 ---
 
