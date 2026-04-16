@@ -54,6 +54,9 @@ app/
 ```tsx
 // ✅ CORRECTO — datos disponibles antes del primer render
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  // OBLIGATORIO: esperar a que Firebase Auth hidrate antes de llamar a requireActiveCompanyId().
+  // Sin esto, un hard-refresh falla con "No hay empresa activa seleccionada."
+  await getAuthUser();
   const items = await getItems(); // función del service
   return { items };
 }
@@ -144,13 +147,34 @@ export async function clientLoader() {
 }
 
 export default function {Features}Page({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
   const revalidator = useRevalidator();
   const navigation = useNavigation();
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
   const isAdd = !!useMatch("/{module}/{feature}/add");
   const editMatch = useMatch("/{module}/{feature}/edit/:id");
+  const editId = editMatch?.params.id ?? null;
+
+  // OBLIGATORIO: nombrar la condición con dialogVisible
+  const dialogVisible = isAdd || !!editId;
 
   // usa DpContent + DpContentHeader + DpTable con data prop
+
+  return (
+    <DpContent ...>
+      {/* tabla, filtros, etc. */}
+
+      {/* OBLIGATORIO: && externo para desmontar el dialog al cerrar (resetea estado interno) */}
+      {dialogVisible && (
+        <{Feature}Dialog
+          visible={dialogVisible}
+          {feature}Id={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
+    </DpContent>
+  );
 }
 ```
 

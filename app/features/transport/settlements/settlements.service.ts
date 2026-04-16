@@ -214,6 +214,13 @@ export async function updateSettlement(id: string, v: SettlementFormValues): Pro
   });
 }
 
+export async function updateSettlementsStatus(
+  ids: string[],
+  status: SettlementDocStatus
+): Promise<void> {
+  await Promise.all(ids.map((id) => updateDocument(SETTLEMENTS_COLLECTION, id, { status })));
+}
+
 /** Respuesta de la Cloud Function `syncSettlementItems`. */
 export interface SyncSettlementItemsResult {
   ok: boolean;

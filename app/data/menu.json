@@ -110,6 +110,14 @@
           "view",
           "client"
         ]
+      },
+      {
+        "title": "Secuencias de Documentos",
+        "link": "/master/document-sequences",
+        "permission": [
+          "view",
+          "document-sequence"
+        ]
       }
     ]
   },
@@ -247,10 +255,19 @@
     ]
   },
   {
-    "title": "Recursos Humanos",
+    "title": "Facturación",
     "enabled": true,
-    "icon": "align-left",
-    "children": []
+    "icon": "credit-card",
+    "children": [
+      {
+        "title": "Facturas",
+        "link": "/billing/invoices",
+        "permission": [
+          "view",
+          "invoice"
+        ]
+      }
+    ]
   },
   {
     "title": "UI Features",

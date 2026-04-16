@@ -39,10 +39,11 @@ New-Item -ItemType Directory -Force "app/routes/{module}/{feature}"
 ```
 
 6. Crear **`{Features}Page.tsx`** (lista en plural, p. ej. `ClientsPage.tsx`):
-   - Exportar **`clientLoader`** que llama al servicio de la feature.
+   - Exportar **`clientLoader`** que llama `await getAuthUser()` primero (de `~/lib/get-auth-user`) y luego al servicio. **OBLIGATORIO** para evitar el error "No hay empresa activa seleccionada." en hard-refresh.
    - Componente con **`{ loaderData }: Route.ComponentProps`**.
    - **`useRevalidator`** para refrescar tras mutaciones; no usar **`useEffect`** para carga inicial.
    - **`useMatch`** para rutas hijo (`add` / `edit/:id`), p. ej. `useMatch("/{module}/{ruta-de-lista}/add")` según cómo quede en **`routes.ts`**.
+   - Calcular **`const dialogVisible = isAdd || !!editId`** y renderizar el dialog con `{dialogVisible && <{Feature}Dialog visible={dialogVisible} ... />}`. El `&&` externo desmonta el componente al cerrar, reseteando su estado interno sin lógica extra.
    - Lista: **`<DpContent>`** + **`DpContentHeader`** + **`DpTable`** con **`data={...}`** y **`loading={isLoading}`**.
    - Detalle o sub-módulo con botón atrás: **`<DpContentInfo onBack={...}>`** (ver `AGENTS.md` §8).
 

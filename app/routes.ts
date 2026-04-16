@@ -36,6 +36,10 @@ export default [
       route("add", "routes/system/counters/CounterAdd.tsx"),
       route("edit/:id", "routes/system/counters/CounterEdit.tsx"),
     ]),
+    route("master/document-sequences", "routes/master/document-sequences/DocumentSequencesPage.tsx", [
+      route("add", "routes/master/document-sequences/DocumentSequenceAdd.tsx"),
+      route("edit/:id", "routes/master/document-sequences/DocumentSequenceEdit.tsx"),
+    ]),
     route("master/document-types", "routes/master/document-types/DocumentTypesPage.tsx", [
       route("add", "routes/master/document-types/DocumentTypeAdd.tsx"),
       route("edit/:id", "routes/master/document-types/DocumentTypeEdit.tsx"),
@@ -133,6 +137,14 @@ export default [
     route("transport/settlements/:id/items", "routes/transport/settlements/SettlementItemsPage.tsx", [
       route("add", "routes/transport/settlements/SettlementItemAdd.tsx"),
       route("edit/:itemId", "routes/transport/settlements/SettlementItemEdit.tsx"),
+    ]),
+    route("billing/invoices", "routes/billing/invoice/InvoicesPage.tsx", [
+      route("add",      "routes/billing/invoice/InvoiceAdd.tsx"),
+      route("edit/:id", "routes/billing/invoice/InvoiceEdit.tsx"),
+    ]),
+    route("billing/invoices/:id/items", "routes/billing/invoice/InvoiceItemsPage.tsx", [
+      route("add",           "routes/billing/invoice/InvoiceItemAdd.tsx"),
+      route("edit/:itemId",  "routes/billing/invoice/InvoiceItemEdit.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

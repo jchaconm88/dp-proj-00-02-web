@@ -8,6 +8,7 @@ import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import SequenceDialog from "./SequenceDialog";
 import { RESET_PERIOD } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
+import { getAuthUser } from "~/lib/get-auth-user";
 
 const TABLE_DEF = moduleTableDef("sequence", { resetPeriod: RESET_PERIOD });
 
@@ -19,6 +20,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function clientLoader({}: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const { items } = await getSequences();
   return { sequences: items };
 }

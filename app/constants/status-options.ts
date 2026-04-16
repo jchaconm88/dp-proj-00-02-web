@@ -422,3 +422,34 @@ export const SUBSCRIPTION_STATUS: Record<string, StatusOption> = {
 };
 
 export type SubscriptionStatusKey = keyof typeof SUBSCRIPTION_STATUS;
+
+/** Estado de factura. */
+export const INVOICE_STATUS: Record<string, StatusOption> = {
+  draft:     { label: "Borrador",  severity: "secondary" },
+  issued:    { label: "Emitida",   severity: "info" },
+  paid:      { label: "Pagada",    severity: "success" },
+  overdue:   { label: "Vencida",   severity: "warning" },
+  cancelled: { label: "Anulada",   severity: "danger" },
+};
+
+export type InvoiceStatus = keyof typeof INVOICE_STATUS;
+
+/** Tipo de comprobante (factura, nota de crédito, nota de débito). */
+export const INVOICE_TYPE: Record<string, StatusOption> = {
+  invoice:     { label: "Factura",          severity: "info" },
+  credit_note: { label: "Nota de crédito",  severity: "warning" },
+  debit_note:  { label: "Nota de débito",   severity: "secondary" },
+};
+
+export type InvoiceType = keyof typeof INVOICE_TYPE;
+
+/** Tipo de ítem de factura. */
+export const INVOICE_ITEM_TYPE: Record<string, StatusOption> = {
+  service:   { label: "Servicio",   severity: "info" },
+  freight:   { label: "Flete",      severity: "info" },
+  surcharge: { label: "Recargo",    severity: "warning" },
+  discount:  { label: "Descuento",  severity: "secondary" },
+  other:     { label: "Otro",       severity: "secondary" },
+};
+
+export type InvoiceItemType = keyof typeof INVOICE_ITEM_TYPE;
