@@ -59,6 +59,7 @@ export async function saveSunatConfig(data: SunatConfigInput): Promise<void> {
   const accountId = await resolveActiveAccountId();
   const existing = await getDocument<Record<string, unknown>>(COLLECTION, companyId);
   const payload = {
+    companyId,
     ...(data as Record<string, unknown>),
     name: String(data.name ?? "Configuración SUNAT").trim() || "Configuración SUNAT",
     active: Boolean(data.active),

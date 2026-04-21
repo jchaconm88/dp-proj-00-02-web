@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch, redirect } from "react-router";
-import { getAllRoles } from "~/features/system/roles";
 import { getAuthUser } from "~/lib/get-auth-user";
-import { canNavigateToModule, isGranted } from "~/lib/accessService";
-import { getEffectivePermissions } from "~/lib/effective-permissions";
-import { useCompany } from "~/lib/company-context";
 import { listSunatConfigsForTable, type SunatConfigTableRow } from "~/features/billing/sunat-config";
 import type { Route } from "./+types/SunatConfigPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
@@ -38,59 +34,10 @@ export default function SunatConfigPage({ loaderData }: Route.ComponentProps) {
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<SunatConfigTableRow>>(null);
 
-  const { activeCompanyId, memberships } = useCompany();
-  const [roles, setRoles] = useState<Awaited<ReturnType<typeof getAllRoles>>>([]);
-  const [rolesReady, setRolesReady] = useState(false);
-
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
   const isAdd = !!useMatch("/billing/sunat-config/add");
   const editMatch = useMatch("/billing/sunat-config/edit/:id");
   const editId = editMatch?.params.id ?? null;
-
-  const activeMembership = useMemo(() => {
-    if (!activeCompanyId) return [];
-    return memberships.filter((x) => x.companyId === activeCompanyId && x.status === "active");
-  }, [memberships, activeCompanyId]);
-  const membershipRoleIds = useMemo(
-    () => (activeMembership[0]?.roleIds ?? []).map((x) => String(x)),
-    [activeMembership]
-  );
-  const membershipRoleNames = useMemo(
-    () => (activeMembership[0]?.roleNames ?? []).map((x) => String(x)),
-    [activeMembership]
-  );
-
-  const effectivePermissions = useMemo(
-    () => getEffectivePermissions(membershipRoleIds, membershipRoleNames, roles),
-    [membershipRoleIds, membershipRoleNames, roles]
-  );
-
-  const canViewSunat = canNavigateToModule(effectivePermissions, "sunat-config");
-  const canEditSunat = isGranted(effectivePermissions, "edit", "sunat-config");
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      if (!activeCompanyId) {
-        setRoles([]);
-        setRolesReady(true);
-        return;
-      }
-      setRolesReady(false);
-      try {
-        const next = await getAllRoles(activeCompanyId);
-        if (!cancelled) setRoles(next);
-      } catch {
-        if (!cancelled) setRoles([]);
-      } finally {
-        if (!cancelled) setRolesReady(true);
-      }
-    }
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCompanyId]);
 
   const [filterValue, setFilterValue] = useState("");
 
@@ -124,7 +71,7 @@ export default function SunatConfigPage({ loaderData }: Route.ComponentProps) {
     <DpContent
       title="CONFIGURACIÓN SUNAT"
       breadcrumbItems={["FACTURACIÓN", "CONFIGURACIÓN SUNAT"]}
-      onCreate={!hasConfig && canEditSunat ? openAdd : undefined}
+      onCreate={!hasConfig ? openAdd : undefined}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
@@ -133,42 +80,30 @@ export default function SunatConfigPage({ loaderData }: Route.ComponentProps) {
         onFilter={handleFilter}
         filterPlaceholder="Filtrar por nombre, usuario, ambiente..."
       />
-
-      {!rolesReady && activeCompanyId && (
-        <div className="mb-4 text-sm text-[var(--dp-on-surface-soft)]">Cargando permisos…</div>
-      )}
-
-      {rolesReady && !canViewSunat && activeCompanyId && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          No tienes permiso para ver la configuración SUNAT. Pide a un administrador el permiso{" "}
-          <strong>sunat-config: Ver</strong> o <strong>Editar</strong> en tu rol.
-        </div>
-      )}
-
-      {rolesReady && canViewSunat && loadError && (
+      {loadError && (
         <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
           {loadError}
         </div>
       )}
 
-      {rolesReady && canViewSunat && !loadError && (
+      {!loadError && (
         <DpTable<SunatConfigTableRow>
           ref={tableRef}
           data={loaderData.items}
           loading={isLoading}
           tableDef={TABLE_DEF}
-          onEdit={canEditSunat ? openEdit : undefined}
+          onEdit={openEdit}
           showFilterInHeader={false}
           emptyMessage="No hay configuración SUNAT. Usa Crear para registrar credenciales."
           emptyFilterMessage="No se encontraron registros."
         />
       )}
 
-      {dialogVisible && rolesReady && canViewSunat && !loadError && (
+      {dialogVisible && !loadError && (
         <SunatConfigDialog
           visible={dialogVisible}
           configId={isAdd ? null : editId}
-          canEdit={canEditSunat}
+          canEdit={true}
           onSuccess={handleSuccess}
           onHide={handleHide}
         />

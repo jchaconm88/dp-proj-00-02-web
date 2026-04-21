@@ -411,21 +411,19 @@ service cloud.firestore {
     }
 
     match /sunat-config/{companyId} {
+      // Estandarizar como otras colecciones raíz (ej. invoices):
+      // basta con ser miembro de la empresa activa y respetar accountId.
       allow read: if isSignedIn()
         && isMember(companyId)
-        && legacyOrTokenAccountMatches()
-        && (
-          tokenHasPermission("sunat-config", "view")
-          || tokenHasPermission("sunat-config", "edit")
-        );
+        && legacyOrTokenAccountMatches();
       allow create: if isSignedIn()
         && isMember(companyId)
-        && accountMatchesData(request.resource.data)
-        && tokenHasPermission("sunat-config", "edit");
+        && request.resource.data.companyId == companyId
+        && accountMatchesData(request.resource.data);
       allow update: if isSignedIn()
         && isMember(companyId)
-        && accountMatchesData(resource.data)
-        && tokenHasPermission("sunat-config", "edit");
+        && resource.data.companyId == companyId
+        && accountMatchesData(resource.data);
     }
 
     match /sunat-jobs/{jobId} {
