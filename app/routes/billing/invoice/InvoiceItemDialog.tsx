@@ -9,6 +9,8 @@ import {
 } from "~/features/billing/invoice";
 import {
   INVOICE_ITEM_TYPE,
+  TAX_AFFECTATION_CODE,
+  UNIT_CODE,
   statusDefaultKey,
   statusToSelectOptions,
 } from "~/constants/status-options";
@@ -26,6 +28,8 @@ export interface InvoiceItemDialogProps {
 }
 
 const ITEM_TYPE_OPTIONS = statusToSelectOptions(INVOICE_ITEM_TYPE);
+const TAX_AFFECTATION_OPTIONS = statusToSelectOptions(TAX_AFFECTATION_CODE);
+const UNIT_CODE_OPTIONS = statusToSelectOptions(UNIT_CODE);
 
 export default function InvoiceItemDialog({
   visible,
@@ -47,6 +51,9 @@ export default function InvoiceItemDialog({
   const [unitPrice, setUnitPrice] = useState("0");
   const [taxTypeName, setTaxTypeName] = useState("IGV 18%");
   const [taxPer, setTaxPer] = useState("18");
+  const [taxAffectationCode, setTaxAffectationCode] = useState(statusDefaultKey(TAX_AFFECTATION_CODE)); // "10"
+  const [unitCode, setUnitCode] = useState("NIU");
+  const [itemCode, setItemCode] = useState("");
 
   // Campos calculados (solo lectura)
   const [price, setPrice] = useState(0);
@@ -63,12 +70,14 @@ export default function InvoiceItemDialog({
     const u = Number(unitPrice) || 0;
     const tp = Number(taxPer) || 0;
     const p = q * u;
-    const t = p * tp / 100;
+    // For exonerado (20), inafecto (30, 31), exportación (40): tax = 0
+    const nonTaxable = ["20", "30", "31", "40"].includes(taxAffectationCode);
+    const t = nonTaxable ? 0 : p * tp / 100;
     const a = p + t;
     setPrice(p);
     setTax(t);
     setAmount(a);
-  }, [quantity, unitPrice, taxPer]);
+  }, [quantity, unitPrice, taxPer, taxAffectationCode]);
 
   // Cargar datos al abrir
   useEffect(() => {
@@ -82,6 +91,9 @@ export default function InvoiceItemDialog({
       setUnitPrice("0");
       setTaxTypeName("IGV 18%");
       setTaxPer("18");
+      setTaxAffectationCode(statusDefaultKey(TAX_AFFECTATION_CODE));
+      setUnitCode("NIU");
+      setItemCode("");
       setLoading(false);
       return;
     }
@@ -99,6 +111,9 @@ export default function InvoiceItemDialog({
         setUnitPrice(String(data.unitPrice ?? 0));
         setTaxTypeName(data.taxType?.name ?? "IGV 18%");
         setTaxPer(String(data.taxType?.taxPer ?? 18));
+        setTaxAffectationCode(data.taxAffectationCode ?? statusDefaultKey(TAX_AFFECTATION_CODE));
+        setUnitCode(data.unitCode ?? "NIU");
+        setItemCode(data.itemCode ?? "");
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
@@ -131,6 +146,18 @@ export default function InvoiceItemDialog({
         tax,
         amount,
         currency,
+        taxAffectationCode,
+        taxSchemeCode: taxAffectationCode === "10" || taxAffectationCode === "11" ? "1000" :
+                       taxAffectationCode === "20" ? "9997" :
+                       taxAffectationCode === "30" || taxAffectationCode === "31" ? "9998" :
+                       taxAffectationCode === "40" ? "9995" : "1000",
+        taxSchemeName: taxAffectationCode === "10" || taxAffectationCode === "11" ? "IGV" :
+                       taxAffectationCode === "20" ? "EXO" :
+                       taxAffectationCode === "30" || taxAffectationCode === "31" ? "INA" :
+                       taxAffectationCode === "40" ? "EXP" : "IGV",
+        taxTypeCode: taxAffectationCode === "30" || taxAffectationCode === "31" || taxAffectationCode === "40" ? "FRE" : "VAT",
+        unitCode,
+        itemCode: itemCode.trim() || undefined,
       };
 
       if (itemId) {
@@ -236,6 +263,29 @@ export default function InvoiceItemDialog({
           value={taxPer}
           onChange={setTaxPer}
           placeholder="18"
+        />
+        <DpInput
+          type="select"
+          label="Afectación IGV"
+          name="taxAffectationCode"
+          value={taxAffectationCode}
+          onChange={(v) => setTaxAffectationCode(String(v))}
+          options={TAX_AFFECTATION_OPTIONS}
+        />
+        <DpInput
+          type="select"
+          label="Unidad de medida"
+          name="unitCode"
+          value={unitCode}
+          onChange={(v) => setUnitCode(String(v))}
+          options={UNIT_CODE_OPTIONS}
+        />
+        <DpInput
+          type="input"
+          label="Código ítem"
+          name="itemCode"
+          value={itemCode}
+          onChange={setItemCode}
         />
       </div>
     </DpContentSet>

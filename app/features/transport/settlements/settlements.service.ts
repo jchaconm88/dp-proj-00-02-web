@@ -26,6 +26,7 @@ import type {
   SettlementItem,
   SettlementFormValues,
   SettlementItemFormValues,
+  SettlementDocStatus,
 } from "./settlements.types";
 
 export const SETTLEMENTS_COLLECTION = "settlements";

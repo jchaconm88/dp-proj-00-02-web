@@ -156,6 +156,19 @@ export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
             </button>
           )}
         </DpTColumn>
+        <DpTColumn name="companyLocations">
+          {(row: CompanyRecord) => (
+            <button
+              type="button"
+              onClick={() => navigate(`/system/companies/${encodeURIComponent(row.id)}/company-locations`)}
+              className="p-button p-button-text p-button-rounded p-button-icon-only"
+              aria-label="Sedes de empresa"
+              title="Sedes"
+            >
+              <i className="pi pi-map-marker" />
+            </button>
+          )}
+        </DpTColumn>
       </DpTable>
 
       <CompanyDialog

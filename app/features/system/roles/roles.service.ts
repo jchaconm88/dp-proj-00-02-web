@@ -6,6 +6,7 @@ import {
   deleteDocument,
 } from "~/lib/firestore.service";
 import { apiListRolesByCompany } from "~/features/system/system-store/system-store.api";
+import { getCompanyById } from "~/features/system/companies";
 import type { RoleRecord, RolePermissions } from "./roles.types";
 
 function getErrorCode(err: unknown): string {

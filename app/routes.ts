@@ -19,6 +19,10 @@ export default [
       route("add", "routes/system/companies/CompanyAdd.tsx"),
       route("edit/:id", "routes/system/companies/CompanyEdit.tsx"),
     ]),
+    route("system/companies/:id/company-locations", "routes/system/company-locations/CompanyLocationsPage.tsx", [
+      route("add", "routes/system/company-locations/CompanyLocationAdd.tsx"),
+      route("edit/:locationId", "routes/system/company-locations/CompanyLocationEdit.tsx"),
+    ]),
     route("system/companies/:id/company-members", "routes/system/company-members/CompanyMembersPage.tsx", [
       route("add", "routes/system/company-members/CompanyMemberAdd.tsx"),
       route("edit/:membershipId", "routes/system/company-members/CompanyMemberEdit.tsx"),
@@ -138,6 +142,10 @@ export default [
       route("add", "routes/transport/settlements/SettlementItemAdd.tsx"),
       route("edit/:itemId", "routes/transport/settlements/SettlementItemEdit.tsx"),
     ]),
+    route("billing/sunat-config", "routes/billing/sunat-config/SunatConfigPage.tsx", [
+      route("add", "routes/billing/sunat-config/SunatConfigAdd.tsx"),
+      route("edit/:id", "routes/billing/sunat-config/SunatConfigEdit.tsx"),
+    ]),
     route("billing/invoices", "routes/billing/invoice/InvoicesPage.tsx", [
       route("add",      "routes/billing/invoice/InvoiceAdd.tsx"),
       route("edit/:id", "routes/billing/invoice/InvoiceEdit.tsx"),
@@ -145,6 +153,10 @@ export default [
     route("billing/invoices/:id/items", "routes/billing/invoice/InvoiceItemsPage.tsx", [
       route("add",           "routes/billing/invoice/InvoiceItemAdd.tsx"),
       route("edit/:itemId",  "routes/billing/invoice/InvoiceItemEdit.tsx"),
+    ]),
+    route("billing/invoices/:id/credits", "routes/billing/invoice/InvoiceCreditsPage.tsx", [
+      route("add", "routes/billing/invoice/InvoiceCreditAdd.tsx"),
+      route("edit/:creditId", "routes/billing/invoice/InvoiceCreditEdit.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

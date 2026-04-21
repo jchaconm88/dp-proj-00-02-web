@@ -50,8 +50,18 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 2, name: "code", header: "Código", filter: true },
     { order: 3, name: "taxId", header: "RUC / ID fiscal", filter: true },
     { order: 4, name: "companyMembers", header: "Miembros", filter: false },
-    { order: 5, name: "status", header: "Estado", filter: true, format: "status" },
+    { order: 5, name: "companyLocations", header: "Sedes", filter: false },
+    { order: 6, name: "status", header: "Estado", filter: true, format: "status" },
   ], COMPANY_PERMISSIONS),
+  withPermissions("company-location", "Sedes de empresa", [
+    { order: 1, name: "name", header: "Nombre", filter: true },
+    { order: 2, name: "address", header: "Dirección", filter: true },
+    { order: 3, name: "district", header: "Distrito", filter: true },
+    { order: 4, name: "city", header: "Ciudad", filter: true },
+    { order: 5, name: "country", header: "País", filter: true },
+    { order: 6, name: "ubigeo", header: "Ubigeo", filter: true },
+    { order: 7, name: "active", header: "Activo", filter: true, format: "bool" },
+  ]),
   withPermissions("user", "Usuarios", [
     { order: 1, name: "displayName", header: "Nombre", filter: true },
     { order: 2, name: "email", header: "Correo", filter: true },
@@ -323,6 +333,7 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
   ]),
   withPermissions("invoice", "Facturas", [
     { order: 1,  name: "documentNo",     header: "# Documento",   filter: true },
+    { order: 2,  name: "operationTypeCode", header: "Tipo operación", filter: true, format: "status" },
     { order: 3,  name: "type",           header: "Tipo",          filter: true, format: "status" },
     { order: 4,  name: "clientName",     header: "Cliente",       filter: true },
     { order: 5,  name: "issueDate",      header: "F. Emisión",    filter: true, format: "date" },
@@ -334,7 +345,8 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 11, name: "status",         header: "Estado",        filter: true, format: "status" },
     { order: 12, name: "sunatDocs",      header: "Docs SUNAT",    filter: false },
     { order: 13, name: "invoiceItems",   header: "Ítems",         filter: false },
-    { order: 14, name: "settlementId",   header: "Liquidación",   filter: true },
+    { order: 14, name: "invoiceCredits", header: "Cuotas",      filter: false },
+    { order: 15, name: "settlement",     header: "Liquidación",   filter: true },
   ]),
   withPermissions("invoice-item", "Ítems de factura", [
     { order: 1,  name: "itemName",        header: "Ítem",         filter: true },
@@ -353,6 +365,20 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 2, name: "dueDate",         header: "Vencimiento",  filter: true, format: "date" },
     { order: 3, name: "creditFormatted", header: "Monto",        filter: true },
   ]),
+  withPermissions(
+    "sunat-config",
+    "Configuración SUNAT",
+    [
+      { order: 0, name: "name", header: "Nombre", filter: true },
+      { order: 1, name: "active", header: "Activo", filter: true, format: "bool" },
+      { order: 2, name: "environmentLabel", header: "Ambiente", filter: true },
+      { order: 3, name: "usuarioSunat", header: "Usuario SOL", filter: true },
+    ],
+    [
+      { code: "view", label: "Ver", description: "Permite consultar la configuración SUNAT de la empresa." },
+      { code: "edit", label: "Editar", description: "Permite guardar credenciales y certificados SUNAT." },
+    ]
+  ),
 ];
 
 export function getSystemModuleById(id: string): ModuleRecord | null {

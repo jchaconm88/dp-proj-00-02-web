@@ -20,6 +20,15 @@ export interface ClientLogistics {
     defaultServiceTimeMin: number;
 }
 
+/** Domicilio fiscal (facturación / SUNAT). */
+export interface ClientFiscalLocation {
+    address: string;
+    district: string;
+    city: string;
+    country: string;
+    ubigeo: string;
+}
+
 export interface ClientRecord {
     id: string;
     code: string;
@@ -32,6 +41,8 @@ export interface ClientRecord {
     billing: ClientBilling;
     logistics: ClientLogistics;
     status: ClientStatus;
+    /** Opcional: si falta, se puede usar una ubicación operativa en la factura. */
+    fiscal?: ClientFiscalLocation;
 }
 
 export interface ClientAddInput {
@@ -45,6 +56,7 @@ export interface ClientAddInput {
     billing: ClientBilling;
     logistics: ClientLogistics;
     status: ClientStatus;
+    fiscal?: ClientFiscalLocation;
 }
 
 export type ClientEditInput = Partial<Omit<ClientRecord, "id">>;

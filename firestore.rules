@@ -12,18 +12,56 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return isSignedIn()
-        && request.auth.token.platformAdmin == true;
+        && (
+          request.auth.token.platformAdmin == true
+          || isLegacyAdmin()
+        );
+    }
+
+    // Compatibilidad: bootstrap legacy "admin" (sin claims aún).
+    // Acepta `users/{uid}.roleIds` o `users/{uid}.role` con "admin", o "admin" en `company-users.roleIds`.
+    function isLegacyAdmin() {
+      return isSignedIn()
+        && (
+          (
+            exists(/databases/$(database)/documents/users/$(myUid()))
+            && (
+              (
+                get(/databases/$(database)/documents/users/$(myUid())).data.roleIds is list
+                && get(/databases/$(database)/documents/users/$(myUid())).data.roleIds.hasAny(["admin"])
+              )
+              || (
+                get(/databases/$(database)/documents/users/$(myUid())).data.role is list
+                && get(/databases/$(database)/documents/users/$(myUid())).data.role.hasAny(["admin"])
+              )
+            )
+          )
+          || (
+            // Membresía: `company-users/{companyId_uid}` puede traer slug "admin" temporalmente.
+            request.auth.token.companyId is string
+            && request.auth.token.companyId.size() > 0
+            && exists(/databases/$(database)/documents/company-users/$(companyUserId(request.auth.token.companyId, myUid())))
+            && (
+              get(/databases/$(database)/documents/company-users/$(companyUserId(request.auth.token.companyId, myUid()))).data.roleIds is list
+              && get(/databases/$(database)/documents/company-users/$(companyUserId(request.auth.token.companyId, myUid()))).data.roleIds.hasAny(["admin"])
+            )
+          )
+        );
     }
 
     function tokenHasPermission(module, action) {
       return isSignedIn()
-        && request.auth.token.permissionCodes is list
-        && request.auth.token.permissionCodes.hasAny([
-          "*",
-          module,
-          module + ":" + action,
-          "*:" + module
-        ]);
+        && (
+          isPlatformAdmin()
+          || (
+            request.auth.token.permissionCodes is list
+            && request.auth.token.permissionCodes.hasAny([
+              "*",
+              module + ":" + action,
+              "*:" + module
+            ])
+          )
+        );
     }
 
     function canReadUsersCollection() {
@@ -101,6 +139,23 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if (isMember(companyId) || isPlatformAdmin()) && legacyOrTokenAccountMatches();
       allow write: if isPlatformAdmin();
+
+      /** Sedes / ubicaciones de facturación (companyLocations). */
+      match /companyLocations/{locationId} {
+        allow read: if isSignedIn() && isMember(companyId) && legacyOrTokenAccountMatches();
+        allow create: if isSignedIn()
+          && isMember(companyId)
+          && request.resource.data.companyId == companyId
+          && accountMatchesData(request.resource.data);
+        allow update: if isSignedIn()
+          && isMember(companyId)
+          && resource.data.companyId == companyId
+          && accountMatchesData(request.resource.data);
+        allow delete: if isSignedIn()
+          && isMember(companyId)
+          && resource.data.companyId == companyId
+          && legacyOrTokenAccountMatches();
+      }
     }
 
     match /accounts/{accountId} {
@@ -210,6 +265,20 @@ service cloud.firestore {
       }
     }
 
+    match /invoices/{invoiceId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+      match /invoiceItems/{itemId} {
+        allow read, write: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/invoices/$(invoiceId)).data.companyId)
+          && effectiveAccountMatches();
+      }
+      match /invoiceCredits/{creditId} {
+        allow read, write: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/invoices/$(invoiceId)).data.companyId)
+          && effectiveAccountMatches();
+      }
+    }
+
     match /transport-contracts/{contractId} {
       allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
       match /transport-rate-rules/{ruleId} {
@@ -250,6 +319,9 @@ service cloud.firestore {
       }
     }
     match /document-types/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+    match /document-sequences/{docId} {
       allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
     }
     match /charge-types/{docId} {
@@ -335,6 +407,32 @@ service cloud.firestore {
 
     match /report-runs/{docId} {
       allow read: if isSignedIn() && isMember(resource.data.companyId) && legacyOrTokenAccountMatches();
+      allow write: if false;
+    }
+
+    match /sunat-config/{companyId} {
+      allow read: if isSignedIn()
+        && isMember(companyId)
+        && legacyOrTokenAccountMatches()
+        && (
+          tokenHasPermission("sunat-config", "view")
+          || tokenHasPermission("sunat-config", "edit")
+        );
+      allow create: if isSignedIn()
+        && isMember(companyId)
+        && accountMatchesData(request.resource.data)
+        && tokenHasPermission("sunat-config", "edit");
+      allow update: if isSignedIn()
+        && isMember(companyId)
+        && accountMatchesData(resource.data)
+        && tokenHasPermission("sunat-config", "edit");
+    }
+
+    match /sunat-jobs/{jobId} {
+      allow read: if isSignedIn()
+        && resource.data.companyId is string
+        && isMember(resource.data.companyId)
+        && legacyOrTokenAccountMatches();
       allow write: if false;
     }
   }

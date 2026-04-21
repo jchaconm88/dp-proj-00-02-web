@@ -10,6 +10,7 @@ import {
     updateClient,
     type ClientStatus,
     type PaymentCondition,
+    type ClientFiscalLocation,
 } from "~/features/master/clients";
 import { CLIENT_STATUS, PAYMENT_CONDITION, CURRENCY, statusToSelectOptions } from "~/constants/status-options";
 import { generateSequenceCode } from "~/features/system/sequences";
@@ -57,6 +58,11 @@ export default function ClientDialog({
     const [requiresAppointment, setRequiresAppointment] = useState(false);
     const [defaultServiceTimeMin, setDefaultServiceTimeMin] = useState<string>("");
     const [status, setStatus] = useState<ClientStatus>("active");
+    const [fiscalAddress, setFiscalAddress] = useState("");
+    const [fiscalDistrict, setFiscalDistrict] = useState("");
+    const [fiscalCity, setFiscalCity] = useState("");
+    const [fiscalCountry, setFiscalCountry] = useState("PE");
+    const [fiscalUbigeo, setFiscalUbigeo] = useState("");
 
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -94,6 +100,11 @@ export default function ClientDialog({
             setRequiresAppointment(false);
             setDefaultServiceTimeMin("");
             setStatus("active");
+            setFiscalAddress("");
+            setFiscalDistrict("");
+            setFiscalCity("");
+            setFiscalCountry("PE");
+            setFiscalUbigeo("");
             setLoading(false);
             return;
         }
@@ -122,6 +133,12 @@ export default function ClientDialog({
                 setRequiresAppointment(data.logistics.requiresAppointment ?? false);
                 setDefaultServiceTimeMin(String(data.logistics.defaultServiceTimeMin ?? ""));
                 setStatus(data.status ?? "active");
+                const f = data.fiscal;
+                setFiscalAddress(f?.address ?? "");
+                setFiscalDistrict(f?.district ?? "");
+                setFiscalCity(f?.city ?? "");
+                setFiscalCountry(f?.country ?? "PE");
+                setFiscalUbigeo(f?.ubigeo ?? "");
             })
             .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
             .finally(() => setLoading(false));
@@ -145,6 +162,21 @@ export default function ClientDialog({
                     return;
                 }
             }
+
+            const hasFiscal =
+                fiscalAddress.trim() ||
+                fiscalDistrict.trim() ||
+                fiscalCity.trim() ||
+                fiscalUbigeo.trim();
+            const fiscal: ClientFiscalLocation | undefined = hasFiscal
+                ? {
+                      address: fiscalAddress.trim(),
+                      district: fiscalDistrict.trim(),
+                      city: fiscalCity.trim(),
+                      country: fiscalCountry.trim() || "PE",
+                      ubigeo: fiscalUbigeo.trim(),
+                  }
+                : undefined;
 
             const payload = {
                 code: finalCode,
@@ -170,6 +202,7 @@ export default function ClientDialog({
                     defaultServiceTimeMin: Number(defaultServiceTimeMin) || 0,
                 },
                 status,
+                ...(fiscal ? { fiscal } : {}),
             };
 
             if (clientId) {
@@ -230,6 +263,22 @@ export default function ClientDialog({
                             placeholder="Seleccione..."
                         />
                         <DpInput type="input" label="Nº documento" name="documentNumber" value={documentNumber} onChange={setDocumentNumber} placeholder="20123456789" />
+                    </div>
+
+                    <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                        <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">Domicilio fiscal</h4>
+                        <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Opcional. Se usa como predeterminado en el snapshot de factura si no eliges una ubicación operativa.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <DpInput type="input" label="Dirección" name="fiscalAddress" value={fiscalAddress} onChange={setFiscalAddress} placeholder="Av. Principal 123" />
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <DpInput type="input" label="Distrito" name="fiscalDistrict" value={fiscalDistrict} onChange={setFiscalDistrict} />
+                                <DpInput type="input" label="Ciudad" name="fiscalCity" value={fiscalCity} onChange={setFiscalCity} />
+                                <DpInput type="input" label="País" name="fiscalCountry" value={fiscalCountry} onChange={setFiscalCountry} placeholder="PE" />
+                                <DpInput type="input" label="Ubigeo" name="fiscalUbigeo" value={fiscalUbigeo} onChange={setFiscalUbigeo} placeholder="150101" />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">

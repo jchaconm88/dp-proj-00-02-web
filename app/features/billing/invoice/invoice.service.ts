@@ -21,9 +21,19 @@ import {
   statusDefaultKey,
 } from "~/constants/status-options";
 import { getSettlementById, getSettlementItems } from "~/features/transport/settlements";
+import { getCompanyById } from "~/features/system/companies";
+import { getCompanyLocations } from "~/features/system/company-locations";
+import { getClient, getClientLocations } from "~/features/master/clients";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import {
+  clientRecordToInvoiceClient,
+  clientLocationToHomeAddress,
+  companyRecordToInvoiceCompany,
+  companyLocationRecordToInvoiceLocation,
+} from "./invoice-snapshot";
 import type {
   InvoiceRecord,
+  InvoiceClient,
   InvoiceAddInput,
   InvoiceEditInput,
   InvoiceItemRecord,
@@ -53,6 +63,7 @@ function toInvoiceRecord(doc: { id: string } & Record<string, unknown>): Invoice
     type: parseStatus(doc.type, INVOICE_TYPE),
     payTerm: String(doc.payTerm ?? ""),
     settlementId: String(doc.settlementId ?? ""),
+    settlement: String(doc.settlement ?? ""),
     client: {
       id: String(client.id ?? ""),
       name: String(client.name ?? ""),
@@ -89,6 +100,8 @@ function toInvoiceRecord(doc: { id: string } & Record<string, unknown>): Invoice
     zipUrl: String(doc.zipUrl ?? ""),
     cdrUrl: String(doc.cdrUrl ?? ""),
     pdfUrl: String(doc.pdfUrl ?? ""),
+    operationTypeCode: String(doc.operationTypeCode ?? "0101"),
+    dueDate: doc.dueDate ? String(doc.dueDate) : undefined,
   };
 }
 
@@ -119,6 +132,14 @@ function toInvoiceItemRecord(doc: { id: string } & Record<string, unknown>): Inv
     tax: Number(doc.tax) || 0,
     amount: Number(doc.amount) || 0,
     currency: String(doc.currency ?? ""),
+    taxAffectationCode: String(doc.taxAffectationCode ?? "10"),
+    taxSchemeCode: String(doc.taxSchemeCode ?? "1000"),
+    taxSchemeName: String(doc.taxSchemeName ?? "IGV"),
+    taxTypeCode: String(doc.taxTypeCode ?? "VAT"),
+    unitCode: String(doc.unitCode ?? "NIU"),
+    itemCode: doc.itemCode ? String(doc.itemCode) : undefined,
+    iscAmount: doc.iscAmount ? Number(doc.iscAmount) : undefined,
+    icbperUnitAmount: doc.icbperUnitAmount ? Number(doc.icbperUnitAmount) : undefined,
   };
 }
 
@@ -203,6 +224,7 @@ export async function addInvoice(data: InvoiceAddInput): Promise<string> {
     type: data.type,
     payTerm: data.payTerm,
     settlementId: data.settlementId ?? "",
+    settlement: data.settlement ?? "",
     client: data.client,
     company: data.company,
     companyLocation: data.companyLocation,
@@ -216,6 +238,8 @@ export async function addInvoice(data: InvoiceAddInput): Promise<string> {
     zipUrl: data.zipUrl ?? "",
     cdrUrl: data.cdrUrl ?? "",
     pdfUrl: data.pdfUrl ?? "",
+    operationTypeCode: data.operationTypeCode ?? "0101",
+    ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
   };
   return addDocument(COLLECTION, payload);
 }
@@ -226,6 +250,7 @@ export async function updateInvoice(id: string, data: InvoiceEditInput): Promise
   if (data.type !== undefined) payload.type = data.type;
   if (data.payTerm !== undefined) payload.payTerm = data.payTerm;
   if (data.settlementId !== undefined) payload.settlementId = data.settlementId;
+  if (data.settlement !== undefined) payload.settlement = data.settlement;
   if (data.client !== undefined) payload.client = data.client;
   if (data.company !== undefined) payload.company = data.company;
   if (data.companyLocation !== undefined) payload.companyLocation = data.companyLocation;
@@ -239,6 +264,8 @@ export async function updateInvoice(id: string, data: InvoiceEditInput): Promise
   if (data.zipUrl !== undefined) payload.zipUrl = data.zipUrl;
   if (data.cdrUrl !== undefined) payload.cdrUrl = data.cdrUrl;
   if (data.pdfUrl !== undefined) payload.pdfUrl = data.pdfUrl;
+  if (data.operationTypeCode !== undefined) payload.operationTypeCode = data.operationTypeCode;
+  if (data.dueDate !== undefined) payload.dueDate = data.dueDate;
   await updateDocument(COLLECTION, id, payload);
 }
 
@@ -303,6 +330,14 @@ export async function addInvoiceItem(
     tax: Number(data.tax) || 0,
     amount: Number(data.amount) || 0,
     currency: data.currency,
+    taxAffectationCode: data.taxAffectationCode ?? "10",
+    taxSchemeCode: data.taxSchemeCode ?? "1000",
+    taxSchemeName: data.taxSchemeName ?? "IGV",
+    taxTypeCode: data.taxTypeCode ?? "VAT",
+    unitCode: data.unitCode ?? "NIU",
+    ...(data.itemCode !== undefined && { itemCode: data.itemCode }),
+    ...(data.iscAmount !== undefined && { iscAmount: data.iscAmount }),
+    ...(data.icbperUnitAmount !== undefined && { icbperUnitAmount: data.icbperUnitAmount }),
   };
   return addDocumentToSubcollection(COLLECTION, invoiceId, ITEMS_SUB, payload);
 }
@@ -325,6 +360,14 @@ export async function updateInvoiceItem(
   if (data.tax !== undefined) payload.tax = Number(data.tax) || 0;
   if (data.amount !== undefined) payload.amount = Number(data.amount) || 0;
   if (data.currency !== undefined) payload.currency = data.currency;
+  if (data.taxAffectationCode !== undefined) payload.taxAffectationCode = data.taxAffectationCode;
+  if (data.taxSchemeCode !== undefined) payload.taxSchemeCode = data.taxSchemeCode;
+  if (data.taxSchemeName !== undefined) payload.taxSchemeName = data.taxSchemeName;
+  if (data.taxTypeCode !== undefined) payload.taxTypeCode = data.taxTypeCode;
+  if (data.unitCode !== undefined) payload.unitCode = data.unitCode;
+  if (data.itemCode !== undefined) payload.itemCode = data.itemCode;
+  if (data.iscAmount !== undefined) payload.iscAmount = data.iscAmount;
+  if (data.icbperUnitAmount !== undefined) payload.icbperUnitAmount = data.icbperUnitAmount;
   await updateDocumentInSubcollection(COLLECTION, invoiceId, ITEMS_SUB, itemId, payload);
 }
 
@@ -462,14 +505,61 @@ export async function createInvoiceFromSettlement(
   const today = new Date();
   const issueDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+  const companyId = requireActiveCompanyId();
+  const company = await getCompanyById(companyId);
+  if (!company) {
+    throw new Error("Empresa activa no encontrada.");
+  }
+  const { items: companyLocs } = await getCompanyLocations(companyId);
+  const issuerLoc = companyLocs.find((l) => l.active) ?? companyLocs[0];
+  if (!issuerLoc) {
+    throw new Error(
+      "Registre al menos una sede de empresa en Sistema → Empresas → Sedes antes de generar la factura."
+    );
+  }
+
+  let invoiceClient: InvoiceClient;
+  const ent = settlement.entity;
+  const entId = String(ent?.id ?? "").trim();
+  if (entId) {
+    const cr = await getClient(entId);
+    if (cr) {
+      const { items: clLocs } = await getClientLocations(entId);
+      const firstLoc = clLocs.find((l) => l.active) ?? clLocs[0];
+      const homeExtra = firstLoc ? clientLocationToHomeAddress(firstLoc) : undefined;
+      invoiceClient = clientRecordToInvoiceClient(cr, homeExtra);
+    } else {
+      invoiceClient = {
+        id: entId,
+        name: String(ent?.name ?? "").trim(),
+        businessName: String(ent?.name ?? "").trim(),
+        identityDocumentNo: "",
+        phoneNumber: "",
+        emailAddress: "",
+        homeAddress: "",
+      };
+    }
+  } else {
+    invoiceClient = {
+      id: "",
+      name: String(ent?.name ?? "").trim(),
+      businessName: String(ent?.name ?? "").trim(),
+      identityDocumentNo: "",
+      phoneNumber: "",
+      emailAddress: "",
+      homeAddress: "",
+    };
+  }
+
   const invoiceInput: InvoiceAddInput = {
     documentNo,
     type: statusDefaultKey(INVOICE_TYPE),
     payTerm,
     settlementId,
-    client: { id: "", name: "", businessName: "", identityDocumentNo: "", phoneNumber: "", emailAddress: "", homeAddress: "" },
-    company: { id: "", name: "", businessName: "", identityDocumentNo: "", emailAddress: "", logoUrl: "" },
-    companyLocation: { name: "", description: "", ubigeo: "", city: "", country: "", district: "", address: "" },
+    settlement: settlement.code.trim(),
+    client: invoiceClient,
+    company: companyRecordToInvoiceCompany(company),
+    companyLocation: companyLocationRecordToInvoiceLocation(issuerLoc),
     issueDate,
     currency: settlement.totals.currency,
     status: statusDefaultKey(INVOICE_STATUS),
@@ -480,6 +570,7 @@ export async function createInvoiceFromSettlement(
     zipUrl: "",
     cdrUrl: "",
     pdfUrl: "",
+    operationTypeCode: "0101",
   };
 
   const invoiceId = await addInvoice(invoiceInput);
@@ -499,6 +590,11 @@ export async function createInvoiceFromSettlement(
         tax: group.tax,
         amount: group.amount,
         currency: group.currency,
+        taxAffectationCode: "10",
+        taxSchemeCode: "1000",
+        taxSchemeName: "IGV",
+        taxTypeCode: "VAT",
+        unitCode: "NIU",
       };
       return addInvoiceItem(invoiceId, itemInput);
     })
@@ -509,12 +605,27 @@ export async function createInvoiceFromSettlement(
 
 // --- Acciones SUNAT ---
 
-/** Envía una o varias facturas a SUNAT. */
-export async function sendInvoicesToSunat(ids: string[]): Promise<void> {
-  await callHttpsFunction("sendInvoicesToSunat", { ids });
+/** Envía una o varias facturas a SUNAT (modo individual). */
+export async function sendInvoicesToSunat(ids: string[]): Promise<{ jobId: string }[]> {
+  return callHttpsFunction("sendInvoicesToSunat", { ids });
 }
 
 /** Consulta el CDR de una o varias facturas en SUNAT. */
-export async function queryInvoicesCdr(ids: string[]): Promise<void> {
-  await callHttpsFunction("queryInvoicesCdr", { ids });
+export async function queryInvoicesCdr(ids: string[]): Promise<{ invoiceId: string; statusCode: string; statusMessage: string }[]> {
+  return callHttpsFunction("queryInvoicesCdr", { ids });
+}
+
+/** Envía un lote de facturas a SUNAT (modo pack). */
+export async function sendInvoicesPack(ids: string[]): Promise<{ jobId: string }> {
+  return callHttpsFunction("sendInvoicesPack", { ids });
+}
+
+/** Envía el resumen diario a SUNAT. */
+export async function sendDailySummary(date: string, invoiceIds: string[]): Promise<{ jobId: string }> {
+  return callHttpsFunction("sendDailySummary", { date, invoiceIds });
+}
+
+/** Reintenta el envío de una factura individual a SUNAT. */
+export async function retryInvoiceSunat(id: string): Promise<{ jobId: string }> {
+  return callHttpsFunction("sendInvoicesToSunat", { ids: [id] });
 }

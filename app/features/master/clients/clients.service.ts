@@ -29,6 +29,7 @@ import type {
     PaymentCondition,
     ClientAddInput,
     ClientEditInput,
+    ClientFiscalLocation,
     LocationType,
     ClientLocationGeo,
     ClientLocationDeliveryWindow,
@@ -94,6 +95,20 @@ function toLogistics(v: unknown): ClientLogistics {
     return defaultLogistics();
 }
 
+function toFiscal(v: unknown): ClientFiscalLocation | undefined {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+        const o = v as Record<string, unknown>;
+        const address = String(o.address ?? "").trim();
+        const district = String(o.district ?? "").trim();
+        const city = String(o.city ?? "").trim();
+        const country = String(o.country ?? "").trim();
+        const ubigeo = String(o.ubigeo ?? "").trim();
+        if (!address && !district && !city && !country && !ubigeo) return undefined;
+        return { address, district, city, country: country || "PE", ubigeo };
+    }
+    return undefined;
+}
+
 function toRecord(doc: { id: string } & Record<string, unknown>): ClientRecord {
     const status = parseStatus(doc.status, CLIENT_STATUS) as ClientStatus;
     return {
@@ -108,6 +123,7 @@ function toRecord(doc: { id: string } & Record<string, unknown>): ClientRecord {
         billing: toBilling(doc.billing),
         logistics: toLogistics(doc.logistics),
         status,
+        fiscal: toFiscal(doc.fiscal),
     };
 }
 
@@ -156,6 +172,15 @@ export async function addClient(data: ClientAddInput): Promise<string> {
             defaultServiceTimeMin: Number(data.logistics.defaultServiceTimeMin) || 0,
         },
         status: data.status,
+        ...(data.fiscal && {
+            fiscal: {
+                address: data.fiscal.address.trim(),
+                district: data.fiscal.district.trim(),
+                city: data.fiscal.city.trim(),
+                country: data.fiscal.country.trim() || "PE",
+                ubigeo: data.fiscal.ubigeo.trim(),
+            },
+        }),
     });
 }
 
@@ -171,6 +196,17 @@ export async function updateClient(id: string, data: ClientEditInput): Promise<v
     if (data.billing !== undefined) payload.billing = data.billing;
     if (data.logistics !== undefined) payload.logistics = data.logistics;
     if (data.status !== undefined) payload.status = data.status;
+    if (data.fiscal !== undefined) {
+        payload.fiscal = data.fiscal
+            ? {
+                  address: data.fiscal.address.trim(),
+                  district: data.fiscal.district.trim(),
+                  city: data.fiscal.city.trim(),
+                  country: data.fiscal.country.trim() || "PE",
+                  ubigeo: data.fiscal.ubigeo.trim(),
+              }
+            : null;
+    }
     await updateDocument(COLLECTION, id, payload);
 }
 

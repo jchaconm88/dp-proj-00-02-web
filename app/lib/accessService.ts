@@ -1,3 +1,4 @@
+import { getSystemModuleById } from "~/data/system-modules";
 import { hasPermissionCode } from "~/lib/permission-codes";
 
 /**
@@ -21,4 +22,23 @@ export function isGranted(
   module: string
 ): boolean {
   return hasPermissionCode(effectivePermissions, permission, module);
+}
+
+/**
+ * Puede mostrarse el ítem de menú de un módulo: basta con cualquier permiso explícito de ese módulo
+ * (`módulo:acción` o `*:módulo`), sin mezclar con otros módulos.
+ */
+export function canNavigateToModule(effectivePermissions: string[], moduleName: string): boolean {
+  if (effectivePermissions.includes("*")) return true;
+  const mod = getSystemModuleById(moduleName);
+  const actions = mod?.permissions?.map((p) => p.code).filter(Boolean) ?? [
+    "view",
+    "edit",
+    "create",
+    "delete",
+  ];
+  for (const action of actions) {
+    if (hasPermissionCode(effectivePermissions, action, moduleName)) return true;
+  }
+  return false;
 }

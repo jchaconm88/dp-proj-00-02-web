@@ -30,6 +30,6 @@ Las reglas reconocen el literal **`__company_admin__`** dentro de **`company-use
 
 ## 5. Despliegue
 
-Despliega Cloud Functions (incl. **`refreshTenantClaims`**, **`migrationHttp`** si aún aplica) y las reglas en [`dp-proj-00-02-web/firestore.rules`](../firestore.rules) / [`dp-proj-00-02-functions/firestore.rules`](../../dp-proj-00-02-functions/firestore.rules) según tu flujo de deploy.
+Despliega Cloud Functions (incl. **`refreshTenantClaims`**, **`migrationHttp`** si aún aplica) y las reglas en [`dp-proj-00-02-web/firestore.rules`](../firestore.rules) (canonico; el workflow web despliega reglas e indices).
 
 Tras el backfill de **`accountId`**, despliega también los índices compuestos desde [`firestore.indexes.json`](../firestore.indexes.json) (`firebase deploy --only firestore:indexes` en el proyecto web) para que las consultas `companyId` + `accountId` (y variantes con `orderBy`) no fallen en runtime.

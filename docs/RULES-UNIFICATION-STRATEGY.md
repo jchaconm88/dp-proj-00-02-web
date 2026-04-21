@@ -1,13 +1,12 @@
 # Estrategia de Unificacion `firestore.rules`
 
+## Fuente única
+
+El archivo canonico es **`dp-proj-00-02-web/firestore.rules`**. El despliegue de reglas e indices lo hace el workflow del proyecto web (`hosting,firestore:rules,firestore:indexes`). El repo de functions **no** duplica ni despliega reglas.
+
 ## Objetivo
 
-Evitar divergencia entre:
-
-- `dp-proj-00-02-web/firestore.rules`
-- `dp-proj-00-02-functions/firestore.rules`
-
-y cerrar acceso directo desde cliente por fases.
+Mantener una sola copia de verdad y cerrar acceso directo desde cliente por fases.
 
 ## Politica definida
 
@@ -44,5 +43,4 @@ y cerrar acceso directo desde cliente por fases.
 
 ## Control operativo
 
-- Cualquier cambio de rules debe replicarse en ambos archivos en el mismo PR.
-- Bloquear despliegue si solo se modifica uno de los dos archivos.
+- Cambios de rules: solo en `dp-proj-00-02-web/firestore.rules` y validar con el deploy web (o `firebase deploy --only firestore:rules` desde esa carpeta).

@@ -266,6 +266,14 @@
           "view",
           "invoice"
         ]
+      },
+      {
+        "title": "Configuración SUNAT",
+        "link": "/billing/sunat-config",
+        "permission": [
+          "view",
+          "sunat-config"
+        ]
       }
     ]
   },

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { Button } from "primereact/button";
+import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import {
   getInvoices,
   getInvoicesByFilters,
@@ -8,13 +9,18 @@ import {
   deleteInvoices,
   sendInvoicesToSunat,
   queryInvoicesCdr,
+  sendInvoicesPack,
+  retryInvoiceSunat,
   type InvoiceRecord,
   type InvoiceQueryFilters,
   type InvoiceStatus,
 } from "~/features/billing/invoice";
+import { getClients } from "~/features/master/clients";
+import { getSunatConfig, isSunatConfigOperational } from "~/features/billing/sunat-config";
 import type { Route } from "./+types/InvoicesPage";
 import { withUrlSearch } from "~/lib/url-search";
 import { getAuthUser } from "~/lib/get-auth-user";
+import { getActiveCompanyId } from "~/lib/tenant";
 import {
   DpContent,
   DpContentFilter,
@@ -31,6 +37,7 @@ import {
   INVOICE_TYPE,
   PAYMENT_CONDITION,
   CURRENCY,
+  OPERATION_TYPE_CODE,
   statusToSelectOptions,
 } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
@@ -38,6 +45,7 @@ import { moduleTableDef } from "~/data/system-modules";
 import InvoiceDialog from "./InvoiceDialog";
 
 const TABLE_DEF = moduleTableDef("invoice", {
+  operationTypeCode: OPERATION_TYPE_CODE,
   type: INVOICE_TYPE,
   status: INVOICE_STATUS,
   payTerm: PAYMENT_CONDITION,
@@ -92,9 +100,19 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 
   const { items } = hasFilters ? await getInvoicesByFilters(filters) : await getInvoices();
 
+  let sunatWarning: "inactive" | "missing" | null = null;
+  try {
+    const sc = await getSunatConfig();
+    if (!sc) sunatWarning = "missing";
+    else if (!isSunatConfigOperational(sc)) sunatWarning = "inactive";
+  } catch {
+    sunatWarning = "missing";
+  }
+
   const rows: InvoiceRow[] = items.map((invoice) => ({
     ...invoice,
     clientName: invoice.client.name || invoice.client.businessName || "—",
+    settlement: invoice.settlement?.trim() || "—",
     totalPriceFormatted: formatAmountWithSymbol(invoice.totalPrice, invoice.currency),
     totalTaxFormatted: formatAmountWithSymbol(invoice.totalTax, invoice.currency),
     totalFormatted: formatAmountWithSymbol(invoice.totalAmount, invoice.currency),
@@ -108,6 +126,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
       clientIds: clientIdParams ?? [],
     } satisfies InvoiceFiltersForm,
     hasExplicitFilters,
+    sunatWarning,
   };
 }
 
@@ -133,6 +152,8 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
   const [sunatSending, setSunatSending] = useState(false);
   const [cdrQuerying, setCdrQuerying] = useState(false);
   const [filters, setFilters] = useState<InvoiceFiltersForm>(loaderData.appliedFilters);
+  const [processingInvoiceIds, setProcessingInvoiceIds] = useState<Set<string>>(new Set());
+  const [clientFilterOptions, setClientFilterOptions] = useState<{ label: string; value: string }[]>([]);
 
   const dialogVisible = isAdd || !!editId;
 
@@ -146,7 +167,51 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
     setFilters(loaderData.appliedFilters);
   }, [loaderData.appliedFilters]);
 
+  useEffect(() => {
+    getClients()
+      .then(({ items }) =>
+        setClientFilterOptions(
+          items.map((c) => ({
+            label: `${c.businessName || c.code}${c.code ? ` · ${c.code}` : ""}`,
+            value: c.id,
+          }))
+        )
+      )
+      .catch(() => setClientFilterOptions([]));
+  }, []);
+
+  useEffect(() => {
+    const companyId = getActiveCompanyId();
+    if (!companyId) return;
+
+    const db = getFirestore();
+    // Debe coincidir con las reglas (companyId + miembro): una query sin companyId
+    // puede denegarse aunque los jobs sean de la misma cuenta.
+    const q = query(
+      collection(db, "sunat-jobs"),
+      where("companyId", "==", companyId),
+      where("status", "in", ["queued", "processing", "pending_retry"])
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ids = new Set<string>();
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data.invoiceId) ids.add(data.invoiceId);
+        if (Array.isArray(data.invoiceIds)) {
+          data.invoiceIds.forEach((id: string) => ids.add(id));
+        }
+      });
+      setProcessingInvoiceIds(ids);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const statusLabelById = new Map(INVOICE_STATUS_OPTIONS.map((o) => [String(o.value), o.label]));
+
+  const clientLabelById = useMemo(
+    () => new Map(clientFilterOptions.map((o) => [o.value, o.label])),
+    [clientFilterOptions]
+  );
 
   const filterDefs = useMemo<DpFilterDef[]>(
     () => [
@@ -180,14 +245,17 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
         name: "clientIds",
         label: "Cliente",
         type: "multiselect",
-        options: [],
+        options: clientFilterOptions,
         placeholder: "— Todos los clientes —",
         filter: true,
         summary: (value) =>
-          ((value as string[]) ?? []).filter(Boolean).join(", "),
+          ((value as string[]) ?? [])
+            .map((id) => clientLabelById.get(id) || id)
+            .filter(Boolean)
+            .join(", "),
       },
     ],
-    [statusLabelById]
+    [statusLabelById, clientFilterOptions, clientLabelById]
   );
 
   const applySearchParams = (nextFilters: InvoiceFiltersForm) => {
@@ -254,7 +322,7 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
     setError(null);
     try {
       await sendInvoicesToSunat(ids);
-      revalidator.revalidate();
+      // Don't revalidate immediately — the real-time listener will update the UI
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al enviar a SUNAT");
     } finally {
@@ -275,6 +343,37 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
       setError(err instanceof Error ? err.message : "Error al consultar CDR");
     } finally {
       setCdrQuerying(false);
+    }
+  };
+
+  const handleSendPack = async () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (selected.length < 2) return;
+    const ids = selected.map((r) => r.id);
+    setSaving(true);
+    setError(null);
+    try {
+      await sendInvoicesPack(ids);
+      revalidator.revalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al enviar lote a SUNAT");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (selected.length !== 1) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await retryInvoiceSunat(selected[0].id);
+      revalidator.revalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al reintentar envío");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -317,6 +416,24 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
           <Button
             type="button"
             size="small"
+            icon="pi pi-box"
+            label="Envío masivo"
+            onClick={handleSendPack}
+            disabled={selectedCount < 2 || saving}
+            aria-label="Enviar facturas seleccionadas en lote a SUNAT"
+          />
+          <Button
+            type="button"
+            size="small"
+            icon="pi pi-replay"
+            label="Reintentar"
+            onClick={handleRetry}
+            disabled={selectedCount !== 1 || saving}
+            aria-label="Reintentar envío de factura a SUNAT"
+          />
+          <Button
+            type="button"
+            size="small"
             icon="pi pi-refresh"
             label="Consultar CDR"
             onClick={handleQueryCdr}
@@ -325,6 +442,19 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
           />
         </DpContentHeaderAction>
       </DpContentHeader>
+
+      {loaderData.sunatWarning === "missing" && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          No hay configuración SUNAT para esta empresa. Créala en{" "}
+          <strong>Facturación → Configuración SUNAT</strong> antes de enviar o consultar comprobantes.
+        </div>
+      )}
+      {loaderData.sunatWarning === "inactive" && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          La configuración SUNAT está <strong>desactivada</strong>. Actívala en{" "}
+          <strong>Facturación → Configuración SUNAT</strong> para usar envío y consulta SUNAT.
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
@@ -360,9 +490,29 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
             </button>
           )}
         </DpTColumn>
+        <DpTColumn<InvoiceRow> name="invoiceCredits">
+          {(row) => (
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  withUrlSearch(`/billing/invoices/${encodeURIComponent(row.id)}/credits`, listQuery)
+                )
+              }
+              className="p-button p-button-text p-button-rounded p-button-icon-only"
+              aria-label="Cuotas de la factura"
+              title="Cuotas"
+            >
+              <i className="pi pi-calendar" />
+            </button>
+          )}
+        </DpTColumn>
         <DpTColumn<InvoiceRow> name="sunatDocs">
           {(row) => (
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {processingInvoiceIds.has(row.id) && (
+                <i className="pi pi-spin pi-spinner text-blue-500" title="Procesando en SUNAT..." />
+              )}
               {row.zipUrl && (
                 <a
                   href={row.zipUrl}

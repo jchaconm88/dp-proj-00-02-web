@@ -246,6 +246,14 @@
         { "fieldPath": "companyId", "order": "ASCENDING" },
         { "fieldPath": "accountId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "sunat-jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

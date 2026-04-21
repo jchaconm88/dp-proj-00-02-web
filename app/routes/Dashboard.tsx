@@ -5,10 +5,9 @@ import { useCompany } from "~/lib/company-context";
 import { useTheme } from "~/lib/theme-context";
 import type { Route } from "./+types/Dashboard";
 import menuData from "~/data/menu.json";
-import { COMPANY_ADMIN_ROLE_MARKER } from "~/features/system/company-users";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
-import { isGranted } from "~/lib/accessService";
-import { collectPermissionCodes } from "~/lib/permission-codes";
+import { canNavigateToModule, isGranted } from "~/lib/accessService";
+import { getEffectivePermissions } from "~/lib/effective-permissions";
 import { Dropdown } from "primereact/dropdown";
 import { getAuthUser } from "~/lib/get-auth-user";
 
@@ -47,43 +46,16 @@ function primeIconClass(name?: string, className = "h-5 w-5 shrink-0"): string {
 
 const HEADER_HEIGHT = 48;
 
-/**
- * Permisos efectivos para el menú: unión de `permission` en documentos `roles` de la empresa.
- * Fuente de roleIds: solo `company-users` de la empresa activa.
- * No depende del nombre del rol; usa códigos definidos en la colección `roles`.
- */
-function getEffectivePermissions(
-  membershipRoleIds: string[],
-  membershipRoleNames: string[],
-  roles: RoleRecord[]
-): string[] {
-  const roleMap = new Map(roles.map((r) => [r.id, r]));
-  const byName = new Map(roles.map((r) => [r.name.toLowerCase(), r]));
-  let hasWildcard = false;
-  const set = new Set<string>();
-  for (const rid of membershipRoleIds) {
-    if (rid === COMPANY_ADMIN_ROLE_MARKER) continue;
-    const role = roleMap.get(rid) ?? byName.get(rid.toLowerCase());
-    const perms = role ? collectPermissionCodes(role) : [];
-    if (perms.includes("*")) hasWildcard = true;
-    perms.forEach((p) => set.add(p));
-  }
-  for (const roleName of membershipRoleNames) {
-    const role = byName.get(String(roleName).toLowerCase());
-    const perms = role ? collectPermissionCodes(role) : [];
-    if (perms.includes("*")) hasWildcard = true;
-    perms.forEach((p) => set.add(p));
-  }
-  if (hasWildcard) return ["*"];
-  return Array.from(set);
-}
-
 function canShowItem(permission: string[] | undefined, effectivePermissions: string[]): boolean {
   if (effectivePermissions.includes("*")) return true;
   if (!permission?.length) return true;
   if (effectivePermissions.length === 0) return false;
   const action = permission[0];
   const moduleName = permission[1] ?? permission[0];
+  // Menú usa ["view", módulo]: mostrar si hay cualquier permiso de ESE módulo (sin cruzar con otros).
+  if (action === "view") {
+    return canNavigateToModule(effectivePermissions, moduleName);
+  }
   return isGranted(effectivePermissions, action, moduleName);
 }
 
@@ -107,6 +79,37 @@ function filterMenu(items: MenuItemJson[], effectivePermissions: string[]): Menu
       // Padre: solo si queda al menos un hijo (p. ej. tras filtrar por permisos).
       return item.children.length > 0;
     });
+}
+
+function MenuLoadingBlock({ sidebarOpen }: { sidebarOpen: boolean }) {
+  return (
+    <div className={`pb-4 ${sidebarOpen ? "px-2" : "px-0"}`}>
+      {sidebarOpen && (
+        <div className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dp-menu-text)] opacity-70">
+          Cargando…
+        </div>
+      )}
+
+      <div className={`flex ${sidebarOpen ? "items-start" : "items-center justify-center"} gap-3 px-3 py-3`}>
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/15 border-t-[var(--dp-tertiary)]" />
+        {sidebarOpen && (
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-40 rounded bg-white/5" />
+            <div className="h-4 w-28 rounded bg-white/5" />
+            <div className="h-4 w-36 rounded bg-white/5" />
+          </div>
+        )}
+      </div>
+
+      {sidebarOpen && (
+        <div className="space-y-2 px-3 pb-2">
+          <div className="h-9 rounded-xl bg-white/5" />
+          <div className="h-9 rounded-xl bg-white/5" />
+          <div className="h-9 rounded-xl bg-white/5" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function meta({ }: Route.MetaArgs) {
@@ -176,6 +179,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     () => getEffectivePermissions(membershipRoleIds, membershipRoleNames, roles),
     [membershipRoleIds, membershipRoleNames, roles]
   );
+  const menuLoading = Boolean(activeCompanyId) && (rolesLoading || (membershipRoleIds.length > 0 && roles.length === 0));
   const filteredMenu = useMemo(
     () => filterMenu(menuData as MenuItemJson[], effectivePermissions),
     [effectivePermissions]
@@ -350,124 +354,128 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
             </div>
           )}
           <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden py-2">
-            {sections.map((section, idx) => (
-              <div key={idx} className={`pb-4 ${sidebarOpen ? "px-2" : "px-0"}`}>
-                {sidebarOpen && section.title && (
-                  <div className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dp-menu-text)]">
-                    {section.title}
-                  </div>
-                )}
-                <nav className="space-y-0.5">
-                  {section.items.map((item, i) => {
-                    const hasChildren = item.children && item.children.length > 0;
-                    const isExpanded = hasChildren && expandedKeys.has(item.title);
-                    const href = item.link ?? "#";
-                    const isActive =
-                      href !== "#" && pathname === href;
+            {menuLoading ? (
+              <MenuLoadingBlock sidebarOpen={sidebarOpen} />
+            ) : (
+              sections.map((section, idx) => (
+                <div key={idx} className={`pb-4 ${sidebarOpen ? "px-2" : "px-0"}`}>
+                  {sidebarOpen && section.title && (
+                    <div className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dp-menu-text)]">
+                      {section.title}
+                    </div>
+                  )}
+                  <nav className="space-y-0.5">
+                    {section.items.map((item, i) => {
+                      const hasChildren = item.children && item.children.length > 0;
+                      const isExpanded = hasChildren && expandedKeys.has(item.title);
+                      const href = item.link ?? "#";
+                      const isActive =
+                        href !== "#" && pathname === href;
 
-                    if (sidebarOpen) {
-                      if (hasChildren) {
+                      if (sidebarOpen) {
+                        if (hasChildren) {
+                          return (
+                            <div key={i}>
+                              <button
+                                type="button"
+                                onClick={() => toggleExpanded(item.title)}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--dp-menu-text)] transition-all hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
+                              >
+                                <i className={primeIconClass(item.icon)} aria-hidden />
+                                <span className="flex-1">{item.title}</span>
+                                <i
+                                  className={`pi shrink-0 opacity-70 ${isExpanded ? "pi-chevron-down h-4 w-4" : "pi-chevron-right h-4 w-4"}`}
+                                  aria-hidden
+                                />
+                              </button>
+                              {isExpanded && (
+                                <div className="ml-4 border-l border-white/10 pl-2">
+                                  {item.children!.map((child, j) => {
+                                    const childHref = child.link ?? "#";
+                                    return (
+                                      <NavLink
+                                        key={j}
+                                        to={childHref}
+                                        end={false}
+                                        className={({ isActive }) =>
+                                          `mb-0.5 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors no-underline ${isActive
+                                            ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
+                                            : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
+                                          }`
+                                        }
+                                      >
+                                        {child.title}
+                                      </NavLink>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
                         return (
-                          <div key={i}>
-                            <button
-                              type="button"
-                              onClick={() => toggleExpanded(item.title)}
-                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--dp-menu-text)] transition-all hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
-                            >
-                              <i className={primeIconClass(item.icon)} aria-hidden />
-                              <span className="flex-1">{item.title}</span>
-                              <i
-                                className={`pi shrink-0 opacity-70 ${isExpanded ? "pi-chevron-down h-4 w-4" : "pi-chevron-right h-4 w-4"}`}
-                                aria-hidden
-                              />
-                            </button>
-                            {isExpanded && (
-                              <div className="ml-4 border-l border-white/10 pl-2">
-                                {item.children!.map((child, j) => {
-                                  const childHref = child.link ?? "#";
-                                  return (
-                                    <NavLink
-                                      key={j}
-                                      to={childHref}
-                                      end={false}
-                                      className={({ isActive }) =>
-                                        `mb-0.5 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors no-underline ${isActive
-                                          ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
-                                          : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
-                                        }`
-                                      }
-                                    >
-                                      {child.title}
-                                    </NavLink>
-                                  );
-                                })}
-                              </div>
+                          <Link
+                            key={i}
+                            to={href}
+                            title={item.title}
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all no-underline ${isActive
+                              ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
+                              : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
+                              }`}
+                          >
+                            {item.icon && <i className={primeIconClass(item.icon)} aria-hidden />}
+                            <span className="flex-1">{item.title}</span>
+                          </Link>
+                        );
+                      }
+
+                      if (hasChildren) {
+                        const firstChildLink = item.children!.find((c) => c.link && c.link !== "#");
+                        return (
+                          <div key={i} className="flex justify-center">
+                            {firstChildLink ? (
+                              <NavLink
+                                to={firstChildLink.link!}
+                                title={item.title}
+                                className={({ isActive }) =>
+                                  `flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors ${isActive
+                                    ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
+                                    : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
+                                  }`
+                                }
+                              >
+                                <i className={primeIconClass(item.icon)} aria-hidden />
+                              </NavLink>
+                            ) : (
+                              <span
+                                title={item.title}
+                                className="flex flex-col items-center justify-center rounded-xl p-2.5 text-[var(--dp-menu-text)]"
+                              >
+                                <i className={primeIconClass(item.icon)} aria-hidden />
+                              </span>
                             )}
                           </div>
                         );
                       }
                       return (
-                        <Link
-                          key={i}
-                          to={href}
-                          title={item.title}
-                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all no-underline ${isActive
-                            ? "border-r-2 border-[var(--dp-tertiary)] bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] font-semibold text-[var(--dp-tertiary)]"
-                            : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
-                            }`}
-                        >
-                          {item.icon && <i className={primeIconClass(item.icon)} aria-hidden />}
-                          <span className="flex-1">{item.title}</span>
-                        </Link>
-                      );
-                    }
-
-                    if (hasChildren) {
-                      const firstChildLink = item.children!.find((c) => c.link && c.link !== "#");
-                      return (
                         <div key={i} className="flex justify-center">
-                          {firstChildLink ? (
-                            <NavLink
-                              to={firstChildLink.link!}
-                              title={item.title}
-                              className={({ isActive }) =>
-                                `flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors ${isActive
-                                  ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
-                                  : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
-                                }`
-                              }
-                            >
-                              <i className={primeIconClass(item.icon)} aria-hidden />
-                            </NavLink>
-                          ) : (
-                            <span
-                              title={item.title}
-                              className="flex flex-col items-center justify-center rounded-xl p-2.5 text-[var(--dp-menu-text)]"
-                            >
-                              <i className={primeIconClass(item.icon)} aria-hidden />
-                            </span>
-                          )}
+                          <Link
+                            to={href}
+                            title={item.title}
+                            className={`flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors no-underline ${isActive
+                              ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
+                              : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
+                              }`}
+                          >
+                            <i className={primeIconClass(item.icon)} aria-hidden />
+                          </Link>
                         </div>
                       );
-                    }
-                    return (
-                      <div key={i} className="flex justify-center">
-                        <Link
-                          to={href}
-                          title={item.title}
-                          className={`flex flex-col items-center justify-center rounded-xl p-2.5 transition-colors no-underline ${isActive
-                            ? "bg-[color-mix(in_srgb,var(--dp-tertiary)_14%,transparent)] text-[var(--dp-tertiary)]"
-                            : "text-[var(--dp-menu-text)] hover:bg-white/5 hover:text-[var(--dp-menu-text-strong)]"
-                            }`}
-                        >
-                          <i className={primeIconClass(item.icon)} aria-hidden />
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </nav>
-              </div>
-            ))}
+                    })}
+                  </nav>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </aside>

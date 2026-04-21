@@ -18,6 +18,7 @@ import {
 import {
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
+  TRIP_COST_TYPE,
 } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import { moduleTableDef } from "~/data/system-modules";

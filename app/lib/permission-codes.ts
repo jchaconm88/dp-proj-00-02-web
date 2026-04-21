@@ -14,7 +14,13 @@ export function collectPermissionCodes(source: PermissionSource): string[] {
 
   for (const legacy of source.permission ?? []) {
     const code = normalizePermissionCode(legacy);
-    if (code) out.add(code);
+    if (!code) continue;
+    // Legacy sin ":" = acceso total a ese módulo (equivale a `*:módulo`), no un código suelto que mezcle módulos.
+    if (!code.includes(":")) {
+      out.add(`*:${code}`);
+      continue;
+    }
+    out.add(code);
   }
 
   const mapped = source.permissions ?? {};
@@ -52,7 +58,6 @@ export function hasPermissionCode(
 
   return (
     set.has("*")
-    || set.has(moduleCode)
     || set.has(`${moduleCode}:${permissionCode}`)
     || set.has(`*:${moduleCode}`)
   );

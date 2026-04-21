@@ -61,6 +61,8 @@ export interface InvoiceRecord {
   payTerm: string;
   /** ID de la liquidación de origen. Vacío si se crea manualmente. */
   settlementId: string;
+  /** Código de liquidación (mismo valor que `Settlement.code`). Vacío si no aplica. */
+  settlement: string;
   client: InvoiceClient;
   company: InvoiceCompany;
   companyLocation: InvoiceCompanyLocation;
@@ -77,6 +79,15 @@ export interface InvoiceRecord {
   zipUrl: string;
   cdrUrl: string;
   pdfUrl: string;
+  /** Código de tipo de operación SUNAT (ej. "0101"). */
+  operationTypeCode: string;
+  /**
+   * Fecha de vencimiento de cabecera (YYYY-MM-DD). En UBL 2.1 corresponde a `cbc:DueDate`
+   * (cardinalidad 0..1 según guía SUNAT de XML electrónico; no está definida en el WSDL de
+   * `billService`, que solo describe las operaciones SOAP del envío del ZIP).
+   * Para venta a crédito con cuotas, los vencimientos detallados van en `InvoiceCredit` / `cac:PaymentTerms`.
+   */
+  dueDate?: string;
 }
 
 export interface InvoiceAddInput {
@@ -84,6 +95,7 @@ export interface InvoiceAddInput {
   type: InvoiceType;
   payTerm: string;
   settlementId: string;
+  settlement: string;
   client: InvoiceClient;
   company: InvoiceCompany;
   companyLocation: InvoiceCompanyLocation;
@@ -97,6 +109,9 @@ export interface InvoiceAddInput {
   zipUrl: string;
   cdrUrl: string;
   pdfUrl: string;
+  operationTypeCode: string;
+  /** Igual que `InvoiceRecord.dueDate` (opcional en UBL; ver comentario allí). */
+  dueDate?: string;
 }
 
 export type InvoiceEditInput = Partial<Omit<InvoiceRecord, "id">>;
@@ -125,6 +140,22 @@ export interface InvoiceItemRecord {
   /** Total con impuesto: price + tax. */
   amount: number;
   currency: string;
+  /** Código de afectación al IGV (ej. "10" = gravado). */
+  taxAffectationCode: string;
+  /** Código del esquema de impuesto SUNAT (ej. "1000" para IGV). */
+  taxSchemeCode: string;
+  /** Nombre del esquema de impuesto (ej. "IGV"). */
+  taxSchemeName: string;
+  /** Código de tipo de impuesto (ej. "VAT"). */
+  taxTypeCode: string;
+  /** Código de unidad de medida SUNAT (ej. "NIU"). */
+  unitCode: string;
+  /** Código interno del ítem. */
+  itemCode?: string;
+  /** Monto de ISC. */
+  iscAmount?: number;
+  /** Monto de ICBPER por unidad. */
+  icbperUnitAmount?: number;
 }
 
 export interface InvoiceItemAddInput {
@@ -140,6 +171,14 @@ export interface InvoiceItemAddInput {
   tax: number;
   amount: number;
   currency: string;
+  taxAffectationCode: string;
+  taxSchemeCode: string;
+  taxSchemeName: string;
+  taxTypeCode: string;
+  unitCode: string;
+  itemCode?: string;
+  iscAmount?: number;
+  icbperUnitAmount?: number;
 }
 
 export type InvoiceItemEditInput = Partial<Omit<InvoiceItemRecord, "id">>;

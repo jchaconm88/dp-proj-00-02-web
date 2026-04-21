@@ -453,3 +453,52 @@ export const INVOICE_ITEM_TYPE: Record<string, StatusOption> = {
 };
 
 export type InvoiceItemType = keyof typeof INVOICE_ITEM_TYPE;
+
+/** Código de afectación al IGV — Catálogo 07 SUNAT. */
+export const TAX_AFFECTATION_CODE: Record<string, StatusOption> = {
+  "10": { label: "Gravado - Onerosa", severity: "success" },
+  "11": { label: "Gravado - Retiro por premio", severity: "success" },
+  "20": { label: "Exonerado - Onerosa", severity: "info" },
+  "30": { label: "Inafecto - Onerosa", severity: "secondary" },
+  "31": { label: "Inafecto - Retiro por bonificación", severity: "secondary" },
+  "40": { label: "Exportación", severity: "warning" },
+};
+export type TaxAffectationCode = keyof typeof TAX_AFFECTATION_CODE;
+
+/** Tipo de operación — Catálogo 51 SUNAT. */
+export const OPERATION_TYPE_CODE: Record<string, StatusOption> = {
+  "0101": { label: "Venta interna", severity: "success" },
+  "0112": { label: "Venta interna - Sustenta traslado", severity: "info" },
+  "0200": { label: "Exportación", severity: "warning" },
+  "0401": { label: "Ventas no domiciliados", severity: "secondary" },
+};
+export type OperationTypeCode = keyof typeof OPERATION_TYPE_CODE;
+
+/** Código de unidad de medida — UN/ECE rec 20. */
+export const UNIT_CODE: Record<string, StatusOption> = {
+  "NIU": { label: "Unidad (NIU)", severity: "secondary" },
+  "ZZ":  { label: "Unidad bienes (ZZ)", severity: "secondary" },
+  "KGM": { label: "Kilogramo", severity: "secondary" },
+  "LTR": { label: "Litro", severity: "secondary" },
+  "MTR": { label: "Metro", severity: "secondary" },
+  "GLL": { label: "Galón", severity: "secondary" },
+  "TNE": { label: "Tonelada", severity: "secondary" },
+};
+export type UnitCode = keyof typeof UNIT_CODE;
+
+/** Estado de factura SUNAT (incluye estados del job asíncrono). */
+export const INVOICE_SUNAT_STATUS: Record<string, StatusOption> = {
+  draft:              { label: "Borrador",          severity: "secondary" },
+  issued:             { label: "Emitida",            severity: "info" },
+  queued:             { label: "En cola",            severity: "info" },
+  processing:         { label: "Procesando",         severity: "warning" },
+  accepted:           { label: "Aceptada",           severity: "success" },
+  rejected:           { label: "Rechazada",          severity: "danger" },
+  pending_retry:      { label: "Reintentando",       severity: "warning" },
+  failed:             { label: "Fallida",            severity: "danger" },
+  not_found_in_sunat: { label: "No encontrada",      severity: "secondary" },
+  paid:               { label: "Pagada",             severity: "success" },
+  overdue:            { label: "Vencida",            severity: "warning" },
+  cancelled:          { label: "Anulada",            severity: "danger" },
+  error:              { label: "Error",              severity: "danger" },
+};
