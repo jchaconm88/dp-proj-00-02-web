@@ -379,6 +379,24 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
       { code: "edit", label: "Editar", description: "Permite guardar credenciales y certificados SUNAT." },
     ]
   ),
+  withPermissions(
+    "sunat-monitor",
+    "Monitor de envíos a SUNAT",
+    [
+      { order: 1, name: "documentNo", header: "# Documento", filter: true },
+      { order: 2, name: "docType", header: "Tipo doc", filter: true, format: "status" },
+      { order: 3, name: "jobType", header: "Tipo envío", filter: true, format: "status" },
+      { order: 4, name: "createdAtLabel", header: "Enviado", filter: true },
+      { order: 5, name: "status", header: "Estado", filter: true, format: "status" },
+      { order: 6, name: "sunatDocs", header: "Docs", filter: false },
+      { order: 7, name: "errorMessage", header: "Error", filter: true },
+      { order: 8, name: "actions", header: "Acciones", filter: false },
+    ],
+    [
+      { code: "view", label: "Ver", description: "Permite consultar el monitor de envíos a SUNAT." },
+      { code: "run", label: "Reenviar", description: "Permite reenviar documentos a SUNAT desde el monitor." },
+    ]
+  ),
 ];
 
 export function getSystemModuleById(id: string): ModuleRecord | null {

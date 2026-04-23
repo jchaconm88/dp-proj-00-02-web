@@ -42,14 +42,7 @@ export default function SunatConfigPage({ loaderData }: Route.ComponentProps) {
   const [filterValue, setFilterValue] = useState("");
 
   const dialogVisible = isAdd || !!editId;
-  const hasConfig = loaderData.items.length > 0;
   const loadError = (loaderData as unknown as { loadError?: string | null }).loadError ?? null;
-
-  useEffect(() => {
-    if (hasConfig && isAdd) {
-      navigate("/billing/sunat-config", { replace: true });
-    }
-  }, [hasConfig, isAdd, navigate]);
 
   const openAdd = () => navigate("/billing/sunat-config/add");
   const openEdit = (row: SunatConfigTableRow) =>
@@ -71,11 +64,11 @@ export default function SunatConfigPage({ loaderData }: Route.ComponentProps) {
     <DpContent
       title="CONFIGURACIÓN SUNAT"
       breadcrumbItems={["FACTURACIÓN", "CONFIGURACIÓN SUNAT"]}
-      onCreate={!hasConfig ? openAdd : undefined}
+      onCreate={openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
-        showCreateButton={false}
+        showCreateButton={true}
         filterValue={filterValue}
         onFilter={handleFilter}
         filterPlaceholder="Filtrar por nombre, usuario, ambiente..."

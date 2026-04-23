@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { useNavigation } from "react-router";
 import { DpContentSet } from "~/components/DpContent";
 import { DpInput } from "~/components/DpInput";
-import { getSunatConfig, saveSunatConfig } from "~/features/billing/sunat-config";
+import { getSunatConfigById, saveSunatConfig } from "~/features/billing/sunat-config";
 import { readFileAsBase64 } from "~/lib/file-to-base64";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 
@@ -28,7 +28,7 @@ const PROD_CONSULT_URL = "https://e-factura.sunat.gob.pe/ol-ti-itcpgem/billConsu
 
 export interface SunatConfigDialogProps {
   visible: boolean;
-  /** null = alta; siempre el id del doc = empresa activa. */
+  /** null = alta; si no es null, es el id real del doc en `sunat-config`. */
   configId: string | null;
   canEdit: boolean;
   onSuccess: () => void;
@@ -89,7 +89,7 @@ export default function SunatConfigDialog({
     }
 
     setLoading(true);
-    getSunatConfig()
+    getSunatConfigById(configId)
       .then((data) => {
         if (!data) {
           setError("Configuración no encontrada.");
@@ -169,11 +169,11 @@ export default function SunatConfigDialog({
     setSaving(true);
     setError(null);
     try {
-      const existing = await getSunatConfig();
+      const existing = configId ? await getSunatConfigById(configId) : null;
       const certToSave = newCertCombined || (existing?.certBase64 ?? "");
       const nextCertOriginalName =
         (certFileName && certFileName.trim()) || existing?.certOriginalFileName?.trim() || "";
-      await saveSunatConfig({
+      await saveSunatConfig(configId, {
         name: name.trim(),
         active,
         urlServidorSunat: urlServidorSunat.trim(),
@@ -196,7 +196,7 @@ export default function SunatConfigDialog({
     setDownloadConfirmOpen(false);
     setError(null);
     try {
-      const cfg = await getSunatConfig();
+      const cfg = configId ? await getSunatConfigById(configId) : null;
       const b64 = cfg?.certBase64?.trim();
       if (!b64) {
         setError("No hay certificado almacenado.");

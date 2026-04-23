@@ -410,20 +410,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /sunat-config/{companyId} {
-      // Estandarizar como otras colecciones raíz (ej. invoices):
-      // basta con ser miembro de la empresa activa y respetar accountId.
-      allow read: if isSignedIn()
-        && isMember(companyId)
-        && legacyOrTokenAccountMatches();
-      allow create: if isSignedIn()
-        && isMember(companyId)
-        && request.resource.data.companyId == companyId
-        && accountMatchesData(request.resource.data);
-      allow update: if isSignedIn()
-        && isMember(companyId)
-        && resource.data.companyId == companyId
-        && accountMatchesData(resource.data);
+    match /sunat-config/{docId} {
+      // Normalizado como otras colecciones raíz (ej. invoices, counters, etc.):
+      // - read/write por membresía de la empresa del doc
+      // - y tenant (accountId) compatible con legacy.
+      allow read, write: if isSignedIn()
+        && isMember(effectiveCompanyId())
+        && effectiveAccountMatches();
     }
 
     match /sunat-jobs/{jobId} {

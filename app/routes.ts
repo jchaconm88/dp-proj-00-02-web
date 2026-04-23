@@ -146,6 +146,7 @@ export default [
       route("add", "routes/billing/sunat-config/SunatConfigAdd.tsx"),
       route("edit/:id", "routes/billing/sunat-config/SunatConfigEdit.tsx"),
     ]),
+    route("billing/sunat-monitor", "routes/billing/sunat-monitor/SunatMonitorPage.tsx"),
     route("billing/invoices", "routes/billing/invoice/InvoicesPage.tsx", [
       route("add",      "routes/billing/invoice/InvoiceAdd.tsx"),
       route("edit/:id", "routes/billing/invoice/InvoiceEdit.tsx"),

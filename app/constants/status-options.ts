@@ -423,13 +423,24 @@ export const SUBSCRIPTION_STATUS: Record<string, StatusOption> = {
 
 export type SubscriptionStatusKey = keyof typeof SUBSCRIPTION_STATUS;
 
-/** Estado de factura. */
+/**
+ * Estado de factura (incluye flujo SUNAT asíncrono: cola, aceptada, rechazada, etc.).
+ * Debe alinearse con lo que escriben las Cloud Functions en `invoices.status`.
+ */
 export const INVOICE_STATUS: Record<string, StatusOption> = {
-  draft:     { label: "Borrador",  severity: "secondary" },
-  issued:    { label: "Emitida",   severity: "info" },
-  paid:      { label: "Pagada",    severity: "success" },
-  overdue:   { label: "Vencida",   severity: "warning" },
-  cancelled: { label: "Anulada",   severity: "danger" },
+  draft: { label: "Borrador", severity: "secondary" },
+  issued: { label: "Emitida", severity: "info" },
+  queued: { label: "En cola SUNAT", severity: "info" },
+  processing: { label: "Procesando SUNAT", severity: "warning" },
+  accepted: { label: "Aceptada SUNAT", severity: "success" },
+  rejected: { label: "Rechazada SUNAT", severity: "danger" },
+  pending_retry: { label: "Reintentando envío", severity: "warning" },
+  failed: { label: "Envío fallido", severity: "danger" },
+  not_found_in_sunat: { label: "No encontrada en SUNAT", severity: "secondary" },
+  error: { label: "Error SUNAT", severity: "danger" },
+  paid: { label: "Pagada", severity: "success" },
+  overdue: { label: "Vencida", severity: "warning" },
+  cancelled: { label: "Anulada", severity: "danger" },
 };
 
 export type InvoiceStatus = keyof typeof INVOICE_STATUS;
@@ -486,19 +497,5 @@ export const UNIT_CODE: Record<string, StatusOption> = {
 };
 export type UnitCode = keyof typeof UNIT_CODE;
 
-/** Estado de factura SUNAT (incluye estados del job asíncrono). */
-export const INVOICE_SUNAT_STATUS: Record<string, StatusOption> = {
-  draft:              { label: "Borrador",          severity: "secondary" },
-  issued:             { label: "Emitida",            severity: "info" },
-  queued:             { label: "En cola",            severity: "info" },
-  processing:         { label: "Procesando",         severity: "warning" },
-  accepted:           { label: "Aceptada",           severity: "success" },
-  rejected:           { label: "Rechazada",          severity: "danger" },
-  pending_retry:      { label: "Reintentando",       severity: "warning" },
-  failed:             { label: "Fallida",            severity: "danger" },
-  not_found_in_sunat: { label: "No encontrada",      severity: "secondary" },
-  paid:               { label: "Pagada",             severity: "success" },
-  overdue:            { label: "Vencida",            severity: "warning" },
-  cancelled:          { label: "Anulada",            severity: "danger" },
-  error:              { label: "Error",              severity: "danger" },
-};
+/** @deprecated Usar `INVOICE_STATUS` (mismo conjunto de claves). */
+export const INVOICE_SUNAT_STATUS = INVOICE_STATUS;

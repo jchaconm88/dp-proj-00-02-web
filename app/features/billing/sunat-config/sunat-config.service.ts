@@ -1,4 +1,10 @@
-import { getDocument, createDocumentWithId, updateDocument } from "~/lib/firestore.service";
+import { where } from "firebase/firestore";
+import {
+  addDocument,
+  getCollectionWithMultiFilter,
+  getDocument,
+  updateDocument,
+} from "~/lib/firestore.service";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import type { SunatConfigRecord, SunatConfigInput, SunatConfigTableRow } from "./sunat-config.types";
 
@@ -38,14 +44,27 @@ function toTableRow(config: SunatConfigRecord): SunatConfigTableRow {
 
 /** Listado para tabla de mantenimiento (como otros maestros): 0 o 1 fila por empresa. */
 export async function listSunatConfigsForTable(): Promise<{ items: SunatConfigTableRow[] }> {
-  const row = await getSunatConfig();
-  return { items: row ? [toTableRow(row)] : [] };
+  const companyId = requireActiveCompanyId();
+  const accountId = await resolveActiveAccountId();
+  const rows = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
+    where("companyId", "==", companyId),
+    where("accountId", "==", accountId),
+  ]);
+  const items = rows.map((d) => toTableRow(toSunatConfigRecord(d)));
+  items.sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+  return { items };
 }
 
-export async function getSunatConfig(): Promise<SunatConfigRecord | null> {
-  const companyId = requireActiveCompanyId();
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, companyId);
+export async function getSunatConfigById(id: string): Promise<SunatConfigRecord | null> {
+  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
   return d ? toSunatConfigRecord(d) : null;
+}
+
+/** Config vigente: la primera activa; si ninguna está activa, retorna null. */
+export async function getActiveSunatConfig(): Promise<SunatConfigRecord | null> {
+  const { items } = await listSunatConfigsForTable();
+  const active = items.find((x) => x.active !== false) ?? null;
+  return active;
 }
 
 /** Facturación / SUNAT: solo puede operar si existe config y no está desactivada explícitamente. */
@@ -54,10 +73,9 @@ export function isSunatConfigOperational(config: SunatConfigRecord | null): bool
   return config.active !== false;
 }
 
-export async function saveSunatConfig(data: SunatConfigInput): Promise<void> {
+export async function saveSunatConfig(configId: string | null, data: SunatConfigInput): Promise<string> {
   const companyId = requireActiveCompanyId();
   const accountId = await resolveActiveAccountId();
-  const existing = await getDocument<Record<string, unknown>>(COLLECTION, companyId);
   const payload = {
     companyId,
     ...(data as Record<string, unknown>),
@@ -65,9 +83,20 @@ export async function saveSunatConfig(data: SunatConfigInput): Promise<void> {
     active: Boolean(data.active),
     accountId,
   };
-  if (existing) {
-    await updateDocument(COLLECTION, companyId, payload);
+
+  let id = configId?.trim() || "";
+  if (id) {
+    await updateDocument(COLLECTION, id, payload);
   } else {
-    await createDocumentWithId(COLLECTION, companyId, payload);
+    id = await addDocument(COLLECTION, payload);
   }
+
+  // Normalización: si esta config se marcó activa, desactiva las demás de la empresa/tenant.
+  if (payload.active) {
+    const { items } = await listSunatConfigsForTable();
+    const others = items.filter((x) => x.id !== id && x.active !== false);
+    await Promise.all(others.map((x) => updateDocument(COLLECTION, x.id, { active: false })));
+  }
+
+  return id;
 }

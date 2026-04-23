@@ -16,7 +16,7 @@ import {
   type InvoiceStatus,
 } from "~/features/billing/invoice";
 import { getClients } from "~/features/master/clients";
-import { getSunatConfig, isSunatConfigOperational } from "~/features/billing/sunat-config";
+import { getActiveSunatConfig, isSunatConfigOperational } from "~/features/billing/sunat-config";
 import type { Route } from "./+types/InvoicesPage";
 import { withUrlSearch } from "~/lib/url-search";
 import { getAuthUser } from "~/lib/get-auth-user";
@@ -102,7 +102,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 
   let sunatWarning: "inactive" | "missing" | null = null;
   try {
-    const sc = await getSunatConfig();
+    const sc = await getActiveSunatConfig();
     if (!sc) sunatWarning = "missing";
     else if (!isSunatConfigOperational(sc)) sunatWarning = "inactive";
   } catch {

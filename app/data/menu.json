@@ -274,6 +274,14 @@
           "view",
           "sunat-config"
         ]
+      },
+      {
+        "title": "Monitor de envíos a SUNAT",
+        "link": "/billing/sunat-monitor",
+        "permission": [
+          "view",
+          "sunat-monitor"
+        ]
       }
     ]
   },

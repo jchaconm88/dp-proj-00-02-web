@@ -9,7 +9,8 @@
     "typecheck": "react-router typegen && tsc",
     "predeploy": "npm run build",
     "deploy": "firebase deploy --only hosting",
-    "dep-rules": "firebase deploy --only firestore:rules"
+    "dep-rules": "firebase deploy --only firestore:rules",
+    "dep-indexes": "firebase deploy --only firestore:indexes"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
