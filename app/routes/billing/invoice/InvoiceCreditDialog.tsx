@@ -17,6 +17,8 @@ export interface InvoiceCreditDialogProps {
   invoiceTotalAmount: number;
   /** Moneda de la factura. */
   currency: string;
+  /** Si true, la cuota no es editable (factura no está en borrador). */
+  locked?: boolean;
   onSuccess?: () => void;
   onHide: () => void;
 }
@@ -27,6 +29,7 @@ export default function InvoiceCreditDialog({
   creditId,
   invoiceTotalAmount,
   currency,
+  locked = false,
   onSuccess,
   onHide,
 }: InvoiceCreditDialogProps) {
@@ -80,6 +83,10 @@ export default function InvoiceCreditDialog({
 
   const save = async () => {
     if (!valid) return;
+    if (locked) {
+      setError("Solo se pueden editar cuotas cuando la factura está en estado Borrador.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -106,12 +113,21 @@ export default function InvoiceCreditDialog({
       saveLabel="Guardar"
       onSave={save}
       saving={saving || isNavigating}
-      saveDisabled={!valid || isNavigating}
+      saveDisabled={!valid || isNavigating || locked}
       visible={visible}
       onHide={onHide}
       showLoading={loading}
       showError={!!error}
       errorMessage={error ?? ""}
+      dialogBodyHeader={
+        locked ? (
+          <div className="pb-3">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              Esta factura no está en <strong>Borrador</strong> y no se pueden editar sus cuotas.
+            </div>
+          </div>
+        ) : null
+      }
     >
       <div className="flex flex-col gap-4 pt-2">
         <DpInput
@@ -121,6 +137,7 @@ export default function InvoiceCreditDialog({
           value={correlative}
           onChange={setCorrelative}
           placeholder="1"
+          disabled={locked}
         />
         <DpInput
           type="date"
@@ -128,6 +145,7 @@ export default function InvoiceCreditDialog({
           name="dueDate"
           value={dueDate}
           onChange={setDueDate}
+          disabled={locked}
         />
         <DpInput
           type="number"
@@ -136,6 +154,7 @@ export default function InvoiceCreditDialog({
           value={creditVal}
           onChange={setCreditVal}
           placeholder="0"
+          disabled={locked}
         />
         {Number(creditVal) > invoiceTotalAmount && (
           <p className="text-sm text-yellow-600">

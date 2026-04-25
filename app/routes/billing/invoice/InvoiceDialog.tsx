@@ -74,6 +74,7 @@ export default function InvoiceDialog({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [issueBlockReason, setIssueBlockReason] = useState("");
 
   const companyId = useMemo(() => getActiveCompanyId() ?? "", []);
 
@@ -121,12 +122,16 @@ export default function InvoiceDialog({
     setError(null);
 
     if (!invoiceId) {
+      const now = new Date();
+      const defaultIssueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(
+        now.getHours()
+      ).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
       setDocumentNo("");
       setType(statusDefaultKey(INVOICE_TYPE));
       setStatus(statusDefaultKey(INVOICE_STATUS));
       setPayTerm("transfer");
       setCurrency("PEN");
-      setIssueDate("");
+      setIssueDate(defaultIssueDate);
       setComment("");
       setOperationTypeCode(statusDefaultKey(OPERATION_TYPE_CODE));
       setDueDate("");
@@ -134,6 +139,7 @@ export default function InvoiceDialog({
       setSettlement("");
       setClientId("");
       setCompanyLocationId("");
+      setIssueBlockReason("");
       setLoading(false);
       getActiveSequencesByDocumentType(statusDefaultKey(INVOICE_TYPE))
         .then((seqs) => {
@@ -166,6 +172,7 @@ export default function InvoiceDialog({
         setSettlementId(data.settlementId ?? "");
         setSettlement(data.settlement ?? "");
         setClientId(data.client.id ?? "");
+        setIssueBlockReason(data.issueBlockReason?.trim() ?? "");
 
         const { items: locs } = await getActiveCompanyLocations();
         const matched = matchCompanyLocationId(data.companyLocation, locs);
@@ -183,6 +190,8 @@ export default function InvoiceDialog({
     clientId.trim() !== "" &&
     companyLocationId.trim() !== "" &&
     (isEdit || activeSequence !== null);
+
+  const lockedByStatus = isEdit && status !== "draft";
 
   const handleTypeChange = (newType: string) => {
     setType(newType as InvoiceType);
@@ -202,6 +211,10 @@ export default function InvoiceDialog({
 
   const save = async () => {
     if (!valid) return;
+    if (lockedByStatus) {
+      setError("Solo se puede editar una factura en estado Borrador.");
+      return;
+    }
     let cid: string;
     try {
       cid = requireActiveCompanyId();
@@ -304,12 +317,28 @@ export default function InvoiceDialog({
       saveLabel="Guardar"
       onSave={save}
       saving={saving || isNavigating}
-      saveDisabled={!valid || isNavigating}
+      saveDisabled={!valid || isNavigating || lockedByStatus}
       visible={visible}
       onHide={onHide}
       showLoading={loading}
       showError={!!error}
       errorMessage={error ?? ""}
+      dialogBodyHeader={
+        lockedByStatus || issueBlockReason ? (
+          <div className="flex flex-col gap-3 pb-3">
+            {lockedByStatus && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Esta factura no está en <strong>Borrador</strong> y no se puede editar.
+              </div>
+            )}
+            {issueBlockReason && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                <strong>Bloqueo de emisión:</strong> {issueBlockReason}
+              </div>
+            )}
+          </div>
+        ) : null
+      }
     >
       <div className="flex flex-col gap-4 pt-2">
         {isEdit && (
@@ -331,6 +360,7 @@ export default function InvoiceDialog({
           options={[{ label: "— Seleccione cliente —", value: "" }, ...clientOptions]}
           placeholder="Cliente"
           filter
+          disabled={lockedByStatus}
         />
         <DpInput
           type="select"
@@ -341,6 +371,7 @@ export default function InvoiceDialog({
           options={[{ label: "— Seleccione sede —", value: "" }, ...locationOptions]}
           placeholder="Sede"
           filter
+          disabled={lockedByStatus}
         />
         {!isEdit && locationOptions.length === 0 && (
           <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
@@ -354,6 +385,7 @@ export default function InvoiceDialog({
           value={type}
           onChange={(v) => handleTypeChange(String(v))}
           options={TYPE_OPTIONS}
+          disabled={lockedByStatus}
         />
         {!isEdit && availableSequences.length > 0 && (
           <DpInput
@@ -380,6 +412,7 @@ export default function InvoiceDialog({
           value={status}
           onChange={(v) => setStatus(v as InvoiceStatus)}
           options={STATUS_OPTIONS}
+          disabled={lockedByStatus}
         />
         <DpInput
           type="select"
@@ -388,6 +421,7 @@ export default function InvoiceDialog({
           value={payTerm}
           onChange={(v) => setPayTerm(String(v))}
           options={PAY_TERM_OPTIONS}
+          disabled={lockedByStatus}
         />
         <DpInput
           type="select"
@@ -396,9 +430,24 @@ export default function InvoiceDialog({
           value={currency}
           onChange={(v) => setCurrency(String(v))}
           options={CURRENCY_OPTIONS}
+          disabled={lockedByStatus}
         />
-        <DpInput type="date" label="Fecha de emisión" name="issueDate" value={issueDate} onChange={setIssueDate} />
-        <DpInput type="input" label="Comentario" name="comment" value={comment} onChange={setComment} />
+        <DpInput
+          type="datetime"
+          label="Fecha de emisión"
+          name="issueDate"
+          value={issueDate}
+          onChange={setIssueDate}
+          disabled={lockedByStatus}
+        />
+        <DpInput
+          type="input"
+          label="Comentario"
+          name="comment"
+          value={comment}
+          onChange={setComment}
+          disabled={lockedByStatus}
+        />
         <DpInput
           type="select"
           label="Tipo de operación"
@@ -406,8 +455,16 @@ export default function InvoiceDialog({
           value={operationTypeCode}
           onChange={(v) => setOperationTypeCode(String(v))}
           options={OPERATION_TYPE_OPTIONS}
+          disabled={lockedByStatus}
         />
-        <DpInput type="date" label="Fecha de vencimiento" name="dueDate" value={dueDate} onChange={setDueDate} />
+        <DpInput
+          type="date"
+          label="Fecha de vencimiento"
+          name="dueDate"
+          value={dueDate}
+          onChange={setDueDate}
+          disabled={lockedByStatus}
+        />
         {isEdit && (settlementId || settlement) && (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <DpInput type="input" label="Liquidación (código)" name="settlement" value={settlement} onChange={setSettlement} disabled />

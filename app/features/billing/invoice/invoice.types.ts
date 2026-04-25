@@ -88,6 +88,8 @@ export interface InvoiceRecord {
    * Para venta a crédito con cuotas, los vencimientos detallados van en `InvoiceCredit` / `cac:PaymentTerms`.
    */
   dueDate?: string;
+  /** Motivo por el cual no se pudo emitir (validación o PDF), si aplica. */
+  issueBlockReason?: string;
 }
 
 export interface InvoiceAddInput {

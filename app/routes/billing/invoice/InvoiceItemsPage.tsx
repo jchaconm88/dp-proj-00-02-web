@@ -98,17 +98,33 @@ export default function InvoiceItemsPage({ loaderData }: Route.ComponentProps) {
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const basePath = `/billing/invoices/${encodeURIComponent(invoiceId)}/items`;
+  const lockedByStatus = String(invoice.status) !== "draft";
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(withUrlSearch(`${basePath}/add`, listQuery));
-  const openEdit = (row: ItemRow) =>
+  const openAdd = () => {
+    if (lockedByStatus) {
+      setError("Solo se pueden editar ítems cuando la factura está en estado Borrador.");
+      return;
+    }
+    navigate(withUrlSearch(`${basePath}/add`, listQuery));
+  };
+  const openEdit = (row: ItemRow) => {
+    if (lockedByStatus) {
+      setError("Solo se pueden editar ítems cuando la factura está en estado Borrador.");
+      return;
+    }
     navigate(withUrlSearch(`${basePath}/edit/${encodeURIComponent(row.id)}`, listQuery));
+  };
 
   const openDeleteConfirm = () => {
+    if (lockedByStatus) {
+      setError("Solo se pueden eliminar ítems cuando la factura está en estado Borrador.");
+      return;
+    }
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
     setPendingDeleteIds(selected.map((r) => r.id));
@@ -152,12 +168,12 @@ export default function InvoiceItemsPage({ loaderData }: Route.ComponentProps) {
       breadcrumbItems={["FACTURACIÓN", "FACTURAS", "ÍTEMS"]}
       backLabel="Volver a facturas"
       onBack={onBack}
-      onCreate={openAdd}
+      onCreate={lockedByStatus ? undefined : openAdd}
     >
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onDelete={openDeleteConfirm}
-        deleteDisabled={selectedCount === 0 || saving}
+        deleteDisabled={lockedByStatus || selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
         filterPlaceholder="Filtrar ítems..."
@@ -192,7 +208,7 @@ export default function InvoiceItemsPage({ loaderData }: Route.ComponentProps) {
         paginator={false}
         footerTotals={footerTotals}
         onSelectionChange={(r) => setSelectedCount(r.length)}
-        onEdit={openEdit}
+        onEdit={lockedByStatus ? undefined : openEdit}
         showFilterInHeader={false}
         emptyMessage="No hay ítems en esta factura."
         emptyFilterMessage="No se encontraron ítems."
@@ -219,6 +235,7 @@ export default function InvoiceItemsPage({ loaderData }: Route.ComponentProps) {
           invoiceId={invoiceId}
           itemId={editItemId}
           currency={invoice.currency}
+          locked={lockedByStatus}
           onSuccess={handleSuccess}
           onHide={() => navigate(basePath)}
         />

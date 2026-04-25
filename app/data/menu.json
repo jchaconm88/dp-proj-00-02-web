@@ -163,7 +163,7 @@
   {
     "title": "Logística",
     "enabled": true,
-    "icon": "stop",
+    "icon": "box",
     "children": [
       {
         "title": "Pedidos",

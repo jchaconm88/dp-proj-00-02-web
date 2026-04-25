@@ -23,6 +23,8 @@ export interface InvoiceItemDialogProps {
   itemId: string | null;
   /** Moneda de la factura padre (para persistir en el ítem). */
   currency: string;
+  /** Si true, el ítem no es editable (factura no está en borrador). */
+  locked?: boolean;
   onSuccess?: () => void;
   onHide: () => void;
 }
@@ -36,6 +38,7 @@ export default function InvoiceItemDialog({
   invoiceId,
   itemId,
   currency,
+  locked = false,
   onSuccess,
   onHide,
 }: InvoiceItemDialogProps) {
@@ -129,6 +132,10 @@ export default function InvoiceItemDialog({
 
   const save = async () => {
     if (!valid) return;
+    if (locked) {
+      setError("Solo se pueden editar ítems cuando la factura está en estado Borrador.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -185,12 +192,21 @@ export default function InvoiceItemDialog({
       saveLabel="Guardar"
       onSave={save}
       saving={saving || isNavigating}
-      saveDisabled={!valid || isNavigating}
+      saveDisabled={!valid || isNavigating || locked}
       visible={visible}
       onHide={onHide}
       showLoading={loading}
       showError={!!error}
       errorMessage={error ?? ""}
+      dialogBodyHeader={
+        locked ? (
+          <div className="pb-3">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              Esta factura no está en <strong>Borrador</strong> y no se pueden editar sus ítems.
+            </div>
+          </div>
+        ) : null
+      }
     >
       <div className="flex flex-col gap-4 pt-2">
         <DpInput
@@ -199,6 +215,7 @@ export default function InvoiceItemDialog({
           name="description"
           value={description}
           onChange={setDescription}
+          disabled={locked}
         />
         <DpInput
           type="select"
@@ -207,6 +224,7 @@ export default function InvoiceItemDialog({
           value={itemType}
           onChange={(v) => setItemType(v as InvoiceItemType)}
           options={ITEM_TYPE_OPTIONS}
+          disabled={locked}
         />
         <DpInput
           type="number"
@@ -215,6 +233,7 @@ export default function InvoiceItemDialog({
           value={quantity}
           onChange={setQuantity}
           placeholder="1"
+          disabled={locked}
         />
         <DpInput
           type="number"
@@ -223,6 +242,7 @@ export default function InvoiceItemDialog({
           value={unitPrice}
           onChange={setUnitPrice}
           placeholder="0"
+          disabled={locked}
         />
         <DpInput
           type="input"
@@ -255,6 +275,7 @@ export default function InvoiceItemDialog({
           value={taxTypeName}
           onChange={setTaxTypeName}
           placeholder="IGV 18%"
+          disabled={locked}
         />
         <DpInput
           type="number"
@@ -263,6 +284,7 @@ export default function InvoiceItemDialog({
           value={taxPer}
           onChange={setTaxPer}
           placeholder="18"
+          disabled={locked}
         />
         <DpInput
           type="select"
@@ -271,6 +293,7 @@ export default function InvoiceItemDialog({
           value={taxAffectationCode}
           onChange={(v) => setTaxAffectationCode(String(v))}
           options={TAX_AFFECTATION_OPTIONS}
+          disabled={locked}
         />
         <DpInput
           type="select"
@@ -279,6 +302,7 @@ export default function InvoiceItemDialog({
           value={unitCode}
           onChange={(v) => setUnitCode(String(v))}
           options={UNIT_CODE_OPTIONS}
+          disabled={locked}
         />
         <DpInput
           type="input"
@@ -286,6 +310,7 @@ export default function InvoiceItemDialog({
           name="itemCode"
           value={itemCode}
           onChange={setItemCode}
+          disabled={locked}
         />
       </div>
     </DpContentSet>

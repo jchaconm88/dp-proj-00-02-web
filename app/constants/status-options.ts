@@ -306,8 +306,9 @@ export const SETTLEMENT_STATUS: Record<string, StatusOption> = {
 
 /** Estado de pago de la liquidación. */
 export const SETTLEMENT_PAYMENT_STATUS: Record<string, StatusOption> = {
-  pending: { label: "Pendiente", severity: "warning" },
-  partial: { label: "Parcial", severity: "info" },
+  pending: { label: "Pendiente", severity: "info" },
+  partial: { label: "Parcial", severity: "secondary" },
+  invoiced: { label: "Facturado", severity: "warning" },
   paid: { label: "Pagado", severity: "success" },
 };
 

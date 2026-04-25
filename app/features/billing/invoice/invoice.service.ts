@@ -102,6 +102,7 @@ function toInvoiceRecord(doc: { id: string } & Record<string, unknown>): Invoice
     pdfUrl: String(doc.pdfUrl ?? ""),
     operationTypeCode: String(doc.operationTypeCode ?? "0101"),
     dueDate: doc.dueDate ? String(doc.dueDate) : undefined,
+    issueBlockReason: doc.issueBlockReason ? String(doc.issueBlockReason).trim() : undefined,
   };
 }
 
@@ -170,8 +171,21 @@ export async function getInvoicesByFilters(filters: InvoiceQueryFilters): Promis
 
   const statuses = (filters.status ?? []).map((x) => String(x).trim()).filter(Boolean) as InvoiceStatus[];
   const clientIds = (filters.clientIds ?? []).map((x) => String(x).trim()).filter(Boolean);
-  const issueDateFrom = String(filters.issueDateFrom ?? "").trim();
-  const issueDateTo = String(filters.issueDateTo ?? "").trim();
+  const issueDateFromRaw = String(filters.issueDateFrom ?? "").trim();
+  const issueDateToRaw = String(filters.issueDateTo ?? "").trim();
+
+  // `issueDate` se guarda como ISO datetime (YYYY-MM-DDTHH:mm:ss...).
+  // Los filtros del UI son por fecha (YYYY-MM-DD), así que expandimos a rango de día.
+  const issueDateFrom = issueDateFromRaw
+    ? issueDateFromRaw.includes("T")
+      ? issueDateFromRaw
+      : `${issueDateFromRaw}T00:00:00.000`
+    : "";
+  const issueDateTo = issueDateToRaw
+    ? issueDateToRaw.includes("T")
+      ? issueDateToRaw
+      : `${issueDateToRaw}T23:59:59.999`
+    : "";
 
   const baseConstraints: QueryConstraint[] = [
     where("companyId", "==", companyId),
@@ -266,6 +280,7 @@ export async function updateInvoice(id: string, data: InvoiceEditInput): Promise
   if (data.pdfUrl !== undefined) payload.pdfUrl = data.pdfUrl;
   if (data.operationTypeCode !== undefined) payload.operationTypeCode = data.operationTypeCode;
   if (data.dueDate !== undefined) payload.dueDate = data.dueDate;
+  if (data.issueBlockReason !== undefined) payload.issueBlockReason = data.issueBlockReason;
   await updateDocument(COLLECTION, id, payload);
 }
 
@@ -502,8 +517,10 @@ export async function createInvoiceFromSettlement(
   const totalTax   = Math.round(groupedItems.reduce((s, g) => s + g.tax,   0) * 100) / 100;
   const totalAmount = Math.round((totalPrice + totalTax) * 100) / 100;
 
-  const today = new Date();
-  const issueDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const now = new Date();
+  const issueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(
+    now.getHours()
+  ).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
   const companyId = requireActiveCompanyId();
   const company = await getCompanyById(companyId);
@@ -628,4 +645,13 @@ export async function sendDailySummary(date: string, invoiceIds: string[]): Prom
 /** Reintenta el envío de una factura individual a SUNAT. */
 export async function retryInvoiceSunat(id: string): Promise<{ jobId: string }> {
   return callHttpsFunction("sendInvoicesToSunat", { ids: [id] });
+}
+
+/** Cambia el estado de la factura vía Cloud Function (permisos `invoice:change_status_<estado>`). */
+export async function changeInvoiceStatusRemote(
+  invoiceId: string,
+  nextStatus: InvoiceStatus
+): Promise<{ ok: boolean }> {
+  const companyId = requireActiveCompanyId();
+  return callHttpsFunction("changeInvoiceStatus", { companyId, invoiceId, nextStatus });
 }

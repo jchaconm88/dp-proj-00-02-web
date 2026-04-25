@@ -70,17 +70,33 @@ export default function InvoiceCreditsPage({ loaderData }: Route.ComponentProps)
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const basePath = `/billing/invoices/${encodeURIComponent(invoiceId)}/credits`;
+  const lockedByStatus = String(invoice.status) !== "draft";
 
   const handleFilter = (value: string) => {
     setFilterValue(value);
     tableRef.current?.filter(value);
   };
 
-  const openAdd = () => navigate(withUrlSearch(`${basePath}/add`, listQuery));
-  const openEdit = (row: CreditRow) =>
+  const openAdd = () => {
+    if (lockedByStatus) {
+      setError("Solo se pueden editar cuotas cuando la factura está en estado Borrador.");
+      return;
+    }
+    navigate(withUrlSearch(`${basePath}/add`, listQuery));
+  };
+  const openEdit = (row: CreditRow) => {
+    if (lockedByStatus) {
+      setError("Solo se pueden editar cuotas cuando la factura está en estado Borrador.");
+      return;
+    }
     navigate(withUrlSearch(`${basePath}/edit/${encodeURIComponent(row.id)}`, listQuery));
+  };
 
   const openDeleteConfirm = () => {
+    if (lockedByStatus) {
+      setError("Solo se pueden eliminar cuotas cuando la factura está en estado Borrador.");
+      return;
+    }
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (!selected.length) return;
     setPendingDeleteIds(selected.map((r) => r.id));
@@ -122,7 +138,7 @@ export default function InvoiceCreditsPage({ loaderData }: Route.ComponentProps)
       breadcrumbItems={["FACTURACIÓN", "FACTURAS", "CUOTAS"]}
       backLabel="Volver a facturas"
       onBack={onBack}
-      onCreate={openAdd}
+      onCreate={lockedByStatus ? undefined : openAdd}
     >
       {!isCredit && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -133,7 +149,7 @@ export default function InvoiceCreditsPage({ loaderData }: Route.ComponentProps)
       <DpContentHeader
         onLoad={() => revalidator.revalidate()}
         onDelete={openDeleteConfirm}
-        deleteDisabled={selectedCount === 0 || saving}
+        deleteDisabled={lockedByStatus || selectedCount === 0 || saving}
         filterValue={filterValue}
         onFilter={handleFilter}
         filterPlaceholder="Filtrar cuotas..."
@@ -164,7 +180,7 @@ export default function InvoiceCreditsPage({ loaderData }: Route.ComponentProps)
         tableDef={TABLE_DEF}
         paginator={false}
         onSelectionChange={(r) => setSelectedCount(r.length)}
-        onEdit={openEdit}
+        onEdit={lockedByStatus ? undefined : openEdit}
         showFilterInHeader={false}
         emptyMessage="No hay cuotas registradas."
         emptyFilterMessage="No se encontraron cuotas."
@@ -192,6 +208,7 @@ export default function InvoiceCreditsPage({ loaderData }: Route.ComponentProps)
           creditId={editCreditId}
           invoiceTotalAmount={invoice.totalAmount}
           currency={invoice.currency}
+          locked={lockedByStatus}
           onSuccess={handleSuccess}
           onHide={() => navigate(basePath)}
         />

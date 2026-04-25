@@ -32,6 +32,76 @@ const COMPANY_PERMISSIONS: ModulePermission[] = [
   { code: "members", label: "Gestionar miembros", description: "Permite administrar miembros por empresa." },
 ];
 
+/** Permisos de factura: CRUD + cambio de estado granular por estado destino (`invoice:change_status_<estado>`). */
+const INVOICE_PERMISSIONS: ModulePermission[] = [
+  ...CRUD_PERMISSIONS,
+  {
+    code: "change_status_draft",
+    label: "Estado → Borrador",
+    description: "Permite devolver la factura a borrador.",
+  },
+  {
+    code: "change_status_issued",
+    label: "Estado → Emitida",
+    description: "Permite marcar la factura como emitida (genera representación impresa PDF).",
+  },
+  {
+    code: "change_status_queued",
+    label: "Estado → En cola SUNAT",
+    description: "Permite poner la factura en cola para envío a SUNAT.",
+  },
+  {
+    code: "change_status_processing",
+    label: "Estado → Procesando SUNAT",
+    description: "Permite marcar la factura como en procesamiento SUNAT.",
+  },
+  {
+    code: "change_status_accepted",
+    label: "Estado → Aceptada SUNAT",
+    description: "Permite marcar la factura como aceptada por SUNAT.",
+  },
+  {
+    code: "change_status_rejected",
+    label: "Estado → Rechazada SUNAT",
+    description: "Permite marcar la factura como rechazada por SUNAT.",
+  },
+  {
+    code: "change_status_pending_retry",
+    label: "Estado → Reintentando envío",
+    description: "Permite marcar la factura en reintento de envío a SUNAT.",
+  },
+  {
+    code: "change_status_failed",
+    label: "Estado → Envío fallido",
+    description: "Permite marcar la factura con fallo de envío.",
+  },
+  {
+    code: "change_status_not_found_in_sunat",
+    label: "Estado → No encontrada en SUNAT",
+    description: "Permite marcar la factura como no encontrada en SUNAT.",
+  },
+  {
+    code: "change_status_error",
+    label: "Estado → Error SUNAT",
+    description: "Permite marcar la factura con error SUNAT.",
+  },
+  {
+    code: "change_status_paid",
+    label: "Estado → Pagada",
+    description: "Permite marcar la factura como pagada.",
+  },
+  {
+    code: "change_status_overdue",
+    label: "Estado → Vencida",
+    description: "Permite marcar la factura como vencida.",
+  },
+  {
+    code: "change_status_cancelled",
+    label: "Estado → Anulada",
+    description: "Permite anular la factura en flujo interno.",
+  },
+];
+
 function withPermissions(
   id: string,
   description: string,
@@ -331,23 +401,29 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 2, name: "rolesLabel", header: "Roles", filter: true },
     { order: 3, name: "status", header: "Activo", filter: true, format: "status" },
   ]),
-  withPermissions("invoice", "Facturas", [
-    { order: 1,  name: "documentNo",     header: "# Documento",   filter: true },
-    { order: 2,  name: "operationTypeCode", header: "Tipo operación", filter: true, format: "status" },
-    { order: 3,  name: "type",           header: "Tipo",          filter: true, format: "status" },
-    { order: 4,  name: "clientName",     header: "Cliente",       filter: true },
-    { order: 5,  name: "issueDate",      header: "F. Emisión",    filter: true, format: "date" },
-    { order: 6,  name: "payTerm",        header: "Cond. Pago",    filter: true, format: "status" },
-    { order: 7,  name: "currency",       header: "Moneda",        filter: true, format: "status" },
-    { order: 8,  name: "totalPriceFormatted", header: "Subtotal",  filter: true },
-    { order: 9,  name: "totalTaxFormatted",   header: "Impuesto",  filter: true },
-    { order: 10, name: "totalFormatted", header: "Total",         filter: true },
-    { order: 11, name: "status",         header: "Estado",        filter: true, format: "status" },
-    { order: 12, name: "sunatDocs",      header: "Docs SUNAT",    filter: false },
-    { order: 13, name: "invoiceItems",   header: "Ítems",         filter: false },
-    { order: 14, name: "invoiceCredits", header: "Cuotas",      filter: false },
-    { order: 15, name: "settlement",     header: "Liquidación",   filter: true },
-  ]),
+  withPermissions(
+    "invoice",
+    "Facturas",
+    [
+      { order: 1, name: "documentNo", header: "# Documento", filter: true },
+      { order: 2, name: "operationTypeCode", header: "Tipo operación", filter: true, format: "label" },
+      { order: 3, name: "type", header: "Tipo", filter: true, format: "label" },
+      { order: 4, name: "clientName", header: "Cliente", filter: true },
+      { order: 5, name: "issueDate", header: "F. Emisión", filter: true, format: "datetime" },
+      { order: 6, name: "payTerm", header: "Cond. Pago", filter: true, format: "label" },
+      { order: 7, name: "currency", header: "Moneda", filter: true, format: "label" },
+      { order: 8, name: "totalPriceFormatted", header: "Subtotal", filter: true },
+      { order: 9, name: "totalTaxFormatted", header: "Impuesto", filter: true },
+      { order: 10, name: "totalFormatted", header: "Total", filter: true },
+      { order: 11, name: "status", header: "Estado", filter: true, format: "status" },
+      { order: 12, name: "issueBlockReason", header: "Bloqueo emisión", filter: true },
+      { order: 13, name: "sunatDocs", header: "Docs SUNAT", filter: false },
+      { order: 14, name: "invoiceItems", header: "Ítems", filter: false },
+      { order: 15, name: "invoiceCredits", header: "Cuotas", filter: false },
+      { order: 16, name: "settlement", header: "Liquidación", filter: true },
+    ],
+    INVOICE_PERMISSIONS
+  ),
   withPermissions("invoice-item", "Ítems de factura", [
     { order: 1,  name: "itemName",        header: "Ítem",         filter: true },
     { order: 2,  name: "description",     header: "Descripción",  filter: true },
@@ -384,8 +460,8 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     "Monitor de envíos a SUNAT",
     [
       { order: 1, name: "documentNo", header: "# Documento", filter: true },
-      { order: 2, name: "docType", header: "Tipo doc", filter: true, format: "status" },
-      { order: 3, name: "jobType", header: "Tipo envío", filter: true, format: "status" },
+      { order: 2, name: "docType", header: "Tipo doc", filter: true, format: "label" },
+      { order: 3, name: "jobType", header: "Tipo envío", filter: true, format: "label" },
       { order: 4, name: "createdAtLabel", header: "Enviado", filter: true },
       { order: 5, name: "status", header: "Estado", filter: true, format: "status" },
       { order: 6, name: "sunatDocs", header: "Docs", filter: false },

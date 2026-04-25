@@ -19,6 +19,7 @@ function getCallable<Req, Res>(name: string): HttpsCallable<Req, Res> {
 export function mapCallableError(err: unknown, fallback = "Error al comunicarse con el servidor."): string {
   if (err instanceof FirebaseError) {
     const code = String(err.code ?? "").trim();
+    const msg = String(err.message ?? "").trim();
     if (code.includes("permission-denied")) {
       return "No tienes permisos para esta acción. Verifica los permisos de tu rol en la empresa activa.";
     }
@@ -31,7 +32,7 @@ export function mapCallableError(err: unknown, fallback = "Error al comunicarse 
     if (code.includes("deadline-exceeded")) {
       return "La operación tardó demasiado. Revisa tu conexión e inténtalo otra vez.";
     }
-    if (err.message?.trim()) return err.message;
+    if (msg) return msg;
     return fallback;
   }
   if (

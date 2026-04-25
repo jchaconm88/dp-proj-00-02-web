@@ -243,6 +243,11 @@ html.dark body {
   color: var(--dp-on-surface);
 }
 
+/* En modo claro, alinear el fondo del input con la tabla */
+html:not(.dark) .dp-toolbar-input {
+  background: var(--dp-shell-surface);
+}
+
 .dp-toolbar-input::placeholder {
   color: color-mix(in srgb, var(--dp-on-surface-soft) 85%, transparent);
 }
@@ -259,6 +264,11 @@ html.dark body {
   border-bottom: 1px solid var(--dp-outline-soft);
   background: var(--dp-paginator-surface);
   padding: 0.75rem 0.9rem;
+}
+
+/* En modo claro, igualar fondo de cabecera y footer con el de la tabla */
+html:not(.dark) .dp-content-header-shell {
+  background: var(--dp-shell-surface);
 }
 
 .dp-contentset-shell {
@@ -410,6 +420,11 @@ html.dark body {
   justify-content: center;
   gap: 0.25rem;
   padding: 0.55rem 0.8rem;
+}
+
+/* En modo claro, igualar fondo del paginador con el de la tabla */
+html:not(.dark) .dp-neon-table .p-paginator {
+  background: var(--dp-shell-surface);
 }
 
 .dp-neon-table .p-paginator .p-paginator-pages .p-paginator-page,
