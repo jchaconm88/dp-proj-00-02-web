@@ -9,12 +9,12 @@ import {
 import { getCompanyById } from "~/features/system/companies";
 import { getProfiles } from "~/features/system/users";
 import { getAllRoles } from "~/features/system/roles";
-import type { Route } from "./+types/CompanyMembersPage";
+import type { Route } from "./+types/CompanyUsersPage";
 import { DpContentHeader, DpContentInfo } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { moduleTableDef } from "~/data/system-modules";
-import CompanyMemberDialog from "./CompanyMemberDialog";
+import CompanyUserDialog from "./CompanyUserDialog";
 import type { StatusOption } from "~/constants/status-options";
 
 export function meta({}: Route.MetaArgs) {
@@ -38,7 +38,7 @@ function getErrorCode(err: unknown): string {
   return "";
 }
 
-function describeCompanyMembersError(err: unknown, context: string): string {
+function describeCompanyUsersError(err: unknown, context: string): string {
   const code = getErrorCode(err);
   switch (code) {
     case "permission-denied":
@@ -157,19 +157,19 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   return { companyId, companyName: company?.name ?? "", rows };
 }
 
-const TABLE_DEF = moduleTableDef("company-member", { status: MEMBER_STATUS_MAP });
+const TABLE_DEF = moduleTableDef("company-user", { status: MEMBER_STATUS_MAP });
 
-export default function CompanyMembersPage({ loaderData }: Route.ComponentProps) {
+export default function CompanyUsersPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<MemberRow>>(null);
 
   const isLoading = navigation.state !== "idle" || revalidator.state === "loading";
-  const isAdd = !!useMatch("/system/companies/:id/company-members/add");
-  const editMatch = useMatch("/system/companies/:id/company-members/edit/:membershipId");
-  const editId = editMatch?.params.membershipId
-    ? decodeURIComponent(editMatch.params.membershipId)
+  const isAdd = !!useMatch("/system/companies/:id/company-users/add");
+  const editMatch = useMatch("/system/companies/:id/company-users/edit/:companyUserDocId");
+  const editId = editMatch?.params.companyUserDocId
+    ? decodeURIComponent(editMatch.params.companyUserDocId)
     : null;
 
   const [saving, setSaving] = useState(false);
@@ -180,7 +180,7 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
 
   const dialogVisible = isAdd || !!editId;
 
-  const editingMembership = useMemo(() => {
+  const editingCompanyUser = useMemo(() => {
     if (!editId) return null;
     return loaderData.rows.find((r) => r.id === editId) ?? null;
   }, [editId, loaderData.rows]);
@@ -191,7 +191,7 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
   };
 
   const basePath = loaderData.companyId
-    ? `/system/companies/${encodeURIComponent(loaderData.companyId)}/company-members`
+    ? `/system/companies/${encodeURIComponent(loaderData.companyId)}/company-users`
     : "/system/companies";
 
   const openAdd = () => navigate(`${basePath}/add`);
@@ -215,7 +215,7 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
       setPendingDeleteIds(null);
       revalidator.revalidate();
     } catch (err) {
-      setError(describeCompanyMembersError(err, "No se pudieron eliminar los miembros seleccionados"));
+      setError(describeCompanyUsersError(err, "No se pudieron eliminar los miembros seleccionados"));
     } finally {
       setSaving(false);
     }
@@ -274,10 +274,10 @@ export default function CompanyMembersPage({ loaderData }: Route.ComponentProps)
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <CompanyMemberDialog
+      <CompanyUserDialog
         visible={dialogVisible}
         companyId={loaderData.companyId}
-        membership={isAdd ? null : editingMembership}
+        companyUser={isAdd ? null : editingCompanyUser}
         onSuccess={handleSuccess}
         onHide={handleHide}
       />

@@ -1,8 +1,7 @@
-import { COMPANIES_COLLECTION, COMPANY_USERS_COLLECTION } from "~/lib/auth-context";
+import { COMPANIES_COLLECTION } from "~/lib/auth-context";
 import {
   addDocument,
   deleteDocument,
-  getCollection,
   getCollectionWithFilter,
   getDocument,
   updateDocument,
@@ -22,10 +21,6 @@ type CompanyDoc = {
   logoLightPath?: string;
   logoDarkUrl?: string;
   logoDarkPath?: string;
-};
-type CompanyMembershipDoc = {
-  companyId?: string;
-  status?: string;
 };
 
 function toCompanyRecord(id: string, d: CompanyDoc): CompanyRecord {
@@ -53,44 +48,29 @@ export async function getCompanyById(id: string): Promise<CompanyRecord | null> 
 }
 
 export async function getCompanies(): Promise<CompanyRecord[]> {
+  const user = auth.currentUser;
+  if (!user?.uid) return [];
+
+  let accountId: string | null = null;
   try {
-    const rows = await getCollection<CompanyDoc>(COMPANIES_COLLECTION, 200);
-    const items = rows.map((r) => toCompanyRecord(r.id, r));
-    items.sort((a, b) => a.name.localeCompare(b.name));
-    return items;
-  } catch (err) {
-    const firebaseErrorCode =
-      err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code) : "";
-    if (!firebaseErrorCode.includes("permission-denied")) {
-      throw err;
-    }
-
-    const userId = auth.currentUser?.uid?.trim();
-    if (!userId) throw err;
-
-    const byUserId = await getCollectionWithFilter<CompanyMembershipDoc>(
-      COMPANY_USERS_COLLECTION,
-      "userId",
-      userId
-    );
-    const membershipRows = byUserId;
-
-    const activeCompanyIds = Array.from(
-      new Set(
-        membershipRows
-          .filter((m) => (m.status ?? "active") !== "inactive")
-          .map((m) => String(m.companyId ?? "").trim())
-          .filter(Boolean)
-      )
-    );
-
-    const fetched = await Promise.all(activeCompanyIds.map((id) => getDocument<CompanyDoc>(COMPANIES_COLLECTION, id)));
-    const items = fetched
-      .filter((doc): doc is ({ id: string } & CompanyDoc) => Boolean(doc))
-      .map((doc) => toCompanyRecord(doc.id, doc))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    return items;
+    const token = await user.getIdTokenResult();
+    accountId = token.claims?.accountId as string | null;
+  } catch {
+    /* claims no disponibles aún */
   }
+
+  if (!accountId) {
+    return [];
+  }
+
+  const rows = await getCollectionWithFilter<CompanyDoc>(
+    COMPANIES_COLLECTION,
+    "accountId",
+    accountId,
+  );
+  const items = rows.map((r) => toCompanyRecord(r.id, r));
+  items.sort((a, b) => a.name.localeCompare(b.name));
+  return items;
 }
 
 export async function addCompany(data: {

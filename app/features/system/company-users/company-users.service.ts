@@ -11,8 +11,8 @@ import type { CompanyUserRecord } from "./company-users.types";
 import {
   apiDeleteCompanyUser,
   apiListCompanyUsers,
-  apiListMyMemberships,
-  apiSaveCompanyMembership,
+  apiListMyCompanyUsers,
+  apiUpsertCompanyUser,
   apiUpdateCompanyUser,
 } from "~/features/system/system-store/system-store.api";
 
@@ -62,12 +62,9 @@ export async function getCompanyUsersByUserId(userId: string): Promise<CompanyUs
   return items;
 }
 
-/** Membresías para la sesión: primero por Auth UID; si no hay filas, por ID legacy del doc `users`. */
-export async function getCompanyMembershipsForSession(
-  authUid: string,
-  legacyUsersDocId?: string | null
-): Promise<CompanyUserRecord[]> {
-  const { items } = await apiListMyMemberships(legacyUsersDocId);
+/** Usuarios de empresa para la sesión: lookup directo por Auth UID. */
+export async function getCompanyUsersForSession(_authUid: string): Promise<CompanyUserRecord[]> {
+  const { items } = await apiListMyCompanyUsers();
   return items;
 }
 
@@ -117,8 +114,8 @@ export async function addCompanyUser(data: {
   return id;
 }
 
-/** Alta o actualización de membresía (mismo id determinístico). */
-export async function saveCompanyMembership(data: {
+/** Alta o actualización de usuario de empresa (mismo id determinístico). */
+export async function upsertCompanyUser(data: {
   companyId: string;
   userId: string;
   user?: string;
@@ -129,7 +126,7 @@ export async function saveCompanyMembership(data: {
   roleNames?: string[];
   status: "active" | "inactive";
 }): Promise<string> {
-  const saved = await apiSaveCompanyMembership(data);
+  const saved = await apiUpsertCompanyUser(data);
   return saved.id;
 }
 

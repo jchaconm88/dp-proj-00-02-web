@@ -2,14 +2,15 @@ import { callHttpsFunction } from "~/lib/functions.service";
 import type { ProfileRecord } from "~/features/system/users/users.types";
 import type { RoleRecord } from "~/features/system/roles/roles.types";
 import type { CompanyUserRecord } from "~/features/system/company-users/company-users.types";
+import { getAllRoles } from "~/features/system/roles/roles.service";
 export async function apiListUsers(): Promise<{ items: ProfileRecord[]; last: null }> {
   return callHttpsFunction<{}, { items: ProfileRecord[]; last: null }>("systemListUsers", {});
 }
 
+/** Listado merge (catálogo + `roles`) vía backend Web; alineado con `systemListRolesByCompany`. */
 export async function apiListRolesByCompany(companyId: string): Promise<{ items: RoleRecord[] }> {
-  return callHttpsFunction<{ companyId: string }, { items: RoleRecord[] }>("systemListRolesByCompany", {
-    companyId,
-  });
+  const items = await getAllRoles(companyId);
+  return { items };
 }
 
 export async function apiListCompanyUsers(companyId: string): Promise<{ items: CompanyUserRecord[] }> {
@@ -18,14 +19,14 @@ export async function apiListCompanyUsers(companyId: string): Promise<{ items: C
   });
 }
 
-export async function apiListMyMemberships(legacyUsersDocId?: string | null): Promise<{ items: CompanyUserRecord[] }> {
-  return callHttpsFunction<{ legacyUsersDocId?: string | null }, { items: CompanyUserRecord[] }>(
-    "systemListMyMemberships",
-    { legacyUsersDocId }
+export async function apiListMyCompanyUsers(): Promise<{ items: CompanyUserRecord[] }> {
+  return callHttpsFunction<{}, { items: CompanyUserRecord[] }>(
+    "systemListMyCompanyUsers",
+    {}
   );
 }
 
-export async function apiSaveCompanyMembership(data: {
+export async function apiUpsertCompanyUser(data: {
   companyId: string;
   userId: string;
   user?: string;
@@ -36,7 +37,7 @@ export async function apiSaveCompanyMembership(data: {
   roleNames?: string[];
   status: "active" | "inactive";
 }): Promise<{ id: string }> {
-  return callHttpsFunction<typeof data, { id: string }>("systemSaveCompanyMembership", data);
+  return callHttpsFunction<typeof data, { id: string }>("systemUpsertCompanyUser", data);
 }
 
 export async function apiUpdateCompanyUser(

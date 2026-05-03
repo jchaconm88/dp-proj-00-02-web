@@ -129,7 +129,7 @@ export async function clientLoader({ }: Route.ClientLoaderArgs) {
 
 export default function DashboardLayout({ }: Route.ComponentProps) {
   const { user, profile, signOut } = useAuth();
-  const { activeCompanyId, companies, memberships, loading: companyLoading, setActiveCompanyId } =
+  const { activeCompanyId, companies, companyUsers, loading: companyLoading, setActiveCompanyId } =
     useCompany();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -141,29 +141,35 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
-  const activeMembership = useMemo(() => {
+  const activeCompanyUserRows = useMemo(() => {
     if (!activeCompanyId) return [];
-    return memberships.filter((x) => x.companyId === activeCompanyId && x.status === "active");
-  }, [memberships, activeCompanyId]);
-  const membershipRoleIds = useMemo(
-    () => (activeMembership[0]?.roleIds ?? []).map((x) => String(x)),
-    [activeMembership]
+    return companyUsers.filter((x) => x.companyId === activeCompanyId && x.status === "active");
+  }, [companyUsers, activeCompanyId]);
+  const companyUserRoleIds = useMemo(
+    () => (activeCompanyUserRows[0]?.roleIds ?? []).map((x) => String(x)),
+    [activeCompanyUserRows]
   );
-  const membershipRoleNames = useMemo(
-    () => (activeMembership[0]?.roleNames ?? []).map((x) => String(x)),
-    [activeMembership]
+  const companyUserRoleNames = useMemo(
+    () => (activeCompanyUserRows[0]?.roleNames ?? []).map((x) => String(x)),
+    [activeCompanyUserRows]
   );
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
       if (!activeCompanyId) {
+        // eslint-disable-next-line no-console
+        console.info("[dashboard] roles: no active company, clearing roles");
         setRoles([]);
         return;
       }
+      // eslint-disable-next-line no-console
+      console.info("[dashboard] roles: fetching for company", { companyId: activeCompanyId });
       setRolesLoading(true);
       try {
         const next = await getAllRoles(activeCompanyId);
+        // eslint-disable-next-line no-console
+        console.info("[dashboard] roles: loaded", { count: next.length, names: next.map(r => r.name) });
         if (!cancelled) setRoles(next);
       } finally {
         if (!cancelled) setRolesLoading(false);
@@ -176,12 +182,28 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   }, [activeCompanyId]);
 
   const effectivePermissions = useMemo(
-    () => getEffectivePermissions(membershipRoleIds, membershipRoleNames, roles),
-    [membershipRoleIds, membershipRoleNames, roles]
+    () => {
+      const perms = getEffectivePermissions(companyUserRoleIds, companyUserRoleNames, roles);
+      // eslint-disable-next-line no-console
+      console.info("[dashboard] effectivePermissions computed", {
+        roleIds: companyUserRoleIds,
+        roleNames: companyUserRoleNames,
+        roleCount: roles.length,
+        permissionCount: perms.length,
+        permissions: perms,
+      });
+      return perms;
+    },
+    [companyUserRoleIds, companyUserRoleNames, roles]
   );
-  const menuLoading = Boolean(activeCompanyId) && (rolesLoading || (membershipRoleIds.length > 0 && roles.length === 0));
+  const menuLoading = Boolean(activeCompanyId) && rolesLoading;
   const filteredMenu = useMemo(
-    () => filterMenu(menuData as MenuItemJson[], effectivePermissions),
+    () => {
+      const menu = filterMenu(menuData as MenuItemJson[], effectivePermissions);
+      // eslint-disable-next-line no-console
+      console.info("[dashboard] menu filtered", { totalItems: menu.length });
+      return menu;
+    },
     [effectivePermissions]
   );
   const sections = useMemo(() => menuToSections(filteredMenu), [filteredMenu]);
@@ -252,9 +274,15 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
 
   // clientLoader ya garantizó que hay usuario autenticado antes de renderizar.
   // Este guard cubre el breve instante inicial en que AuthProvider aún no actualizó su estado React.
-  if (!user) return null;
+  if (!user) {
+    // eslint-disable-next-line no-console
+    console.warn("[dashboard] render guard: no user yet, returning null");
+    return null;
+  }
 
   if (companyLoading) {
+    // eslint-disable-next-line no-console
+    console.info("[dashboard] render guard: company loading, showing spinner");
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-navy-900">
         <div className="flex flex-col items-center gap-3 text-zinc-600 dark:text-navy-300">
@@ -266,6 +294,11 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   }
 
   if (!activeCompanyId) {
+    // eslint-disable-next-line no-console
+    console.warn("[dashboard] render guard: no active company", {
+      companyUsersCount: companyUsers.length,
+      companiesCount: companies.length,
+    });
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-100 p-6 dark:bg-navy-900">
         <div className="max-w-md rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm dark:border-navy-600 dark:bg-navy-800">
@@ -273,12 +306,12 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
             Sin empresa asignada
           </h1>
           <p className="mt-3 text-sm text-zinc-600 dark:text-navy-300">
-            Tu cuenta no tiene una membresía activa en ninguna empresa (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">company-users</code>
+            Tu cuenta no tiene un usuario de empresa activo en ninguna empresa (<code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">company-users</code>
             ). Si acabas de migrar, ejecuta la migración con{" "}
-            <code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">seedMemberships: true</code> o pide a un administrador que te asocie a una empresa.
+            <code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">seedCompanyUsers: true</code> o pide a un administrador que te asocie a una empresa.
           </p>
           <p className="mt-2 text-xs text-zinc-500 dark:text-navy-400">
-            No hace falta “otra contraseña”: con cerrar sesión y volver a entrar no se soluciona si falta la membresía en Firestore.
+            No hace falta “otra contraseña”: con cerrar sesión y volver a entrar no se soluciona si falta el registro en <code className="rounded bg-zinc-100 px-1 dark:bg-navy-700">company-users</code>.
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button

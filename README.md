@@ -220,7 +220,7 @@ dp-proj-00-02-web/
 El menú lateral se construye desde **`app/data/menu.json`**; la visibilidad de ítems depende de permisos (`isGranted` en `~/lib/accessService`). Resumen por área:
 
 - **Inicio y reportes** — Home, definiciones de reporte y ejecuciones.
-- **Sistema** — Cuenta y facturación, métricas, empresas (y miembros por empresa en la ruta hija `…/company-members`), usuarios, roles, secuencias, contadores; módulos y permisos en **`/system/modules`** (rutas bajo `/system/...`).
+- **Sistema** — Cuenta y facturación, métricas, empresas (y miembros por empresa en la ruta hija `…/company-users`), usuarios, roles, secuencias, contadores; módulos y permisos en **`/system/modules`** (rutas bajo `/system/...`).
 - **Maestros** — Tipos de documento, clientes y ubicaciones (`/master/...`).
 - **Recursos humanos** — Empleados, contratos, cargos, recursos externos y costos (`/human-resource/...`).
 - **Logística** — Pedidos (`/logistic/...`).

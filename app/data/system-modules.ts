@@ -119,7 +119,7 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 1, name: "name", header: "Nombre", filter: true },
     { order: 2, name: "code", header: "Código", filter: true },
     { order: 3, name: "taxId", header: "RUC / ID fiscal", filter: true },
-    { order: 4, name: "companyMembers", header: "Miembros", filter: false },
+    { order: 4, name: "companyUsers", header: "Miembros", filter: false },
     { order: 5, name: "companyLocations", header: "Sedes", filter: false },
     { order: 6, name: "status", header: "Estado", filter: true, format: "status" },
   ], COMPANY_PERMISSIONS),
@@ -396,7 +396,7 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 8, name: "settledFormatted", header: "Liquidado", filter: true },
     { order: 9, name: "pendingFormatted", header: "Pendiente", filter: true },
   ]),
-  withPermissions("company-member", "Miembros por empresa", [
+  withPermissions("company-user", "Miembros por empresa", [
     { order: 1, name: "emailLabel", header: "Usuario", filter: true },
     { order: 2, name: "rolesLabel", header: "Roles", filter: true },
     { order: 3, name: "status", header: "Activo", filter: true, format: "status" },

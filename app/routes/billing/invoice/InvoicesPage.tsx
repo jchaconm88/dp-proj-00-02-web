@@ -193,7 +193,7 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
   const [selectedNextStatus, setSelectedNextStatus] = useState("");
   const [selectedIssueBlockReason, setSelectedIssueBlockReason] = useState<string | null>(null);
 
-  const { activeCompanyId, memberships } = useCompany();
+  const { activeCompanyId, companyUsers } = useCompany();
 
   const dialogVisible = isAdd || !!editId;
 
@@ -240,21 +240,21 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
     };
   }, [activeCompanyId]);
 
-  const activeMembership = useMemo(() => {
+  const activeCompanyUserRows = useMemo(() => {
     if (!activeCompanyId) return [];
-    return memberships.filter((x) => x.companyId === activeCompanyId && x.status === "active");
-  }, [memberships, activeCompanyId]);
-  const membershipRoleIds = useMemo(
-    () => (activeMembership[0]?.roleIds ?? []).map((x) => String(x)),
-    [activeMembership]
+    return companyUsers.filter((x) => x.companyId === activeCompanyId && x.status === "active");
+  }, [companyUsers, activeCompanyId]);
+  const companyUserRoleIds = useMemo(
+    () => (activeCompanyUserRows[0]?.roleIds ?? []).map((x) => String(x)),
+    [activeCompanyUserRows]
   );
-  const membershipRoleNames = useMemo(
-    () => (activeMembership[0]?.roleNames ?? []).map((x) => String(x)),
-    [activeMembership]
+  const companyUserRoleNames = useMemo(
+    () => (activeCompanyUserRows[0]?.roleNames ?? []).map((x) => String(x)),
+    [activeCompanyUserRows]
   );
   const effectivePermissions = useMemo(
-    () => getEffectivePermissions(membershipRoleIds, membershipRoleNames, roles),
-    [membershipRoleIds, membershipRoleNames, roles]
+    () => getEffectivePermissions(companyUserRoleIds, companyUserRoleNames, roles),
+    [companyUserRoleIds, companyUserRoleNames, roles]
   );
 
   const statusDestinationOptions = useMemo(() => {

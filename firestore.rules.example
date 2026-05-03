@@ -20,12 +20,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roleIds.hasAny(['admin']);
     }
 
-    match /company-users/{membershipId} {
+    match /company-users/{companyUserDocId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn()
         && request.resource.data.userId is string
         && request.resource.data.userId.size() > 0
-        && membershipId == (request.resource.data.companyId + "_" + request.resource.data.userId);
+        && companyUserDocId == (request.resource.data.companyId + "_" + request.resource.data.userId);
     }
 
     match /trip-assignments/{docId} {

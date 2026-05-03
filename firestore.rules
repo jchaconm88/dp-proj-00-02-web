@@ -72,7 +72,7 @@ service cloud.firestore {
         );
     }
 
-    /** Membership doc ID determinístico: `${companyId}_${uid}` */
+    /** Id de documento en `company-users`: `${companyId}_${uid}` */
     function companyUserId(companyId, uid) {
       return companyId + "_" + uid;
     }
@@ -112,7 +112,7 @@ service cloud.firestore {
         : accountMatchesData(resource.data);
     }
 
-    function canManageCompanyMembers(companyId) {
+    function canManageCompanyUsers(companyId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/company-users/$(companyUserId(companyId, myUid())))
         && get(/databases/$(database)/documents/company-users/$(companyUserId(companyId, myUid()))).data.status != "inactive"
@@ -133,7 +133,15 @@ service cloud.firestore {
           || canReadUsersCollection()
         );
       allow write: if isSignedIn()
-        && (request.auth.uid == userId || isPlatformAdmin());
+        && (request.auth.uid == userId || isPlatformAdmin())
+        && (
+          isPlatformAdmin()
+          || !('accountId' in request.resource.data)
+          || request.resource.data.accountId == null
+          || !('accountId' in request.auth.token)
+          || request.auth.token.accountId == null
+          || request.resource.data.accountId == request.auth.token.accountId
+        );
     }
 
     match /companies/{companyId} {
@@ -195,7 +203,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /company-users/{membershipId} {
+    match /company-users/{companyUserDocId} {
       allow read: if isSignedIn();
       allow create: if isPlatformAdmin()
         || (isSignedIn()
@@ -203,17 +211,17 @@ service cloud.firestore {
           && request.resource.data.companyId.size() > 0
           && request.resource.data.userId is string
           && request.resource.data.userId.size() > 0
-          && canManageCompanyMembers(request.resource.data.companyId));
+          && canManageCompanyUsers(request.resource.data.companyId));
       allow update: if isPlatformAdmin()
         || (isSignedIn()
           && resource.data.companyId == request.resource.data.companyId
           && request.resource.data.userId is string
           && request.resource.data.userId.size() > 0
           // Compatibilidad de transición: valida contra el ID del doc, no contra campo legacy.
-          && membershipId == (resource.data.companyId + "_" + request.resource.data.userId)
-          && canManageCompanyMembers(resource.data.companyId));
+          && companyUserDocId == (resource.data.companyId + "_" + request.resource.data.userId)
+          && canManageCompanyUsers(resource.data.companyId));
       allow delete: if isPlatformAdmin()
-        || (isSignedIn() && canManageCompanyMembers(resource.data.companyId));
+        || (isSignedIn() && canManageCompanyUsers(resource.data.companyId));
     }
 
     match /roles/{roleId} {

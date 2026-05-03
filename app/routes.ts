@@ -8,7 +8,6 @@ import {
 export default [
   index("routes/Home.tsx"),
   route("login", "routes/Login.tsx"),
-  route("registro", "routes/Registro.tsx"),
   layout("routes/Dashboard.tsx", [
     route("home", "routes/DashboardHome.tsx"),
     route("reports", "routes/reports/ReportDefinitionsPage.tsx"),
@@ -23,9 +22,9 @@ export default [
       route("add", "routes/system/company-locations/CompanyLocationAdd.tsx"),
       route("edit/:locationId", "routes/system/company-locations/CompanyLocationEdit.tsx"),
     ]),
-    route("system/companies/:id/company-members", "routes/system/company-members/CompanyMembersPage.tsx", [
-      route("add", "routes/system/company-members/CompanyMemberAdd.tsx"),
-      route("edit/:membershipId", "routes/system/company-members/CompanyMemberEdit.tsx"),
+    route("system/companies/:id/company-users", "routes/system/company-users/CompanyUsersPage.tsx", [
+      route("add", "routes/system/company-users/CompanyUserAdd.tsx"),
+      route("edit/:companyUserDocId", "routes/system/company-users/CompanyUserEdit.tsx"),
     ]),
     route("system/users", "routes/system/users/UsersPage.tsx"),
     route("system/roles", "routes/system/roles/RolesPage.tsx"),

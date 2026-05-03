@@ -8,20 +8,20 @@ import {
   type ReactNode,
 } from "react";
 import {
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
-  createUserWithEmailAndPassword,
   type User,
 } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { createDocumentWithId } from "./firestore.service";
 
 export type UserProfile = {
   /** UID de Firebase Auth (sesión actual). */
   authUid: string;
-  /** ID del documento en `users` (puede no coincidir con Auth en datos legacy). */
+  /** ID del documento en `users` (siempre igual a authUid). */
   usersDocId: string;
   email: string;
   displayName: string;
@@ -34,8 +34,8 @@ type AuthContextValue = {
   profile: UserProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -43,6 +43,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const PROFILES_COLLECTION = "users";
 const ROLES_COLLECTION = "roles";
 const COMPANIES_COLLECTION = "companies";
+/** Colección Firestore de membresías empresa–usuario (`company-users`). */
 const COMPANY_USERS_COLLECTION = "company-users";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,32 +51,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const ensurePreauthorized = useCallback(async (u: User) => {
+    const byUid = await getDoc(doc(db, PROFILES_COLLECTION, u.uid));
+    if (byUid.exists()) return;
+    throw new Error("Acceso restringido: tu usuario debe ser creado desde Admin.");
+  }, []);
+
   const loadProfile = useCallback(async (u: User) => {
     const authUid = u.uid;
-    const byAuth = await getDoc(doc(db, PROFILES_COLLECTION, authUid));
-    let snap = byAuth.exists() ? byAuth : null;
-
-    if (!snap) {
-      const raw = u.email?.trim();
-      if (raw) {
-        const variants = raw.toLowerCase() === raw ? [raw] : [raw, raw.toLowerCase()];
-        for (const em of variants) {
-          const q = query(
-            collection(db, PROFILES_COLLECTION),
-            where("email", "==", em),
-            limit(1)
-          );
-          const qs = await getDocs(q);
-          if (!qs.empty) {
-            snap = qs.docs[0];
-            break;
-          }
-        }
-      }
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.info("[auth] loadProfile start", { uid: authUid, email: u.email ?? "" });
     }
 
-    if (snap) {
+    // Lookup directo por authUid (sin fallback por email)
+    const snap = await getDoc(doc(db, PROFILES_COLLECTION, authUid));
+
+    if (snap.exists()) {
       const d = snap.data();
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.info("[auth] profile found", { usersDocId: snap.id });
+      }
+
       setProfile({
         authUid,
         usersDocId: snap.id,
@@ -84,6 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roleIds: d.roleIds ?? [],
       });
     } else {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn("[auth] profile not found for session", { uid: authUid, email: u.email ?? "" });
+      }
       setProfile(null);
     }
   }, []);
@@ -97,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const unsub = onAuthStateChanged(auth, async (u) => {
         if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.info("[auth] onAuthStateChanged fired", { uid: u?.uid ?? null, email: u?.email ?? null });
         setUser(u);
         try {
           if (u) {
@@ -105,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(null);
           }
         } catch (_) {
+          // eslint-disable-next-line no-console
+          console.error("[auth] onAuthStateChanged handler failed (loadProfile)", _);
           setProfile(null);
         }
         setLoading(false);
@@ -127,27 +133,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const { user: u } = await signInWithPopup(auth, provider);
+      await ensurePreauthorized(u);
+      await loadProfile(u);
+    } catch (err) {
+      // Si el usuario no está preautorizado, evitamos que quede una sesión activa.
+      // Además intentamos eliminar el usuario recién creado (best-effort).
+      try {
+        const current = auth.currentUser;
+        if (current) {
+          await firebaseSignOut(auth);
+          await current.delete();
+        }
+      } catch {
+        // ignore
+      }
+      throw err;
+    }
+  }, [ensurePreauthorized, loadProfile]);
+
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
     setProfile(null);
   }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, displayName: string) => {
-      const { user: u } = await createUserWithEmailAndPassword(auth, email, password);
-      await createDocumentWithId(
-        PROFILES_COLLECTION,
-        u.uid,
-        { email, displayName, roleIds: [] }
-      );
-      await loadProfile(u);
-    },
-    [loadProfile]
-  );
-
   const value = useMemo<AuthContextValue>(
-    () => ({ user, profile, loading, signIn, signOut, register }),
-    [user, profile, loading, signIn, signOut, register]
+    () => ({ user, profile, loading, signIn, signInWithGoogle, signOut }),
+    [user, profile, loading, signIn, signInWithGoogle, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

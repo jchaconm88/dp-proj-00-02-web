@@ -2,6 +2,8 @@ export type ResetPeriod = "never" | "yearly" | "monthly" | "daily";
 
 export interface SequenceRecord {
   id: string;
+  accountId?: string;
+  companyId?: string;
   entity: string;
   prefix: string;
   digits: number;
@@ -10,6 +12,8 @@ export interface SequenceRecord {
   allowManualOverride: boolean;
   preventGaps: boolean;
   active: boolean;
+  source?: "default" | "custom";
+  readonly?: boolean;
 }
 
 export interface SequenceAddInput {

@@ -1,51 +1,13 @@
-import { ROLES_COLLECTION } from "~/lib/auth-context";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-} from "~/lib/firestore.service";
-import { apiListRolesByCompany } from "~/features/system/system-store/system-store.api";
-import { getCompanyById } from "~/features/system/companies";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { RoleRecord, RolePermissions } from "./roles.types";
 
-function getErrorCode(err: unknown): string {
-  if (err && typeof err === "object" && "code" in err) {
-    return String((err as { code?: unknown }).code ?? "").trim();
-  }
-  return "";
-}
+const BASE = "/system/web-roles";
 
-function mapRolePermissionError(err: unknown, actionLabel: string, requiredPermission: string): Error {
-  const code = getErrorCode(err);
-  if (code.includes("permission-denied")) {
-    return new Error(
-      `No tienes permisos para ${actionLabel}. Permiso requerido: ${requiredPermission} (o *).`
-    );
-  }
-  if (code.includes("unauthenticated")) {
-    return new Error("Tu sesión expiró. Inicia sesión nuevamente.");
-  }
-  if (err instanceof Error && err.message.trim()) return err;
-  return new Error("Error al procesar roles.");
+function withCompany(path: string, companyId: string): string {
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}companyId=${encodeURIComponent(companyId)}`;
 }
-
-async function accountIdForCompany(companyId: string): Promise<string> {
-  const c = await getCompanyById(companyId.trim());
-  return c?.accountId?.trim() || companyId.trim();
-}
-
-type RoleDoc = {
-  companyId?: string;
-  name?: string;
-  description?: string;
-  permissions?: unknown;
-  permission?: string[];
-  createBy?: string;
-  createAt?: unknown;
-  updateBy?: string;
-  updateAt?: unknown;
-};
 
 function normalizePermissions(raw: unknown): RolePermissions {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -59,26 +21,33 @@ function normalizePermissions(raw: unknown): RolePermissions {
   return out;
 }
 
-function toRoleRecord(id: string, data: RoleDoc): RoleRecord {
+function toRoleRecord(data: Record<string, unknown>): RoleRecord {
   return {
-    id,
-    companyId: data.companyId,
-    name: data.name ?? "",
-    description: data.description ?? "",
+    id: String(data.id ?? ""),
+    companyId: String(data.companyId ?? "").trim() || undefined,
+    accountId: String(data.accountId ?? "").trim() || undefined,
+    name: String(data.name ?? ""),
+    description: String(data.description ?? ""),
     permissions: normalizePermissions(data.permissions),
-    permission: Array.isArray(data.permission) ? data.permission : [],
-    createBy: data.createBy,
+    permission: Array.isArray(data.permission) ? (data.permission as string[]).filter((x) => typeof x === "string") : [],
+    createBy: data.createBy != null ? String(data.createBy) : undefined,
     createAt: data.createAt,
-    updateBy: data.updateBy,
+    updateBy: data.updateBy != null ? String(data.updateBy) : undefined,
     updateAt: data.updateAt,
+    source: data.source === "custom" ? "custom" : "default",
+    readonly: data.readonly === true,
   };
 }
 
-/** Obtiene un rol por ID. */
+/** Obtiene un rol por ID (catálogo merge + custom en `roles`). */
 export async function getRoleById(id: string): Promise<RoleRecord | null> {
-  const snap = await getDocument<RoleDoc>(ROLES_COLLECTION, id);
-  if (!snap) return null;
-  return toRoleRecord(snap.id, snap);
+  const companyId = requireActiveCompanyId();
+  try {
+    const row = await webFetch<Record<string, unknown>>(withCompany(`${BASE}/${encodeURIComponent(id)}`, companyId));
+    return toRoleRecord(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function getRoles(opts?: {
@@ -86,79 +55,76 @@ export async function getRoles(opts?: {
   pageSize?: number;
   last?: unknown;
 }): Promise<{ items: RoleRecord[]; last: null }> {
-  if (opts?.companyId) {
-    const { items } = await apiListRolesByCompany(opts.companyId);
-    return { items, last: null };
-  }
-  // Sin companyId: no hay callable para listar todos — devolver vacío
-  return { items: [], last: null };
+  const fromOpts = opts?.companyId != null ? String(opts.companyId).trim() : "";
+  const companyId = fromOpts || requireActiveCompanyId();
+  const rows = await webFetch<Record<string, unknown>[]>(withCompany(BASE, companyId));
+  const items = rows.map(toRoleRecord).sort((a, b) => a.name.localeCompare(b.name));
+  return { items, last: null };
 }
 
-/** Obtiene todos los roles para resolver permisos del usuario. */
+/** Todos los roles de la empresa para permisos efectivos y pickers. */
 export async function getAllRoles(companyId: string): Promise<RoleRecord[]> {
-  const { items } = await apiListRolesByCompany(companyId);
-  return items;
+  const cid = String(companyId ?? "").trim();
+  if (!cid) return [];
+  const rows = await webFetch<Record<string, unknown>[]>(withCompany(BASE, cid));
+  return rows.map(toRoleRecord).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Crea un rol nuevo (requiere empresa activa / companyId). */
+/** Crea un rol custom (solo Firestore `roles`). */
 export async function addRole(data: {
   companyId: string;
   name: string;
   description: string | null;
 }): Promise<string> {
-  try {
-    if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
-    const accountId = await accountIdForCompany(data.companyId);
-    return addDocument(ROLES_COLLECTION, {
-      companyId: data.companyId.trim(),
-      accountId,
-      name: data.name,
-      description: data.description ?? "",
+  if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
+  const companyId = data.companyId.trim();
+  const res = await webFetch<{ ok: boolean; id: string }>(BASE, {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      name: data.name.trim(),
+      description: (data.description ?? "").trim(),
       permissions: {},
-    });
-  } catch (err) {
-    throw mapRolePermissionError(err, "crear roles", "role:create");
-  }
+      permission: [],
+    }),
+  });
+  return res.id;
 }
 
-/** Actualiza campos parciales de un rol. */
 export async function updateRole(id: string, data: Partial<Omit<RoleRecord, "id">>): Promise<void> {
-  try {
-    await updateDocument(ROLES_COLLECTION, id, data);
-  } catch (err) {
-    throw mapRolePermissionError(err, "editar roles", "role:edit");
-  }
+  const companyId = requireActiveCompanyId();
+  const { id: _i, source: _s, readonly: _r, ...rest } = data as Record<string, unknown>;
+  await webFetch(withCompany(`${BASE}/${encodeURIComponent(id)}`, companyId), {
+    method: "PUT",
+    body: JSON.stringify({ ...rest, companyId }),
+  });
 }
 
 /** @deprecated Usar addRole/updateRole */
 export async function saveRole(id: string, data: Omit<RoleRecord, "id">): Promise<string> {
-  try {
-    const payload = {
-      companyId: data.companyId,
-      name: data.name,
-      description: data.description,
-      permissions: data.permissions ?? {},
-    };
-    if (!id) {
-      if (!data.companyId?.trim()) throw new Error("companyId es obligatorio para crear un rol.");
-      const accountId = await accountIdForCompany(data.companyId);
-      return addDocument(ROLES_COLLECTION, {
-        ...payload,
-        companyId: data.companyId!.trim(),
-        accountId,
-      });
-    }
-    await updateDocument(ROLES_COLLECTION, id, payload);
-    return id;
-  } catch (err) {
-    throw mapRolePermissionError(err, id ? "editar roles" : "crear roles", id ? "role:edit" : "role:create");
+  const companyId = data.companyId?.trim() || requireActiveCompanyId();
+  const payload = {
+    name: data.name,
+    description: data.description,
+    permissions: data.permissions ?? {},
+    permission: data.permission ?? [],
+  };
+  if (!id) {
+    if (!companyId) throw new Error("companyId es obligatorio para crear un rol.");
+    const res = await webFetch<{ ok: boolean; id: string }>(BASE, {
+      method: "POST",
+      body: JSON.stringify({ companyId, ...payload }),
+    });
+    return res.id;
   }
+  await webFetch(withCompany(`${BASE}/${encodeURIComponent(id)}`, companyId), {
+    method: "PUT",
+    body: JSON.stringify({ ...payload, companyId }),
+  });
+  return id;
 }
 
 export async function deleteRole(id: string): Promise<void> {
-  try {
-    await deleteDocument(ROLES_COLLECTION, id);
-  } catch (err) {
-    throw mapRolePermissionError(err, "eliminar roles", "role:delete");
-  }
+  const companyId = requireActiveCompanyId();
+  await webFetch(withCompany(`${BASE}/${encodeURIComponent(id)}`, companyId), { method: "DELETE" });
 }

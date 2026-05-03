@@ -65,6 +65,10 @@ export default function SequenceDialog({
           setError("Secuencia no encontrada.");
           return;
         }
+        if (data.readonly) {
+          setError("Las secuencias default no se editan. Crea una secuencia custom con la misma entidad para sobrescribirla.");
+          return;
+        }
         setEntity(data.entity ?? "");
         setPrefix(data.prefix ?? "");
         setDigits(String(data.digits ?? 6));

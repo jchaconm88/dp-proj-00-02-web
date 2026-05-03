@@ -11,6 +11,10 @@ import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";
 
 const TABLE_DEF = moduleTableDef("sequence", { resetPeriod: RESET_PERIOD });
+const TABLE_DEF_WITH_SOURCE = [
+  ...TABLE_DEF,
+  { header: "Origen", column: "source", order: 99, display: true, filter: true, sort: true },
+];
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -52,8 +56,13 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
   };
 
   const openAdd = () => navigate("/system/sequences/add");
-  const openEdit = (s: SequenceRecord) =>
+  const openEdit = (s: SequenceRecord) => {
+    if (s.readonly) {
+      setError("Las secuencias default no se editan. Crea una secuencia custom con la misma entidad para sobrescribirla.");
+      return;
+    }
     navigate("/system/sequences/edit/" + encodeURIComponent(s.id));
+  };
   const handleHide = () => navigate("/system/sequences");
 
   // Refresca datos re-ejecutando el clientLoader sin necesidad de refetch manual
@@ -62,6 +71,10 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
     if (selected.length === 0) return;
+    if (selected.some((s) => s.readonly)) {
+      setError("Las secuencias default no se pueden eliminar.");
+      return;
+    }
     setPendingDeleteIds(selected.map((s) => s.id));
   };
 
@@ -115,14 +128,14 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
           ref={tableRef}
           data={loaderData.sequences}
           loading={isLoading}
-          tableDef={TABLE_DEF}
+          tableDef={TABLE_DEF_WITH_SOURCE}
           linkColumn="entity"
           onDetail={openEdit}
           onEdit={openEdit}
           onSelectionChange={(rows) => setSelectedCount(rows.length)}
           showFilterInHeader={false}
           filterPlaceholder="Filtrar..."
-          emptyMessage='No hay secuencias en la colección "sequences".'
+          emptyMessage="No hay secuencias disponibles."
           emptyFilterMessage="No hay resultados para el filtro."
         />
       </DpContent>

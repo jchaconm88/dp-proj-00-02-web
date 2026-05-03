@@ -3,7 +3,7 @@ import { useNavigation } from "react-router";
 import { MultiSelect } from "primereact/multiselect";
 import { DpInput } from "~/components/DpInput";
 import { DpContentSet } from "~/components/DpContent";
-import { saveCompanyMembership, type CompanyUserRecord } from "~/features/system/company-users";
+import { upsertCompanyUser, type CompanyUserRecord } from "~/features/system/company-users";
 import { resolveAuthUidByEmail } from "~/features/system/auth/resolve-auth-uid.service";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
 import { getProfiles, type ProfileRecord } from "~/features/system/users";
@@ -26,7 +26,7 @@ function describeMemberError(err: unknown, context: string): string {
   const code = getErrorCode(err);
   switch (code) {
     case "permission-denied":
-      return `${context}: no tienes permisos para esta acción en la empresa activa. Verifica que tu membresía esté activa y que tu rol incluya administración de miembros.`;
+      return `${context}: no tienes permisos para esta acción en la empresa activa. Verifica que tu usuario de empresa esté activo y que tu rol incluya administración de usuarios.`;
     case "unauthenticated":
       return `${context}: tu sesión expiró. Vuelve a iniciar sesión e inténtalo de nuevo.`;
     case "not-found":
@@ -49,44 +49,44 @@ function normalizeEmail(value?: string): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
-function isMissingOrIdLike(value: string | undefined, membershipUserId: string): boolean {
+function isMissingOrIdLike(value: string | undefined, companyUserAuthId: string): boolean {
   const raw = String(value ?? "").trim();
   if (!raw) return true;
-  return raw === membershipUserId;
+  return raw === companyUserAuthId;
 }
 
-function findProfileForMembership(
-  membership: CompanyUserRecord,
+function findProfileForCompanyUser(
+  companyUser: CompanyUserRecord,
   profiles: ProfileRecord[]
 ): ProfileRecord | null {
   const byId = new Map(profiles.map((p) => [p.id, p]));
   const byEmail = new Map(profiles.map((p) => [normalizeEmail(p.email), p]));
-  const usersDocId = String(membership.usersDocId ?? "").trim();
-  const userEmail = normalizeEmail(membership.userEmail);
+  const usersDocId = String(companyUser.usersDocId ?? "").trim();
+  const userEmail = normalizeEmail(companyUser.userEmail);
   return (
     (usersDocId ? byId.get(usersDocId) : undefined) ||
     (userEmail ? byEmail.get(userEmail) : undefined) ||
-    byId.get(membership.userId) ||
+    byId.get(companyUser.userId) ||
     null
   );
 }
 
-export interface CompanyMemberDialogProps {
+export interface CompanyUserDialogProps {
   visible: boolean;
   companyId: string | null;
-  membership: CompanyUserRecord | null;
+  companyUser: CompanyUserRecord | null;
   onSuccess?: () => void;
   onHide: () => void;
 }
 
-export default function CompanyMemberDialog({
+export default function CompanyUserDialog({
   visible,
   companyId,
-  membership,
+  companyUser,
   onSuccess,
   onHide,
-}: CompanyMemberDialogProps) {
-  const isEdit = !!membership;
+}: CompanyUserDialogProps) {
+  const isEdit = !!companyUser;
   const navigation = useNavigation();
   const isNavigating = navigation.state !== "idle";
 
@@ -104,22 +104,22 @@ export default function CompanyMemberDialog({
     () => users.find((u) => u.id === selectedUserDocId) ?? null,
     [users, selectedUserDocId]
   );
-  const editMembershipProfile = useMemo(() => {
-    if (!isEdit || !membership) return null;
-    return findProfileForMembership(membership, users);
-  }, [isEdit, membership, users]);
+  const editCompanyUserProfile = useMemo(() => {
+    if (!isEdit || !companyUser) return null;
+    return findProfileForCompanyUser(companyUser, users);
+  }, [isEdit, companyUser, users]);
   const editUserLabel = useMemo(() => {
-    if (!isEdit || !membership) return "";
+    if (!isEdit || !companyUser) return "";
     return (
-      editMembershipProfile?.displayName?.trim() ||
-      editMembershipProfile?.email?.trim() ||
-      membership.user?.trim() ||
-      membership.userDisplayName?.trim() ||
-      membership.userEmail?.trim() ||
-      membership.usersDocId?.trim() ||
-      membership.userId
+      editCompanyUserProfile?.displayName?.trim() ||
+      editCompanyUserProfile?.email?.trim() ||
+      companyUser.user?.trim() ||
+      companyUser.userDisplayName?.trim() ||
+      companyUser.userEmail?.trim() ||
+      companyUser.usersDocId?.trim() ||
+      companyUser.userId
     );
-  }, [isEdit, membership, editMembershipProfile]);
+  }, [isEdit, companyUser, editCompanyUserProfile]);
   const userSelectOptions = useMemo(
     () =>
       users.map((u) => ({
@@ -132,16 +132,16 @@ export default function CompanyMemberDialog({
   useEffect(() => {
     if (!visible) return;
     setError(null);
-    if (membership) {
-      setSelectedUserDocId(membership.usersDocId ?? "");
-      setRoleIds(membership.roleIds ?? []);
-      setStatus(membership.status);
+    if (companyUser) {
+      setSelectedUserDocId(companyUser.usersDocId ?? "");
+      setRoleIds(companyUser.roleIds ?? []);
+      setStatus(companyUser.status);
       return;
     }
     setSelectedUserDocId("");
     setRoleIds([]);
     setStatus("active");
-  }, [visible, membership]);
+  }, [visible, companyUser]);
 
   useEffect(() => {
     if (!visible || !companyId) return;
@@ -193,34 +193,34 @@ export default function CompanyMemberDialog({
     userEmail?: string;
     userDisplayName?: string;
   }> => {
-    if (isEdit && membership) {
-      let profile = editMembershipProfile;
+    if (isEdit && companyUser) {
+      let profile = editCompanyUserProfile;
       const shouldRepairDenorm =
-        isMissingOrIdLike(membership.user, membership.userId) ||
-        isMissingOrIdLike(membership.userDisplayName, membership.userId) ||
-        isMissingOrIdLike(membership.userEmail, membership.userId) ||
-        !String(membership.usersDocId ?? "").trim();
+        isMissingOrIdLike(companyUser.user, companyUser.userId) ||
+        isMissingOrIdLike(companyUser.userDisplayName, companyUser.userId) ||
+        isMissingOrIdLike(companyUser.userEmail, companyUser.userId) ||
+        !String(companyUser.usersDocId ?? "").trim();
 
       if (!profile && shouldRepairDenorm) {
         const { items } = await getProfiles();
-        profile = findProfileForMembership(membership, items);
+        profile = findProfileForCompanyUser(companyUser, items);
       }
 
       const fallbackUser =
         profile?.displayName?.trim() ||
         profile?.email?.trim().toLowerCase() ||
-        membership.user?.trim() ||
-        membership.userDisplayName?.trim() ||
-        membership.userEmail?.trim() ||
-        membership.usersDocId?.trim() ||
-        membership.userId;
+        companyUser.user?.trim() ||
+        companyUser.userDisplayName?.trim() ||
+        companyUser.userEmail?.trim() ||
+        companyUser.usersDocId?.trim() ||
+        companyUser.userId;
 
       return {
-        userId: membership.userId,
+        userId: companyUser.userId,
         user: fallbackUser,
-        usersDocId: profile?.id ?? membership.usersDocId,
-        userEmail: profile?.email?.trim().toLowerCase() || membership.userEmail,
-        userDisplayName: profile?.displayName?.trim() || membership.userDisplayName,
+        usersDocId: profile?.id ?? companyUser.usersDocId,
+        userEmail: profile?.email?.trim().toLowerCase() || companyUser.userEmail,
+        userDisplayName: profile?.displayName?.trim() || companyUser.userDisplayName,
       };
     }
     if (!selectedUser) {
@@ -269,7 +269,7 @@ export default function CompanyMemberDialog({
         auth.userId.trim();
       setSaving(true);
       setError(null);
-      await saveCompanyMembership({
+      await upsertCompanyUser({
         companyId: cid,
         userId: auth.userId.trim(),
         user: normalizedUser || undefined,
@@ -286,7 +286,7 @@ export default function CompanyMemberDialog({
       onSuccess?.();
       onHide();
     } catch (err) {
-      setError(describeMemberError(err, "No se pudo guardar el miembro"));
+      setError(describeMemberError(err, "No se pudo guardar el usuario de empresa"));
     } finally {
       setSaving(false);
     }
@@ -299,8 +299,8 @@ export default function CompanyMemberDialog({
 
   return (
     <DpContentSet
-      title={isEdit ? "Editar miembro" : "Agregar miembro"}
-      recordId={isEdit ? (membership?.userId ?? null) : null}
+      title={isEdit ? "Editar usuario de empresa" : "Agregar usuario de empresa"}
+      recordId={isEdit ? (companyUser?.userId ?? null) : null}
       cancelLabel="Cancelar"
       onCancel={onHide}
       saveLabel="Guardar"

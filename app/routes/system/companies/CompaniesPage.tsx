@@ -143,11 +143,11 @@ export default function CompaniesPage({ loaderData }: Route.ComponentProps) {
             );
           }}
         </DpTColumn>
-        <DpTColumn name="companyMembers">
+        <DpTColumn name="companyUsers">
           {(row: CompanyRecord) => (
             <button
               type="button"
-              onClick={() => navigate(`/system/companies/${encodeURIComponent(row.id)}/company-members`)}
+              onClick={() => navigate(`/system/companies/${encodeURIComponent(row.id)}/company-users`)}
               className="p-button p-button-text p-button-rounded p-button-icon-only"
               aria-label="Miembros por empresa"
               title="Miembros por empresa"

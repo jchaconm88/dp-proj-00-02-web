@@ -11,11 +11,15 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Login() {
-  const { signIn, user, loading: authLoading } = useAuth();
+  const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authLoading && user) navigate("/home", { replace: true });
+    if (!authLoading && user) {
+      // eslint-disable-next-line no-console
+      console.info("[login] user authenticated, navigating to /home", { uid: user.uid, email: user.email });
+      navigate("/home", { replace: true });
+    }
   }, [user, authLoading, navigate]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,11 +38,35 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    // eslint-disable-next-line no-console
+    console.info("[login] handleSubmit: attempting email/password sign-in", { email });
     try {
       await signIn(email, password);
-      navigate("/home", { replace: true });
+      // eslint-disable-next-line no-console
+      console.info("[login] signIn resolved, Firebase auth state changed");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error al iniciar sesión";
+      // eslint-disable-next-line no-console
+      console.error("[login] signIn rejected", { error: message });
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError("");
+    setLoading(true);
+    // eslint-disable-next-line no-console
+    console.info("[login] handleGoogle: attempting Google sign-in");
+    try {
+      await signInWithGoogle();
+      // eslint-disable-next-line no-console
+      console.info("[login] signInWithGoogle resolved");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al iniciar sesión con Google";
+      // eslint-disable-next-line no-console
+      console.error("[login] signInWithGoogle rejected", { error: message });
       setError(message);
     } finally {
       setLoading(false);
@@ -95,12 +123,25 @@ export default function Login() {
             {loading ? "Entrando..." : "Iniciar sesión"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          ¿No tienes cuenta?{" "}
-          <Link to="/registro" className="text-blue-600 dark:text-blue-400 underline">
-            Regístrate
-          </Link>
-        </p>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+          <div className="text-xs text-gray-500 dark:text-gray-400">o</div>
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={loading}
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/80 dark:bg-gray-700 text-gray-900 dark:text-white py-3 font-medium hover:bg-gray-50 dark:hover:bg-gray-650 disabled:opacity-50 transition flex items-center justify-center gap-2"
+        >
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-black text-gray-900">
+            G
+          </span>
+          <span>{loading ? "Entrando..." : "Continuar con Google"}</span>
+        </button>
+
         <p className="mt-2 text-center">
           <Link to="/" className="text-sm text-gray-500 dark:text-gray-400 hover:underline">
             ← Volver al inicio

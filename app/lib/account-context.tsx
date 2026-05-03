@@ -38,15 +38,23 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.uid || !activeCompanyId) return;
     void (async () => {
+      // eslint-disable-next-line no-console
+      console.info("[account] refreshing tenant claims", { uid: user.uid, companyId: activeCompanyId });
       try {
         await callHttpsFunction<{ companyId: string }, { ok: boolean; accountId: string }>(
           "refreshTenantClaims",
           { companyId: activeCompanyId }
         );
-        // Fuerza refresco de token para aplicar claims nuevos inmediatamente.
+        // eslint-disable-next-line no-console
+        console.info("[account] refreshTenantClaims resolved, refreshing token");
         await user.getIdToken(true);
-      } catch {
-        /* claims opcionales hasta despliegue de la función */
+        // eslint-disable-next-line no-console
+        console.info("[account] token refreshed");
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[account] refreshTenantClaims failed (claims optional)", {
+          error: e instanceof Error ? e.message : e,
+        });
       }
     })();
   }, [user?.uid, activeCompanyId]);

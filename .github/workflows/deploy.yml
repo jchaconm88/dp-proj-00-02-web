@@ -19,12 +19,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@jchaconm88"
 
       # 3. Instalar dependencias
       - name: Install dependencies
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # 4. Build de producción (inyecta variables desde GitHub Secrets)
       - name: Build
@@ -49,4 +54,4 @@ jobs:
 
       # 7. Deploy completo (Hosting + Firestore rules/indexes)
       - name: Deploy to Firebase
-        run: firebase deploy --project layout-admin --only hosting,firestore:rules,firestore:indexes --non-interactive --force
+        run: firebase deploy --project layout-admin --only hosting,firestore:rules,firestore:indexes --non-interactive

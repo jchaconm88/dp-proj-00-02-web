@@ -55,6 +55,7 @@ export default function Roles({ loaderData }: Route.ComponentProps) {
   };
 
   const openEdit = (role: RoleRecord) => {
+    if (role.readonly) return;
     setEditingId(role.id);
     setDialogVisible(true);
   };
@@ -65,8 +66,9 @@ export default function Roles({ loaderData }: Route.ComponentProps) {
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
-    if (selected.length === 0) return;
-    setPendingDeleteIds(selected.map((r) => r.id));
+    const deletable = selected.filter((r) => !r.readonly);
+    if (deletable.length === 0) return;
+    setPendingDeleteIds(deletable.map((r) => r.id));
   };
 
   const handleConfirmDelete = async () => {

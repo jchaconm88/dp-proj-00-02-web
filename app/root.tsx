@@ -6,6 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { useEffect } from "react";
 
 import type { Route } from "./+types/root";
 import { AuthProvider } from "./lib/auth-context";
@@ -80,10 +81,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // Logs globales para diagnosticar pantallas en blanco (errores no capturados).
+  // Solo en DEV para no ensuciar producción.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const onError = (event: ErrorEvent) => {
+      // eslint-disable-next-line no-console
+      console.error("[global] window.onerror", event.error ?? event.message);
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      // eslint-disable-next-line no-console
+      console.error("[global] unhandledrejection", event.reason);
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
   return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // eslint-disable-next-line no-console
+  console.error("[route] ErrorBoundary", error);
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;

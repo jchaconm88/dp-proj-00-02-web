@@ -1,9 +1,12 @@
-export { default as DpContent } from "./DpContent";
-export { default as DpContentHeader, DpContentHeaderAction } from "./DpContentHeader";
-export { default as DpContentSet } from "./DpContentSet";
-export { default as DpContentInfo } from "./DpContentInfo";
-export { default as DpContentFilter } from "./DpContentFilter";
+// Re-export from shared @jchaconm88/ui package
 export {
+  DpContent,
+  DpContentHeader,
+  DpContentHeaderAction,
+  DpContentSet,
+  DpContentInfo,
+  DpContentFilter,
+  DpFilterItem,
   createDateRangeMaxDaysRule,
   createDateRangeOrderRule,
   createRequiredIfRule,
@@ -11,20 +14,23 @@ export {
   createMinLengthRule,
   createDateNotFutureRule,
   createAtLeastOneSelectedRule,
-} from "./DpContentFilter.rules";
-export { default as DpFilterItem } from "./DpFilterItem";
-export type { DpContentProps } from "./DpContent";
-export type { DpContentHeaderProps } from "./DpContentHeader";
-export type { DpContentHeaderActionProps } from "./DpContentHeaderAction";
-export type { DpContentSetProps } from "./DpContentSet";
-export type { DpContentInfoProps } from "./DpContentInfo";
-export type { DpContentFilterProps, DpContentFilterRef, DpFilterDef, DpFilterRule } from "./DpContentFilter";
+} from "@jchaconm88/ui";
 export type {
+  DpContentProps,
+  DpContentHeaderProps,
+  DpContentHeaderActionProps,
+  DpContentSetProps,
+  DpContentInfoProps,
+  DpContentFilterProps,
+  DpContentFilterRef,
+  DpFilterDef,
+  DpFilterRule,
   DateRangeMaxDaysRuleOptions,
   DateRangeOrderRuleOptions,
   RequiredIfRuleOptions,
   StringLengthRuleOptions,
   DateNotFutureRuleOptions,
   AtLeastOneSelectedRuleOptions,
-} from "./DpContentFilter.rules";
-export type { DpFilterItemProps, DpFilterItemRenderProps } from "./DpFilterItem";
+  DpFilterItemProps,
+  DpFilterItemRenderProps,
+} from "@jchaconm88/ui";
