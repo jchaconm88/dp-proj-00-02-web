@@ -24,8 +24,8 @@ type CompanyUserDoc = {
   usersDocId?: string;
   userEmail?: string;
   userDisplayName?: string;
-  roleIds?: string[];
-  roleNames?: string[];
+  webRoleIds?: string[];
+  webRoleNames?: string[];
   status?: string;
 };
 
@@ -47,8 +47,8 @@ function toCompanyUserRecord(id: string, d: CompanyUserDoc): CompanyUserRecord {
     usersDocId: d.usersDocId?.trim() || undefined,
     userEmail: d.userEmail?.trim() || undefined,
     userDisplayName: d.userDisplayName?.trim() || undefined,
-    roleIds: Array.isArray(d.roleIds) ? d.roleIds : [],
-    roleNames: Array.isArray(d.roleNames) ? d.roleNames.map((x) => String(x).trim()).filter(Boolean) : [],
+    webRoleIds: Array.isArray(d.webRoleIds) ? d.webRoleIds : [],
+    webRoleNames: Array.isArray(d.webRoleNames) ? d.webRoleNames.map((x) => String(x).trim()).filter(Boolean) : [],
     status,
   };
 }
@@ -91,8 +91,8 @@ export async function addCompanyUser(data: {
   usersDocId?: string;
   userEmail?: string;
   userDisplayName?: string;
-  roleIds?: string[];
-  roleNames?: string[];
+  webRoleIds?: string[];
+  webRoleNames?: string[];
   status?: "active" | "inactive";
 }): Promise<string> {
   const id = `${data.companyId}_${data.userId}`;
@@ -107,8 +107,8 @@ export async function addCompanyUser(data: {
     usersDocId: data.usersDocId?.trim() || undefined,
     userEmail: data.userEmail?.trim().toLowerCase() || undefined,
     userDisplayName: data.userDisplayName?.trim() || undefined,
-    roleIds: data.roleIds ?? [],
-    roleNames: data.roleNames ?? [],
+    webRoleIds: data.webRoleIds ?? [],
+    webRoleNames: data.webRoleNames ?? [],
     status,
   });
   return id;
@@ -122,8 +122,8 @@ export async function upsertCompanyUser(data: {
   usersDocId?: string;
   userEmail?: string;
   userDisplayName?: string;
-  roleIds: string[];
-  roleNames?: string[];
+  webRoleIds: string[];
+  webRoleNames?: string[];
   status: "active" | "inactive";
 }): Promise<string> {
   const saved = await apiUpsertCompanyUser(data);

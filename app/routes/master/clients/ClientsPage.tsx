@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import {
     getClients,
-    deleteClients,
+    deleteClient,
     type ClientRecord,
 } from "~/features/master/clients";
 import type { Route } from "./+types/ClientsPage";
@@ -68,7 +68,11 @@ export default function ClientsPage({ loaderData }: Route.ComponentProps) {
         setSaving(true);
         setError(null);
         try {
-            await deleteClients(selected.map((r) => r.id));
+            if (selected.length === 1) {
+                await deleteClient(selected[0].id);
+            } else {
+                await Promise.all(selected.map((r) => deleteClient(r.id)));
+            }
             tableRef.current?.clearSelectedRows();
             revalidator.revalidate();
         } catch (err) {

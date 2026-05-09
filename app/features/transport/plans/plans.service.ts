@@ -1,14 +1,6 @@
-import { where } from "firebase/firestore";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-  getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
-import { parseStatus, PLAN_STATUS } from "~/constants/status-options";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
+import { PLAN_STATUS } from "~/constants/status-options";
 import type {
   PlanRecord,
   PlanAddInput,
@@ -16,56 +8,57 @@ import type {
   PlanStatus,
 } from "./plans.types";
 
-const COLLECTION = "trip-plans";
-
-function toOrderIds(v: unknown): string[] {
-  if (Array.isArray(v)) return v.map((x) => String(x)).filter(Boolean);
-  return [];
-}
-
-function toPlanRecord(doc: { id: string } & Record<string, unknown>): PlanRecord {
+function toRecord(data: Record<string, unknown> & { id?: string }): PlanRecord {
+  const status = PLAN_STATUS.includes(String(data.status))
+    ? (data.status as PlanStatus)
+    : "draft";
+  const orderIds = Array.isArray(data.orderIds) ? data.orderIds.map((x) => String(x)).filter(Boolean) : [];
   return {
-    id: doc.id,
-    code: String(doc.code ?? ""),
-    date: String(doc.date ?? ""),
-    zone: String(doc.zone ?? ""),
-    vehicleType: String(doc.vehicleType ?? ""),
-    orderIds: toOrderIds(doc.orderIds),
-    status: parseStatus(doc.status, PLAN_STATUS) as PlanStatus,
+    id: String(data.id ?? ""),
+    code: String(data.code ?? ""),
+    date: String(data.date ?? ""),
+    zone: String(data.zone ?? ""),
+    vehicleType: String(data.vehicleType ?? ""),
+    orderIds,
+    status,
   };
 }
 
 export async function getPlans(): Promise<{ items: PlanRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  return { items: list.map(toPlanRecord) };
+  const res = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/transport/plans?companyId=${encodeURIComponent(companyId)}`
+  );
+  return { items: (res.items ?? []).map(toRecord) };
 }
 
 export async function getPlanById(id: string): Promise<PlanRecord | null> {
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return d ? toPlanRecord(d) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/plans/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toRecord(data) : null;
 }
 
 export async function addPlan(data: PlanAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
-    companyId,
-    accountId,
-    code: data.code.trim(),
-    date: data.date.trim(),
-    zone: data.zone.trim(),
-    vehicleType: data.vehicleType.trim(),
-    orderIds: Array.isArray(data.orderIds) ? data.orderIds : [],
-    status: data.status,
+  const res = await webFetch<{ id: string }>("/transport/plans", {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      code: data.code.trim(),
+      date: data.date.trim(),
+      zone: data.zone.trim(),
+      vehicleType: data.vehicleType.trim(),
+      orderIds: Array.isArray(data.orderIds) ? data.orderIds : [],
+      status: data.status,
+    }),
   });
+  return res.id;
 }
 
 export async function updatePlan(id: string, data: PlanEditInput): Promise<void> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {};
   if (data.code !== undefined) payload.code = data.code.trim();
   if (data.date !== undefined) payload.date = data.date.trim();
@@ -73,13 +66,15 @@ export async function updatePlan(id: string, data: PlanEditInput): Promise<void>
   if (data.vehicleType !== undefined) payload.vehicleType = data.vehicleType.trim();
   if (data.orderIds !== undefined) payload.orderIds = data.orderIds;
   if (data.status !== undefined) payload.status = data.status;
-  await updateDocument(COLLECTION, id, payload);
+  await webFetch(`/transport/plans/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...payload }),
+  });
 }
 
 export async function deletePlan(id: string): Promise<void> {
-  return deleteDocument(COLLECTION, id);
-}
-
-export async function deletePlans(ids: string[]): Promise<void> {
-  return deleteManyDocuments(COLLECTION, ids);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/transport/plans/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }

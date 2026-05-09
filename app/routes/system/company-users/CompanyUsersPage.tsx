@@ -74,7 +74,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     const hasUserId = Boolean(m.userId?.trim());
     const hasUserValue = Boolean(m.user?.trim() || m.userEmail?.trim() || m.userDisplayName?.trim());
     const hasUserIdentity = hasUserId && hasUserValue;
-    const hasRoleNames = (m.roleIds?.length ?? 0) === 0 || (m.roleNames?.length ?? 0) > 0;
+    const hasRoleNames = (m.webRoleIds?.length ?? 0) === 0 || (m.webRoleNames?.length ?? 0) > 0;
     return !hasUserIdentity || !hasRoleNames;
   });
 
@@ -92,7 +92,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
         profileByEmail.get(currentEmail) ||
         profileById.get(m.userId);
 
-      const computedRoleNames = m.roleIds
+      const computedRoleNames = m.webRoleIds
         .map((roleId) => roleById.get(roleId)?.name || roleId)
         .map((name) => String(name).trim())
         .filter(Boolean);
@@ -115,8 +115,8 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
           m.userId ||
           undefined;
       }
-      if ((m.roleIds?.length ?? 0) > 0 && (m.roleNames?.length ?? 0) === 0) {
-        patch.roleNames = computedRoleNames;
+      if ((m.webRoleIds?.length ?? 0) > 0 && (m.webRoleNames?.length ?? 0) === 0) {
+        patch.webRoleNames = computedRoleNames;
       }
 
       if (Object.keys(patch).length > 0) {
@@ -130,7 +130,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
         userEmail: patch.userEmail ?? m.userEmail,
         userDisplayName: patch.userDisplayName ?? m.userDisplayName,
         user: patch.user ?? m.user,
-        roleNames: patch.roleNames ?? m.roleNames,
+        webRoleNames: patch.webRoleNames ?? m.webRoleNames,
       };
     });
 
@@ -145,8 +145,8 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     const email = m.userEmail?.trim() || "";
     const emailLabel = denormalizedUser || displayName || email || "Sin usuario denormalizado";
     const names =
-      m.roleNames?.filter((x) => String(x).trim().length > 0) ??
-      m.roleIds.filter((x) => String(x).trim().length > 0);
+      m.webRoleNames?.filter((x) => String(x).trim().length > 0) ??
+      m.webRoleIds.filter((x) => String(x).trim().length > 0);
     return {
       ...m,
       emailLabel,

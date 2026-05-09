@@ -11,9 +11,9 @@ export type CompanyUserRecord = {
   usersDocId?: string;
   userEmail?: string;
   userDisplayName?: string;
-  roleIds: string[];
+  webRoleIds: string[];
   /** Denormalizado desde `roles.name` para evitar joins en la grilla. */
-  roleNames?: string[];
+  webRoleNames?: string[];
   status: "active" | "inactive";
 };
 

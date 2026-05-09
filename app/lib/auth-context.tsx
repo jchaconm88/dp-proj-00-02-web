@@ -15,8 +15,8 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { auth } from "./firebase";
+import { webFetch } from "~/lib/backend-client";
 
 export type UserProfile = {
   /** UID de Firebase Auth (sesión actual). */
@@ -51,12 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensurePreauthorized = useCallback(async (u: User) => {
-    const byUid = await getDoc(doc(db, PROFILES_COLLECTION, u.uid));
-    if (byUid.exists()) return;
-    throw new Error("Acceso restringido: tu usuario debe ser creado desde Admin.");
-  }, []);
-
   const loadProfile = useCallback(async (u: User) => {
     const authUid = u.uid;
     if (import.meta.env.DEV) {
@@ -64,27 +58,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.info("[auth] loadProfile start", { uid: authUid, email: u.email ?? "" });
     }
 
-    // Lookup directo por authUid (sin fallback por email)
-    const snap = await getDoc(doc(db, PROFILES_COLLECTION, authUid));
-
-    if (snap.exists()) {
-      const d = snap.data();
+    try {
+      const d = await webFetch<UserProfile>("/me");
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
-        console.info("[auth] profile found", { usersDocId: snap.id });
+        console.info("[auth] profile loaded (backend)", { usersDocId: d.usersDocId });
       }
-
-      setProfile({
-        authUid,
-        usersDocId: snap.id,
-        email: d.email ?? u.email ?? "",
-        displayName: d.displayName ?? "",
-        roleIds: d.roleIds ?? [],
-      });
-    } else {
+      setProfile(d);
+    } catch (e) {
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
-        console.warn("[auth] profile not found for session", { uid: authUid, email: u.email ?? "" });
+        console.warn("[auth] profile not available (backend)", { uid: authUid, error: e instanceof Error ? e.message : e });
       }
       setProfile(null);
     }
@@ -137,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider();
     try {
       const { user: u } = await signInWithPopup(auth, provider);
-      await ensurePreauthorized(u);
       await loadProfile(u);
     } catch (err) {
       // Si el usuario no está preautorizado, evitamos que quede una sesión activa.
@@ -153,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw err;
     }
-  }, [ensurePreauthorized, loadProfile]);
+  }, [loadProfile]);
 
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);

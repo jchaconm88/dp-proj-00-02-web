@@ -134,7 +134,7 @@ export default function CompanyUserDialog({
     setError(null);
     if (companyUser) {
       setSelectedUserDocId(companyUser.usersDocId ?? "");
-      setRoleIds(companyUser.roleIds ?? []);
+      setRoleIds(companyUser.webRoleIds ?? []);
       setStatus(companyUser.status);
       return;
     }
@@ -276,8 +276,8 @@ export default function CompanyUserDialog({
         usersDocId: auth.usersDocId,
         userEmail: auth.userEmail,
         userDisplayName: auth.userDisplayName,
-        roleIds: normalizedRoleIds,
-        roleNames: normalizedRoleIds
+        webRoleIds: normalizedRoleIds,
+        webRoleNames: normalizedRoleIds
           .map((id) => roleNameById.get(id) || id)
           .map((name) => String(name).trim())
           .filter(Boolean),

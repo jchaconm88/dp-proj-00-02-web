@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import {
   getContracts,
-  deleteContracts,
+  deleteContract,
   type ContractRecord,
   type ContractStatus,
   type BillingCycle,
@@ -11,6 +11,7 @@ import type { Route } from "./+types/TransportContractsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
 import { CONTRACT_STATUS, BILLING_CYCLE, CURRENCY } from "~/constants/status-options";
+import { getAuthUser } from "~/lib/get-auth-user";
 import { moduleTableDef } from "~/data/system-modules";
 import TransportContractDialog from "./TransportContractDialog";
 
@@ -26,6 +27,7 @@ type ContractRow = ContractRecord & { validityStr?: string };
 const TABLE_DEF = moduleTableDef("transport-contract", { currency: CURRENCY, billingCycle: BILLING_CYCLE, status: CONTRACT_STATUS });
 
 export async function clientLoader() {
+  await getAuthUser();
   const { items } = await getContracts();
   const rows = items.map((c) => ({
     ...c,
@@ -67,7 +69,7 @@ export default function TransportContractsPage({ loaderData }: Route.ComponentPr
     setSaving(true);
     setError(null);
     try {
-      await deleteContracts(selected.map((r) => r.id));
+      await Promise.all(selected.map((r) => deleteContract(r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

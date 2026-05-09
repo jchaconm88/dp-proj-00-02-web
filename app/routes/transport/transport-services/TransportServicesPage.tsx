@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import {
     getTransportServices,
-    deleteTransportServices,
+    deleteTransportService,
     type TransportServiceRecord,
     type ServiceTypeCategory,
     type CalculationType,
@@ -12,6 +12,7 @@ import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { SERVICE_TYPE_CATEGORY, CALCULATION_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
+import { getAuthUser } from "~/lib/get-auth-user";
 import TransportServiceDialog from "./TransportServiceDialog";
 
 export function meta({ }: Route.MetaArgs) {
@@ -24,6 +25,7 @@ export function meta({ }: Route.MetaArgs) {
 const TABLE_DEF = moduleTableDef("transport-service", { category: SERVICE_TYPE_CATEGORY, calculationType: CALCULATION_TYPE });
 
 export async function clientLoader() {
+    await getAuthUser();
     const { items } = await getTransportServices();
     return { items };
 }
@@ -61,7 +63,7 @@ export default function TransportServicesPage({ loaderData }: Route.ComponentPro
         setSaving(true);
         setError(null);
         try {
-            await deleteTransportServices(selected.map((r) => r.id));
+            await Promise.all(selected.map((r) => deleteTransportService(r.id)));
             tableRef.current?.clearSelectedRows();
             revalidator.revalidate();
         } catch (err) {

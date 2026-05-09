@@ -5,7 +5,7 @@ import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
 import {
   getChargeTypes,
-  deleteChargeTypes,
+  deleteChargeType,
   type ChargeTypeRecord,
 } from "~/features/transport/charge-types";
 import {
@@ -65,7 +65,7 @@ export default function ChargeTypesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      await deleteChargeTypes(selected.map((r) => r.id));
+      await Promise.all(selected.map((r) => deleteChargeType(r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

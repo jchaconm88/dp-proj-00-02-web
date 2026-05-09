@@ -38,7 +38,7 @@ import {
   defaultPivotFormState,
   formValuesFromDefinition,
   NOTIFY_EMAIL_TEMPLATE_MAX_LEN,
-  previewReportPivotCallable,
+  previewReportPivot,
   updateReportDefinition,
 } from "~/features/reports/reports.service";
 import NotifyEmailBodyEditor from "./NotifyEmailBodyEditor";
@@ -234,7 +234,7 @@ export default function ReportDefinitionDialog({
       "Vista previa (solo resumen pivot): usa la definición guardada en el servidor. Guardá cambios antes de previsualizar."
     );
     try {
-      const r = await previewReportPivotCallable({
+      const r = await previewReportPivot({
         reportDefinitionId: editing.id,
         params: { dateFrom: df, dateTo: dt },
       });

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { getAuthUser } from "~/lib/get-auth-user";
 import {
   getSettlementById,
   getSettlementItems,
@@ -80,6 +81,7 @@ const FOOTER: DpTableFooterTotals = {
 };
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const settlementId = (params?.id ?? "") as string;
   if (!settlementId) throw new Error("ID de liquidación no encontrado");
   const settlement = await getSettlementById(settlementId);

@@ -5,7 +5,6 @@ import {
   getTrips,
   getTripsByFilters,
   deleteTrip,
-  deleteTrips,
   getTripsCascadeDeleteTotals,
   updateTripsStatus,
   type TripCascadeDeleteCounts,
@@ -13,6 +12,7 @@ import {
   type TripQueryFilters,
   type TripStatus,
 } from "~/features/transport/trips";
+import { getAuthUser } from "~/lib/get-auth-user";
 import { getVehicles } from "~/features/transport/vehicles";
 import { getTransportServices } from "~/features/transport/transport-services";
 import type { Route } from "./+types/TripsPage";
@@ -88,6 +88,7 @@ const TABLE_DEF = moduleTableDef("trip", { status: TRIP_STATUS }).map((col) => {
 });
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const requestArg = (args as Route.ClientLoaderArgs & { request?: Request }).request;
   const url = requestArg ? new URL(requestArg.url) : null;
   const params = url?.searchParams;
@@ -322,11 +323,7 @@ export default function TripsPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteTrip(ids[0]);
-      } else {
-        await deleteTrips(ids);
-      }
+      await Promise.all(ids.map((id) => deleteTrip(id)));
       tableRef.current?.clearSelectedRows();
       deleteImpactRequestId.current++;
       setPendingDeleteIds(null);

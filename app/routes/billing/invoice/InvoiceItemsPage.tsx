@@ -1,13 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch, useLocation } from "react-router";
 import { Button } from "primereact/button";
-import {
-  getInvoiceById,
-  getInvoiceItems,
-  deleteInvoiceItem,
-  deleteInvoiceItems,
-  type InvoiceItemRecord,
-} from "~/features/billing/invoice";
+import { getInvoiceById, getInvoiceItems, deleteInvoiceItem, deleteInvoiceItems, type InvoiceItemRecord } from "~/features/billing/invoice";
+import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/InvoiceItemsPage";
 import {
   DpContentInfo,
@@ -43,6 +38,7 @@ type ItemRow = InvoiceItemRecord & {
 const TABLE_DEF = moduleTableDef("invoice-item", { itemType: INVOICE_ITEM_TYPE });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const invoiceId = (params?.id ?? "") as string;
   if (!invoiceId) throw new Error("ID de factura no encontrado");
   const [invoice, { items }] = await Promise.all([

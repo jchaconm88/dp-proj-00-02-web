@@ -1,9 +1,10 @@
-// Re-export from shared @jchaconm88/ui package
-export { DpTable, DpTColumn } from "@jchaconm88/ui";
+// Copia local de @jchaconm88/ui (Dp*). Sincronizar con packages/ui cuando se estabilice.
+export { default as DpTable } from "./DpTable";
+export { default as DpTColumn } from "./DpTColumn";
 export type {
   DpTableDefColumn,
   DpTableDefColumnType,
   DpTableFooterTotals,
   DpTableRef,
   DpTableRow,
-} from "@jchaconm88/ui";
+} from "./types";

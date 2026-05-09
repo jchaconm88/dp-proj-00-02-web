@@ -12,6 +12,7 @@ import {
   displayGranularityLabel,
   getReportDefinitions,
 } from "~/features/reports/reports.service";
+import { getAuthUser } from "~/lib/get-auth-user";
 import ReportDefinitionDialog from "./ReportDefinitionDialog";
 
 export function meta({}: Route.MetaArgs) {
@@ -36,6 +37,7 @@ const DEF_TABLE: DpTableDefColumn[] = [
 ];
 
 export async function clientLoader() {
+  await getAuthUser();
   const definitions = await getReportDefinitions();
   const defRows: DefRow[] = definitions.map((d) => ({
     ...d,
@@ -86,9 +88,7 @@ export default function ReportDefinitionsPage({ loaderData }: Route.ComponentPro
     setSaving(true);
     setError(null);
     try {
-      for (const r of sel) {
-        await deleteReportDefinition(r.id);
-      }
+      await Promise.all(sel.map((r) => deleteReportDefinition(r.id)));
       defTableRef.current?.clearSelectedRows();
       setDeleteConfirm(false);
       revalidator.revalidate();

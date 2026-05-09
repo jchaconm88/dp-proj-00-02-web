@@ -1,28 +1,6 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  deleteField,
-  type Timestamp,
-} from "firebase/firestore";
-import {
-  getCollectionWithMultiFilter,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-} from "~/lib/firestore.service";
-import { db } from "~/lib/firebase";
-import { callHttpsFunction } from "~/lib/functions.service";
-import {
-  requireActiveCompanyId,
-  resolveActiveAccountId,
-  documentMatchesActiveTenant,
-} from "~/lib/tenant";
+import { type Timestamp } from "firebase/firestore";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   PivotMeasureAgg,
   PivotOutputKind,
@@ -76,9 +54,6 @@ import type {
   PreviewReportPivotRequest,
   PreviewReportPivotResponse,
 } from "./reports-callables.types";
-
-const COL_DEF = "report-definitions";
-const COL_RUN = "report-runs";
 
 function periodLabelFromRange(dateFrom: string, dateTo: string): string {
   const a = String(dateFrom).slice(0, 7).replace(/-/g, "");
@@ -731,79 +706,31 @@ function toMillisLike(v: unknown): number {
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-function sortRunsDescByCreated(rows: ReportRunRecord[]): ReportRunRecord[] {
-  return [...rows].sort((a, b) => toMillisLike(b.createdAt) - toMillisLike(a.createdAt));
-}
-
-function shouldUseLegacyReportQueryFallback(error: unknown): boolean {
-  const code = String((error as { code?: unknown })?.code ?? "");
-  const message = String((error as { message?: unknown })?.message ?? "").toLowerCase();
-  return (
-    code.includes("failed-precondition")
-    || message.includes("index")
-    || message.includes("requires an index")
-    || message.includes("query requires")
-  );
-}
-
 export async function getReportDefinitions(): Promise<ReportDefinitionRecord[]> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  try {
-    const items = await getCollectionWithMultiFilter<Record<string, unknown>>(COL_DEF, [
-      where("companyId", "==", companyId),
-      where("accountId", "==", accountId),
-    ]);
-    return items.map((d) => toDefinitionRecord(d as { id: string } & Record<string, unknown>));
-  } catch (error) {
-    // Fallback transicional: mientras se terminan índices/backfill de accountId.
-    if (!shouldUseLegacyReportQueryFallback(error)) throw error;
-    const legacy = await getCollectionWithMultiFilter<Record<string, unknown>>(COL_DEF, [
-      where("companyId", "==", companyId),
-    ]);
-    return legacy
-      .filter((d) => documentMatchesActiveTenant(d, companyId, accountId))
-      .map((d) => toDefinitionRecord(d as { id: string } & Record<string, unknown>));
-  }
+  const raw = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/reports/definitions?companyId=${encodeURIComponent(companyId)}`
+  );
+  return raw.items.map((d) => toDefinitionRecord(d as { id: string } & Record<string, unknown>));
 }
 
 export async function getReportDefinitionById(id: string): Promise<ReportDefinitionRecord | null> {
   const sid = String(id ?? "").trim();
   if (!sid) return null;
-  const snap = await getDoc(doc(db, COL_DEF, sid));
-  if (!snap.exists()) return null;
-  const row = { id: snap.id, ...snap.data() } as Record<string, unknown>;
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  if (!documentMatchesActiveTenant(row, companyId, accountId)) return null;
-  return toDefinitionRecord(row as { id: string } & Record<string, unknown>);
+  const raw = await webFetch<Record<string, unknown> | null>(
+    `/reports/definitions/${encodeURIComponent(sid)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  if (!raw) return null;
+  return toDefinitionRecord(raw as { id: string } & Record<string, unknown>);
 }
 
 export async function getReportRuns(max = 80): Promise<ReportRunRecord[]> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  try {
-    const q = query(
-      collection(db, COL_RUN),
-      where("companyId", "==", companyId),
-      where("accountId", "==", accountId),
-      orderBy("createdAt", "desc"),
-      limit(max)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) =>
-      toRunRecord({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>)
-    );
-  } catch (error) {
-    if (!shouldUseLegacyReportQueryFallback(error)) throw error;
-    const legacy = await getCollectionWithMultiFilter<Record<string, unknown>>(COL_RUN, [
-      where("companyId", "==", companyId),
-    ]);
-    const filtered = legacy
-      .filter((d) => documentMatchesActiveTenant(d, companyId, accountId))
-      .map((d) => toRunRecord(d as { id: string } & Record<string, unknown>));
-    return sortRunsDescByCreated(filtered).slice(0, max);
-  }
+  const raw = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/reports/runs?companyId=${encodeURIComponent(companyId)}&limit=${encodeURIComponent(String(max))}`
+  );
+  return raw.items.map((d) => toRunRecord(d as { id: string } & Record<string, unknown>));
 }
 
 export async function getReportRunsByDefinitionId(
@@ -813,31 +740,10 @@ export async function getReportRunsByDefinitionId(
   const defId = String(reportDefinitionId ?? "").trim();
   if (!defId) return [];
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  try {
-    const q = query(
-      collection(db, COL_RUN),
-      where("companyId", "==", companyId),
-      where("accountId", "==", accountId),
-      where("reportDefinitionId", "==", defId),
-      orderBy("createdAt", "desc"),
-      limit(max)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) =>
-      toRunRecord({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>)
-    );
-  } catch (error) {
-    if (!shouldUseLegacyReportQueryFallback(error)) throw error;
-    const legacy = await getCollectionWithMultiFilter<Record<string, unknown>>(COL_RUN, [
-      where("companyId", "==", companyId),
-    ]);
-    const filtered = legacy
-      .filter((d) => String(d.reportDefinitionId ?? "") === defId)
-      .filter((d) => documentMatchesActiveTenant(d, companyId, accountId))
-      .map((d) => toRunRecord(d as { id: string } & Record<string, unknown>));
-    return sortRunsDescByCreated(filtered).slice(0, max);
-  }
+  const raw = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/reports/definitions/${encodeURIComponent(defId)}/runs?companyId=${encodeURIComponent(companyId)}&limit=${encodeURIComponent(String(max))}`
+  );
+  return raw.items.map((d) => toRunRecord(d as { id: string } & Record<string, unknown>));
 }
 
 export function formValuesFromDefinition(row: ReportDefinitionRecord | null): ReportDefinitionFormValues {
@@ -1082,65 +988,67 @@ export async function addReportDefinition(values: ReportDefinitionFormValues): P
   const err = validateTripsColumnsForFormValues(values);
   if (err) throw new Error(err);
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COL_DEF, {
-    companyId,
-    accountId,
-    ...buildReportDefinitionPersistPayload(values),
+  const payload = buildReportDefinitionPersistPayload(values);
+  const res = await webFetch<{ id?: string }>("/reports/definitions", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...payload }),
   });
+  return String(res?.id ?? "");
 }
 
 export async function updateReportDefinition(id: string, values: ReportDefinitionFormValues): Promise<void> {
   const err = validateTripsColumnsForFormValues(values);
   if (err) throw new Error(err);
+  const companyId = requireActiveCompanyId();
   const payload = buildReportDefinitionPersistPayload(values);
   const notifyEmails = parseNotifyEmailsText(values.notifyEmailsText);
   const subjT = values.notifyEmailSubjectTemplate.trim().slice(0, NOTIFY_EMAIL_TEMPLATE_MAX_LEN);
-  const bodyHtmlT = normalizeNotifyEmailBodyHtml(values.notifyEmailBodyHtml).slice(
-    0,
-    NOTIFY_EMAIL_TEMPLATE_MAX_LEN
-  );
-  await updateDocument(COL_DEF, id, {
-    ...payload,
-    columnLayout: deleteField(),
-    header: deleteField(),
-    sourceFilters: deleteField(),
-    notifyEmails: notifyEmails.length > 0 ? notifyEmails : deleteField(),
-    notifyEmailSubjectTemplate: subjT ? subjT : deleteField(),
-    notifyEmailBodyHtml: bodyHtmlT ? bodyHtmlT : deleteField(),
+  const bodyHtmlT = normalizeNotifyEmailBodyHtml(values.notifyEmailBodyHtml).slice(0, NOTIFY_EMAIL_TEMPLATE_MAX_LEN);
+  await webFetch(`/reports/definitions/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      companyId,
+      ...payload,
+      notifyEmails: notifyEmails.length > 0 ? notifyEmails : null,
+      notifyEmailSubjectTemplate: subjT || null,
+      notifyEmailBodyHtml: bodyHtmlT || null,
+    }),
   });
 }
 
 export async function deleteReportDefinition(id: string): Promise<void> {
-  await deleteDocument(COL_DEF, id);
-}
-
-export async function createReportRunCallable(body: CreateReportRunRequest): Promise<CreateReportRunResponse> {
   const companyId = requireActiveCompanyId();
-  return callHttpsFunction<CreateReportRunRequest, CreateReportRunResponse>(
-    "createReportRun",
-    { ...body, companyId },
-    {
-    errorFallback: "No se pudo encolar el reporte.",
-    }
-  );
+  await webFetch(`/reports/definitions/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }
 
-export async function getReportRunDownloadUrlCallable(
+export async function createReportRun(body: { reportDefinitionId: string; params: CreateReportRunRequest["params"] }): Promise<CreateReportRunResponse> {
+  const companyId = requireActiveCompanyId();
+  const res = await webFetch<{ id?: string; status?: string }>("/reports/run/create", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...body }),
+  });
+  return { reportRunId: String(res?.id ?? "") };
+}
+
+export async function getReportRunDownloadUrl(
   body: GetReportRunDownloadUrlRequest
 ): Promise<GetReportRunDownloadUrlResponse> {
-  return callHttpsFunction<GetReportRunDownloadUrlRequest, GetReportRunDownloadUrlResponse>(
-    "getReportRunDownloadUrl",
-    body,
-    { errorFallback: "No se pudo obtener el enlace de descarga." }
+  const companyId = requireActiveCompanyId();
+  return webFetch<GetReportRunDownloadUrlResponse>(
+    `/reports/run/${encodeURIComponent(body.reportRunId)}/download-url`,
+    { method: "POST", body: JSON.stringify({ companyId }) }
   );
 }
 
-export async function previewReportPivotCallable(
+export async function previewReportPivot(
   body: PreviewReportPivotRequest
 ): Promise<PreviewReportPivotResponse> {
-  return callHttpsFunction<PreviewReportPivotRequest, PreviewReportPivotResponse>("previewReportPivot", body, {
-    errorFallback: "No se pudo generar la vista previa.",
+  const companyId = requireActiveCompanyId();
+  return webFetch<PreviewReportPivotResponse>("/reports/preview", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...body }),
   });
 }
 

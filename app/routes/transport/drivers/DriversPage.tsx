@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { getAuthUser } from "~/lib/get-auth-user";
 import {
     getDrivers,
-    deleteDrivers,
+    deleteDriver,
     type DriverRecord,
 } from "~/features/transport/drivers";
 import type { Route } from "./+types/DriversPage";
@@ -22,6 +23,7 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export async function clientLoader() {
+    await getAuthUser();
     const { items } = await getDrivers();
     return { items };
 }
@@ -63,7 +65,7 @@ export default function DriversPage({ loaderData }: Route.ComponentProps) {
         setSaving(true);
         setError(null);
         try {
-            await deleteDrivers(selected.map((r) => r.id));
+            await Promise.all(selected.map((r) => deleteDriver(r.id)));
             tableRef.current?.clearSelectedRows();
             revalidator.revalidate();
         } catch (err) {

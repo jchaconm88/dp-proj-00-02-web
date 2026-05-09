@@ -2,7 +2,7 @@
 
 Aplicación de administración tipo back-office construida con **React Router v7** (SPA), **Firebase** (Auth + Firestore + Storage) y **PrimeReact**. Cubre sistema multiempresa, maestros, RR. HH., logística, transporte (incl. viajes con filtros en URL), reportes y más, con layout responsivo, temas claro/oscuro y barra de progreso global.
 
-🌐 **Demo en vivo:** [https://layout-admin.web.app](https://layout-admin.web.app)
+🌐 **Demo / producción:** la URL de Hosting la define el proyecto Firebase de cada ambiente (outputs de `dp-proj-00-02-infra` + despliegue CI).
 
 ---
 
@@ -140,6 +140,18 @@ npm run dev
 
 ## Despliegue en Firebase Hosting
 
+En **CI** (`.github/workflows/deploy.yml`) el target es el **GitHub Environment** `dev` / `qa` / `prd`. Variables / secretos requeridos:
+
+| Nombre | Tipo | Uso |
+|---|---|---|
+| `GCP_PROJECT_ID` | Variable | `project_id` del ambiente (output `dp-proj-00-02-infra`). |
+| `WEB_BACKEND_BASE_URL` | Variable | URL absoluta del backend del ambiente, p.ej. `https://<servicio>.a.run.app/web`. Se inyecta como `VITE_WEB_BACKEND_BASE_URL` en el build. |
+| `FIREBASE_SERVICE_ACCOUNT` | Secret | JSON de la SA `github-deploy-web@…` (creada por infra). |
+| `VITE_FIREBASE_*` | Secrets | `API_KEY`, `AUTH_DOMAIN`, `PROJECT_ID`, `STORAGE_BUCKET`, `MESSAGING_SENDER_ID`, `APP_ID` del proyecto Firebase del ambiente. |
+| `DEPLOY_ENVIRONMENT` | Variable repo (opcional) | Entorno por defecto para `push` a `main` (p.ej. `dev`). |
+
+> Web usa el **site por defecto** de Firebase Hosting (no requiere `target` ni `FIREBASE_HOSTING_SITE_ID_*`); ese site secundario lo usa **admin**.
+
 ### Primer despliegue
 
 ```bash
@@ -158,8 +170,7 @@ npm run deploy
 
 ### URL de producción
 
-- **https://layout-admin.web.app**
-- **https://layout-admin.firebaseapp.com**
+- `https://<project-id>.web.app` y `https://<project-id>.firebaseapp.com` (según el `project_id` del Environment).
 
 ### Configuración de Firebase Hosting (`firebase.json`)
 

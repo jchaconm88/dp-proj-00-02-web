@@ -146,11 +146,11 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     return companyUsers.filter((x) => x.companyId === activeCompanyId && x.status === "active");
   }, [companyUsers, activeCompanyId]);
   const companyUserRoleIds = useMemo(
-    () => (activeCompanyUserRows[0]?.roleIds ?? []).map((x) => String(x)),
+    () => (activeCompanyUserRows[0]?.webRoleIds ?? []).map((x) => String(x)),
     [activeCompanyUserRows]
   );
   const companyUserRoleNames = useMemo(
-    () => (activeCompanyUserRows[0]?.roleNames ?? []).map((x) => String(x)),
+    () => (activeCompanyUserRows[0]?.webRoleNames ?? []).map((x) => String(x)),
     [activeCompanyUserRows]
   );
 

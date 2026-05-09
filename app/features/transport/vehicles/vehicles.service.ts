@@ -1,67 +1,60 @@
-import { where } from "firebase/firestore";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-  getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
-import { parseStatus, VEHICLE_STATUS } from "~/constants/status-options";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { VehicleRecord, VehicleAddInput, VehicleEditInput, VehicleStatus } from "./vehicles.types";
 
-const COLLECTION = "vehicles";
-
-function toVehicleRecord(doc: { id: string } & Record<string, unknown>): VehicleRecord {
+function toRecord(data: Record<string, unknown> & { id?: string }): VehicleRecord {
   return {
-    id: doc.id,
-    plate: String(doc.plate ?? ""),
-    type: String(doc.type ?? ""),
-    brand: String(doc.brand ?? ""),
-    model: String(doc.model ?? ""),
-    capacityKg: Number(doc.capacityKg) || 0,
-    status: parseStatus(doc.status, VEHICLE_STATUS) as VehicleStatus,
-    currentTripId: String(doc.currentTripId ?? ""),
-    active: doc.active === true,
-    createdAt: doc.createdAt as string | undefined,
-    updatedAt: doc.updatedAt as string | undefined,
+    id: String(data.id ?? ""),
+    plate: String(data.plate ?? ""),
+    type: String(data.type ?? ""),
+    brand: String(data.brand ?? ""),
+    model: String(data.model ?? ""),
+    capacityKg: Number(data.capacityKg) || 0,
+    status: (data.status as VehicleStatus) ?? "available",
+    currentTripId: String(data.currentTripId ?? ""),
+    active: data.active === true,
+    createdAt: typeof data.createdAt === "string" ? data.createdAt : undefined,
+    updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : undefined,
   };
 }
 
 export async function getVehicles(): Promise<{ items: VehicleRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  return { items: list.map(toVehicleRecord) };
+  const res = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/transport/vehicles?companyId=${encodeURIComponent(companyId)}`
+  );
+  return { items: (res.items ?? []).map(toRecord) };
 }
 
 export async function getVehicleById(id: string): Promise<VehicleRecord | null> {
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return d ? toVehicleRecord(d) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/vehicles/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toRecord(data) : null;
 }
 
 export async function addVehicle(data: VehicleAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
-    companyId,
-    accountId,
-    plate: data.plate?.trim(),
-    type: data.type?.trim(),
-    brand: data.brand?.trim(),
-    model: data.model?.trim(),
-    capacityKg: Number(data.capacityKg) || 0,
-    status: data.status,
-    currentTripId: data.currentTripId?.trim() || "",
-    active: data.active,
+  const res = await webFetch<{ id: string }>("/transport/vehicles", {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      plate: data.plate?.trim() ?? "",
+      type: data.type?.trim() ?? "",
+      brand: data.brand?.trim() ?? "",
+      model: data.model?.trim() ?? "",
+      capacityKg: Number(data.capacityKg) || 0,
+      status: data.status ?? "available",
+      currentTripId: data.currentTripId?.trim() ?? "",
+      active: data.active !== false,
+    }),
   });
+  return res.id;
 }
 
 export async function updateVehicle(id: string, data: VehicleEditInput): Promise<void> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {};
   if (data.plate !== undefined) payload.plate = data.plate?.trim();
   if (data.type !== undefined) payload.type = data.type?.trim();
@@ -71,13 +64,15 @@ export async function updateVehicle(id: string, data: VehicleEditInput): Promise
   if (data.status !== undefined) payload.status = data.status;
   if (data.currentTripId !== undefined) payload.currentTripId = data.currentTripId?.trim() || "";
   if (data.active !== undefined) payload.active = data.active;
-  return updateDocument(COLLECTION, id, payload);
+  await webFetch(`/transport/vehicles/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...payload }),
+  });
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
-  return deleteDocument(COLLECTION, id);
-}
-
-export async function deleteVehicles(ids: string[]): Promise<void> {
-  return deleteManyDocuments(COLLECTION, ids);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/transport/vehicles/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }

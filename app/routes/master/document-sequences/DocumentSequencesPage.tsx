@@ -67,9 +67,7 @@ export default function DocumentSequencesPage({ loaderData }: Route.ComponentPro
     setSaving(true);
     setError(null);
     try {
-      for (const id of ids) {
-        await deleteDocumentSequence(id);
-      }
+      await Promise.all(ids.map((id) => deleteDocumentSequence(id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

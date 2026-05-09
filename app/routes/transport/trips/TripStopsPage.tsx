@@ -7,6 +7,7 @@ import {
   type TripRecord,
   type TripStopRecord,
 } from "~/features/transport/trips";
+import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripStopsPage";
 import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
@@ -27,6 +28,7 @@ export function meta({ data }: Route.MetaArgs) {
 const TABLE_DEF = moduleTableDef("trip-stop", { type: STOP_TYPE, status: STOP_STATUS });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const tripId = (params?.id ?? "") as string;
   if (!tripId) throw new Error("ID de viaje no encontrado");
   const trip = await getTripById(tripId);
@@ -79,9 +81,7 @@ export default function TripStopsPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      for (const id of ids) {
-        await deleteTripStop(tripId, id);
-      }
+      await Promise.all(ids.map((id) => deleteTripStop(tripId, id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteStopIds(null);
       revalidator.revalidate();

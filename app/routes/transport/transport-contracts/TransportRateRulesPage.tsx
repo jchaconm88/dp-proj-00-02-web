@@ -3,7 +3,7 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import {
   getContract,
   getRateRules,
-  deleteRateRules,
+  deleteRateRule,
   type ContractRecord,
   type RateRuleRecord,
 } from "~/features/transport/transport-contracts";
@@ -12,6 +12,7 @@ import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
 import { CALCULATION_TYPE, RATE_RULE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
+import { getAuthUser } from "~/lib/get-auth-user";
 import RateRuleDialog from "./TransportRateRuleDialog";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -27,6 +28,7 @@ type RateRuleRow = RateRuleRecord & { validityStr?: string };
 const TABLE_DEF = moduleTableDef("transport-rate-rule", { ruleType: RATE_RULE_TYPE, calculationType: CALCULATION_TYPE });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const contractId = params.id as string;
   const contract = await getContract(contractId);
   if (!contract) {
@@ -76,10 +78,7 @@ export default function RateRulesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      await deleteRateRules(
-        contractId,
-        selected.map((r) => r.id)
-      );
+      await Promise.all(selected.map((r) => deleteRateRule(contractId, r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

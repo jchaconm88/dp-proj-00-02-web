@@ -3,7 +3,6 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import {
   getOrders,
   deleteOrder,
-  deleteOrders,
   type OrderRecord,
 } from "~/features/logistic/orders";
 import type { Route } from "./+types/OrdersPage";
@@ -76,11 +75,7 @@ export default function OrdersPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteOrder(ids[0]);
-      } else {
-        await deleteOrders(ids);
-      }
+      await Promise.all(ids.map((id) => deleteOrder(id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

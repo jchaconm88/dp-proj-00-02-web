@@ -1,12 +1,5 @@
-import { where } from "firebase/firestore";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-  getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   CHARGE_TYPE_CATEGORY,
   CHARGE_TYPE_KIND,
@@ -22,36 +15,33 @@ import type {
   ChargeTypeSource,
   ChargeTypeCategory,
 } from "./charge-types.types";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 
-const COLLECTION = "charge-types";
-
-function toRecord(doc: { id: string } & Record<string, unknown>): ChargeTypeRecord {
+function toRecord(data: Record<string, unknown> & { id?: string }): ChargeTypeRecord {
   return {
-    id: doc.id,
-    code: String(doc.code ?? ""),
-    type: parseStatus(doc.type, CHARGE_TYPE_KIND) as ChargeTypeKind,
-    source: parseStatus(doc.source, CHARGE_TYPE_SOURCE) as ChargeTypeSource,
-    name: String(doc.name ?? ""),
-    category: parseStatus(doc.category, CHARGE_TYPE_CATEGORY, "extra") as ChargeTypeCategory,
-    active: doc.active !== false,
+    id: String(data.id ?? ""),
+    code: String(data.code ?? ""),
+    type: parseStatus(data.type, CHARGE_TYPE_KIND) as ChargeTypeKind,
+    source: parseStatus(data.source, CHARGE_TYPE_SOURCE) as ChargeTypeSource,
+    name: String(data.name ?? ""),
+    category: parseStatus(data.category, CHARGE_TYPE_CATEGORY, "extra") as ChargeTypeCategory,
+    active: data.active !== false,
   };
 }
 
 export async function getChargeType(id: string): Promise<ChargeTypeRecord | null> {
-  const doc = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return doc ? toRecord(doc) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/charge-types/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toRecord(data) : null;
 }
 
 export async function getChargeTypes(): Promise<{ items: ChargeTypeRecord[]; total: number }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  const items = list.map(toRecord);
-  return { items, total: items.length };
+  const res = await webFetch<{ items: ChargeTypeRecord[]; total: number }>(
+    `/transport/charge-types?companyId=${encodeURIComponent(companyId)}`
+  );
+  return { items: res.items ?? [], total: res.total ?? 0 };
 }
 
 const TRIP_ASSIGNMENT_CHARGE_SOURCE_KEYS = Object.keys(
@@ -84,20 +74,23 @@ export async function getChargeTypesForTripCharges(): Promise<ChargeTypeRecord[]
 
 export async function addChargeType(data: ChargeTypeAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
-    companyId,
-    accountId,
-    code: data.code.trim(),
-    type: data.type,
-    source: data.source,
-    name: data.name.trim(),
-    category: data.category,
-    active: data.active !== false,
+  const res = await webFetch<{ id: string }>("/transport/charge-types", {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      code: data.code.trim(),
+      type: data.type,
+      source: data.source,
+      name: data.name.trim(),
+      category: data.category,
+      active: data.active !== false,
+    }),
   });
+  return res.id;
 }
 
 export async function updateChargeType(id: string, data: ChargeTypeEditInput): Promise<void> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {};
   if (data.code !== undefined) payload.code = String(data.code).trim();
   if (data.type !== undefined) payload.type = data.type;
@@ -105,14 +98,15 @@ export async function updateChargeType(id: string, data: ChargeTypeEditInput): P
   if (data.name !== undefined) payload.name = String(data.name).trim();
   if (data.category !== undefined) payload.category = data.category;
   if (data.active !== undefined) payload.active = !!data.active;
-  await updateDocument(COLLECTION, id, payload);
+  await webFetch(`/transport/charge-types/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...payload }),
+  });
 }
 
 export async function deleteChargeType(id: string): Promise<void> {
-  return deleteDocument(COLLECTION, id);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/transport/charge-types/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }
-
-export async function deleteChargeTypes(ids: string[]): Promise<void> {
-  return deleteManyDocuments(COLLECTION, ids);
-}
-

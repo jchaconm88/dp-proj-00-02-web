@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { getAuthUser } from "~/lib/get-auth-user";
 import {
   getRoutes,
   deleteRoute,
-  deleteRoutes,
   type RouteRecord,
 } from "~/features/transport/routes";
 import type { Route } from "./+types/RoutesPage";
@@ -25,6 +25,7 @@ type RouteRow = RouteRecord & { planCodeDisplay?: string };
 const TABLE_DEF = moduleTableDef("route");
 
 export async function clientLoader() {
+  await getAuthUser();
   const { items } = await getRoutes();
   return {
     items: items.map((r) => ({
@@ -74,11 +75,7 @@ export default function RoutesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteRoute(ids[0]);
-      } else {
-        await deleteRoutes(ids);
-      }
+      await Promise.all(ids.map(deleteRoute));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

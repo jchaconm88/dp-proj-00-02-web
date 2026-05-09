@@ -1,14 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { useAuth } from "./auth-context";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useCompany } from "./company-context";
-import { callHttpsFunction } from "~/lib/functions.service";
 import { getAccountById } from "~/features/system/accounts";
 import { getSubscriptionByAccountId } from "~/features/system/subscriptions";
 
@@ -22,7 +13,6 @@ type AccountContextValue = {
 const AccountContext = createContext<AccountContextValue | null>(null);
 
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
   const { activeCompanyId, companies } = useCompany();
   const [accountName, setAccountName] = useState<string | null>(null);
   const [subscriptionSummary, setSubscriptionSummary] = useState<string | null>(null);
@@ -34,30 +24,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const aid = c?.accountId?.trim();
     return aid || activeCompanyId;
   }, [activeCompanyId, companies]);
-
-  useEffect(() => {
-    if (!user?.uid || !activeCompanyId) return;
-    void (async () => {
-      // eslint-disable-next-line no-console
-      console.info("[account] refreshing tenant claims", { uid: user.uid, companyId: activeCompanyId });
-      try {
-        await callHttpsFunction<{ companyId: string }, { ok: boolean; accountId: string }>(
-          "refreshTenantClaims",
-          { companyId: activeCompanyId }
-        );
-        // eslint-disable-next-line no-console
-        console.info("[account] refreshTenantClaims resolved, refreshing token");
-        await user.getIdToken(true);
-        // eslint-disable-next-line no-console
-        console.info("[account] token refreshed");
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("[account] refreshTenantClaims failed (claims optional)", {
-          error: e instanceof Error ? e.message : e,
-        });
-      }
-    })();
-  }, [user?.uid, activeCompanyId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +69,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
 export function useAccount() {
   const ctx = useContext(AccountContext);
-  if (!ctx) throw new Error("useAccount must be used within AccountProvider");
+  if (!ctx) throw new Error("useAccount must be within AccountProvider");
   return ctx;
 }

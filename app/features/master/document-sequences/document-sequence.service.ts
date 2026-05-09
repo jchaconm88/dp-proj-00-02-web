@@ -1,15 +1,5 @@
-import { where } from "firebase/firestore";
-import {
-  getCollectionWithMultiFilter,
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  runTransaction,
-  getDocRef,
-} from "~/lib/firestore.service";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
-import { INVOICE_TYPE } from "~/constants/status-options";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
   DocumentSequenceRecord,
   DocumentSequenceAddInput,
@@ -17,22 +7,16 @@ import type {
   GenerateDocumentNoResult,
 } from "./document-sequence.types";
 
-const COLLECTION = "document-sequences";
-
-function toRecord(doc: { id: string } & Record<string, unknown>): DocumentSequenceRecord {
+function toRecord(data: Record<string, unknown> & { id?: string }): DocumentSequenceRecord {
   return {
-    id: doc.id,
-    sequence: String(doc.sequence ?? ""),
-    documentType: doc.documentType as DocumentSequenceRecord["documentType"],
-    currentNumber: Number(doc.currentNumber ?? 0),
-    maxNumber: Number(doc.maxNumber ?? 0),
-    active: Boolean(doc.active),
+    id: String(data.id ?? ""),
+    sequence: String(data.sequence ?? ""),
+    documentType: String(data.documentType ?? "") as DocumentSequenceRecord["documentType"],
+    currentNumber: Number(data.currentNumber ?? 0),
+    maxNumber: Number(data.maxNumber ?? 0),
+    active: Boolean(data.active),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Validations
-// ---------------------------------------------------------------------------
 
 function validateSequence(sequence: string): void {
   if (!sequence || !/^[A-Za-z0-9]+$/.test(sequence)) {
@@ -41,7 +25,8 @@ function validateSequence(sequence: string): void {
 }
 
 function validateDocumentType(documentType: string): void {
-  if (!(documentType in INVOICE_TYPE)) {
+  const valid = ["invoice", "packing-list", "dispatch-guide", "credit-note", "debit-note", "receipt"];
+  if (!valid.includes(documentType)) {
     throw new Error("El tipo de comprobante no es válido.");
   }
 }
@@ -55,59 +40,45 @@ function validateNumbers(currentNumber: number, maxNumber: number): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
 export async function getDocumentSequences(): Promise<{ items: DocumentSequenceRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  const items = list
-    .map(toRecord)
-    .sort((a, b) => {
-      const typeCompare = a.documentType.localeCompare(b.documentType);
-      if (typeCompare !== 0) return typeCompare;
-      return a.sequence.localeCompare(b.sequence);
-    });
+  const res = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/master/document-sequences?companyId=${encodeURIComponent(companyId)}`
+  );
+  const items = (res.items ?? []).map(toRecord).sort((a, b) => {
+    const typeCompare = a.documentType.localeCompare(b.documentType);
+    if (typeCompare !== 0) return typeCompare;
+    return a.sequence.localeCompare(b.sequence);
+  });
   return { items };
 }
 
 export async function getDocumentSequenceById(id: string): Promise<DocumentSequenceRecord | null> {
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return d ? toRecord(d) : null;
-}
-
-export async function getActiveSequencesByDocumentType(
-  documentType: string
-): Promise<DocumentSequenceRecord[]> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-    where("documentType", "==", documentType),
-    where("active", "==", true),
-  ]);
-  return list.map(toRecord).sort((a, b) => a.sequence.localeCompare(b.sequence));
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/master/document-sequences/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toRecord(data) : null;
 }
 
-// ---------------------------------------------------------------------------
-// CRUD
-// ---------------------------------------------------------------------------
+export async function getActiveSequencesByDocumentType(documentType: string): Promise<DocumentSequenceRecord[]> {
+  const companyId = requireActiveCompanyId();
+  const res = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/master/document-sequences?companyId=${encodeURIComponent(companyId)}&documentType=${encodeURIComponent(documentType)}&active=true`
+  );
+  return (res.items ?? []).map(toRecord).sort((a, b) => a.sequence.localeCompare(b.sequence));
+}
 
 export async function addDocumentSequence(data: DocumentSequenceAddInput): Promise<string> {
   validateSequence(data.sequence);
   validateDocumentType(data.documentType);
   validateNumbers(data.currentNumber, data.maxNumber);
-
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-
-  return addDocument(COLLECTION, { ...data, companyId, accountId });
+  const res = await webFetch<{ id: string }>("/master/document-sequences", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...data }),
+  });
+  return res.id;
 }
 
 export async function updateDocumentSequence(
@@ -117,7 +88,6 @@ export async function updateDocumentSequence(
   if (data.sequence !== undefined) validateSequence(data.sequence);
   if (data.documentType !== undefined) validateDocumentType(data.documentType);
   if (data.currentNumber !== undefined || data.maxNumber !== undefined) {
-    // Need both values to validate the range; fetch current doc if one is missing
     if (data.currentNumber !== undefined && data.maxNumber !== undefined) {
       validateNumbers(data.currentNumber, data.maxNumber);
     } else {
@@ -129,45 +99,32 @@ export async function updateDocumentSequence(
       }
     }
   }
-
-  // Uniqueness check removed — multiple active sequences per documentType are allowed
-  await updateDocument(COLLECTION, id, data);
-}
-
-export async function deleteDocumentSequence(id: string): Promise<void> {
-  await deleteDocument(COLLECTION, id);
-}
-
-// ---------------------------------------------------------------------------
-// Sequence number generation
-// ---------------------------------------------------------------------------
-
-export async function getNextDocumentNumber(sequenceId: string): Promise<number> {
-  return runTransaction(async (transaction) => {
-    const ref = getDocRef(COLLECTION, sequenceId);
-    const snap = await transaction.get(ref);
-    if (!snap.exists()) throw new Error("Secuencia no encontrada.");
-    const data = snap.data() as Record<string, unknown>;
-    const sequence = String(data.sequence ?? "");
-    const current = Number(data.currentNumber) || 0;
-    const max = Number(data.maxNumber) || 99999999;
-    const next = current + 1;
-    if (next > max) {
-      throw new Error(
-        `La secuencia ${sequence} ha alcanzado el número máximo permitido (${max}).`
-      );
-    }
-    transaction.update(ref, { currentNumber: next });
-    return next;
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/master/document-sequences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...data }),
   });
 }
 
-export async function generateDocumentNo(
-  sequenceId: string
-): Promise<GenerateDocumentNoResult> {
-  const seq = await getDocumentSequenceById(sequenceId);
-  const sequence = seq?.sequence ?? sequenceId;
-  const assignedNumber = await getNextDocumentNumber(sequenceId);
-  const documentNo = `${sequence}-${String(assignedNumber).padStart(8, "0")}`;
-  return { documentNo, assignedNumber };
+export async function deleteDocumentSequence(id: string): Promise<void> {
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/master/document-sequences/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getNextDocumentNumber(sequenceId: string): Promise<number> {
+  const companyId = requireActiveCompanyId();
+  const res = await webFetch<{ currentNumber: number }>(
+    `/master/document-sequences/${encodeURIComponent(sequenceId)}/next-number?companyId=${encodeURIComponent(companyId)}`
+  );
+  return res.currentNumber;
+}
+
+export async function generateDocumentNo(sequenceId: string): Promise<GenerateDocumentNoResult> {
+  const companyId = requireActiveCompanyId();
+  const res = await webFetch<{ documentNo: string; assignedNumber: number }>(
+    `/master/document-sequences/${encodeURIComponent(sequenceId)}/generate?companyId=${encodeURIComponent(companyId)}`
+  );
+  return res;
 }

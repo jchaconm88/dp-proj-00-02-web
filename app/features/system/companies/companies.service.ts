@@ -1,74 +1,45 @@
 import { COMPANIES_COLLECTION } from "~/lib/auth-context";
-import {
-  addDocument,
-  deleteDocument,
-  getCollectionWithFilter,
-  getDocument,
-  updateDocument,
-} from "~/lib/firestore.service";
+import { webFetch } from "~/lib/backend-client";
+import { addDocument, deleteDocument, updateDocument } from "~/lib/firestore.service";
 import type { CompanyRecord } from "./companies.types";
-import { auth } from "~/lib/firebase";
 
-type CompanyDoc = {
-  name?: string;
-  status?: string;
-  accountId?: string;
-  code?: string;
-  taxId?: string;
-  logoUrl?: string;
-  logoPath?: string;
-  logoLightUrl?: string;
-  logoLightPath?: string;
-  logoDarkUrl?: string;
-  logoDarkPath?: string;
-};
+function normalizeStatus(value: unknown): "active" | "inactive" {
+  return String(value ?? "").trim() === "inactive" ? "inactive" : "active";
+}
 
-function toCompanyRecord(id: string, d: CompanyDoc): CompanyRecord {
-  const status = d.status === "inactive" ? "inactive" : "active";
+function normalizeText(value: unknown): string | undefined {
+  const out = String(value ?? "").trim();
+  return out || undefined;
+}
+
+function toCompanyRecord(id: string, d: Record<string, unknown>): CompanyRecord {
   return {
     id,
-    name: d.name ?? "",
-    status,
-    accountId: d.accountId?.trim() || undefined,
-    code: d.code,
-    taxId: d.taxId,
-    logoUrl: d.logoUrl?.trim() || undefined,
-    logoPath: d.logoPath?.trim() || undefined,
-    logoLightUrl: d.logoLightUrl?.trim() || undefined,
-    logoLightPath: d.logoLightPath?.trim() || undefined,
-    logoDarkUrl: d.logoDarkUrl?.trim() || undefined,
-    logoDarkPath: d.logoDarkPath?.trim() || undefined,
+    name: String(d.name ?? ""),
+    status: normalizeStatus(d.status),
+    accountId: normalizeText(d.accountId),
+    code: normalizeText(d.code),
+    taxId: normalizeText(d.taxId),
+    logoUrl: normalizeText(d.logoUrl),
+    logoPath: normalizeText(d.logoPath),
+    logoLightUrl: normalizeText(d.logoLightUrl),
+    logoLightPath: normalizeText(d.logoLightPath),
+    logoDarkUrl: normalizeText(d.logoDarkUrl),
+    logoDarkPath: normalizeText(d.logoDarkPath),
   };
 }
 
 export async function getCompanyById(id: string): Promise<CompanyRecord | null> {
-  const snap = await getDocument<CompanyDoc>(COMPANIES_COLLECTION, id);
-  if (!snap) return null;
-  return toCompanyRecord(snap.id, snap);
+  const cid = String(id ?? "").trim();
+  if (!cid) return null;
+  const raw = await webFetch<Record<string, unknown> | null>(`/system/companies/${encodeURIComponent(cid)}`);
+  if (!raw) return null;
+  return toCompanyRecord(String(raw.id ?? ""), raw);
 }
 
 export async function getCompanies(): Promise<CompanyRecord[]> {
-  const user = auth.currentUser;
-  if (!user?.uid) return [];
-
-  let accountId: string | null = null;
-  try {
-    const token = await user.getIdTokenResult();
-    accountId = token.claims?.accountId as string | null;
-  } catch {
-    /* claims no disponibles aún */
-  }
-
-  if (!accountId) {
-    return [];
-  }
-
-  const rows = await getCollectionWithFilter<CompanyDoc>(
-    COMPANIES_COLLECTION,
-    "accountId",
-    accountId,
-  );
-  const items = rows.map((r) => toCompanyRecord(r.id, r));
+  const result = await webFetch<{ items: Record<string, unknown>[] }>("/system/companies");
+  const items = result.items.map((r) => toCompanyRecord(String(r.id ?? ""), r));
   items.sort((a, b) => a.name.localeCompare(b.name));
   return items;
 }

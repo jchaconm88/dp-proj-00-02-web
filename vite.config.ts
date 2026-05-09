@@ -7,7 +7,11 @@ const CHROME_DEVTOOLS_WELL_KNOWN = "/.well-known/appspecific/com.chrome.devtools
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const proxyTarget = String(env.VITE_WEB_BACKEND_PROXY_TARGET ?? "").trim().replace(/\/$/, "");
+  // En dev, si no se configura explícitamente, por defecto proxyeamos a backend local (:3001).
+  // Esto evita CORS y asegura que `/web-backend/*` funcione out-of-the-box.
+  const proxyTarget =
+    String(env.VITE_WEB_BACKEND_PROXY_TARGET ?? "").trim().replace(/\/$/, "") ||
+    (mode === "development" ? "http://localhost:3001" : "");
 
   return {
     server: {

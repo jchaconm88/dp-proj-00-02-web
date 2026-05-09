@@ -1,14 +1,6 @@
-import { where } from "firebase/firestore";
-import {
-    getDocument,
-    addDocument,
-    updateDocument,
-    deleteDocument,
-    deleteManyDocuments,
-    getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
-import { DRIVER_RELATIONSHIP, DRIVER_STATUS, parseStatus } from "~/constants/status-options";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
+import { DRIVER_RELATIONSHIP, DRIVER_STATUS } from "~/constants/status-options";
 import type {
     DriverRecord,
     DriverRelationshipType,
@@ -17,75 +9,77 @@ import type {
     DriverEditInput,
 } from "./drivers.types";
 
-const COLLECTION = "drivers";
-
-function toRecord(doc: { id: string } & Record<string, unknown>): DriverRecord {
-    const relationshipType = parseStatus(
-      doc.relationshipType,
-      DRIVER_RELATIONSHIP,
-      "resource"
-    ) as DriverRelationshipType;
-    const status = parseStatus(doc.status, DRIVER_STATUS) as DriverStatus;
+function toRecord(data: Record<string, unknown> & { id?: string }): DriverRecord {
+    const relationshipType = DRIVER_RELATIONSHIP.includes(String(data.relationshipType))
+        ? (data.relationshipType as DriverRelationshipType)
+        : "resource";
+    const status = DRIVER_STATUS.includes(String(data.status))
+        ? (data.status as DriverStatus)
+        : "available";
 
     return {
-        id: doc.id,
-        firstName: String(doc.firstName ?? ""),
-        lastName: String(doc.lastName ?? ""),
-        documentNo: String(doc.documentNo ?? ""),
-        documentTypeId: String(doc.documentTypeId ?? doc.documentId ?? ""),
-        documentType: String(doc.documentType ?? doc.documentTypeId ?? doc.documentId ?? ""),
-        phoneNo: String(doc.phoneNo ?? ""),
-        licenseNo: String(doc.licenseNo ?? ""),
-        licenseCategory: String(doc.licenseCategory ?? ""),
-        licenseExpiration: String(doc.licenseExpiration ?? ""),
+        id: String(data.id ?? ""),
+        firstName: String(data.firstName ?? ""),
+        lastName: String(data.lastName ?? ""),
+        documentNo: String(data.documentNo ?? ""),
+        documentTypeId: String(data.documentTypeId ?? ""),
+        documentType: String(data.documentType ?? ""),
+        phoneNo: String(data.phoneNo ?? ""),
+        licenseNo: String(data.licenseNo ?? ""),
+        licenseCategory: String(data.licenseCategory ?? ""),
+        licenseExpiration: String(data.licenseExpiration ?? ""),
         relationshipType,
-        employeeId: doc.employeeId != null && String(doc.employeeId).trim() !== "" ? String(doc.employeeId) : null,
-        resourceId: doc.resourceId != null && String(doc.resourceId).trim() !== "" ? String(doc.resourceId) : null,
+        employeeId: data.employeeId != null && String(data.employeeId).trim() !== "" ? String(data.employeeId) : null,
+        resourceId: data.resourceId != null && String(data.resourceId).trim() !== "" ? String(data.resourceId) : null,
         status,
-        currentTripId: String(doc.currentTripId ?? ""),
+        currentTripId: String(data.currentTripId ?? ""),
     };
 }
 
 export async function getDriver(id: string): Promise<DriverRecord | null> {
-    const doc = await getDocument<Record<string, unknown>>(COLLECTION, id);
-    return doc ? toRecord(doc) : null;
+    const companyId = requireActiveCompanyId();
+    const data = await webFetch<Record<string, unknown> | null>(
+        `/transport/drivers/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+    );
+    return data ? toRecord(data) : null;
 }
 
 export async function getDrivers(): Promise<{ items: DriverRecord[]; total: number }> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-        where("companyId", "==", companyId),
-        where("accountId", "==", accountId),
-    ]);
-    const items = list.map(toRecord);
-    return { items, total: items.length };
+    const res = await webFetch<{ items: Record<string, unknown>[]; total: number }>(
+        `/transport/drivers?companyId=${encodeURIComponent(companyId)}`
+    );
+    const items = (res.items ?? []).map(toRecord);
+    return { items, total: res.total ?? items.length };
 }
 
 export async function addDriver(data: DriverAddInput): Promise<string> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    return addDocument(COLLECTION, {
-        companyId,
-        accountId,
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        documentNo: data.documentNo.trim(),
-        documentTypeId: data.documentTypeId.trim(),
-        documentType: data.documentType.trim(),
-        phoneNo: data.phoneNo.trim(),
-        licenseNo: data.licenseNo.trim(),
-        licenseCategory: data.licenseCategory.trim(),
-        licenseExpiration: data.licenseExpiration.trim() || null,
-        relationshipType: data.relationshipType,
-        employeeId: data.employeeId?.trim() || null,
-        resourceId: data.resourceId?.trim() || null,
-        status: data.status,
-        currentTripId: data.currentTripId.trim() || null,
+    const res = await webFetch<{ id: string }>("/transport/drivers", {
+        method: "POST",
+        body: JSON.stringify({
+            companyId,
+            firstName: data.firstName.trim(),
+            lastName: data.lastName.trim(),
+            documentNo: data.documentNo.trim(),
+            documentTypeId: data.documentTypeId.trim(),
+            documentType: data.documentType.trim(),
+            phoneNo: data.phoneNo.trim(),
+            licenseNo: data.licenseNo.trim(),
+            licenseCategory: data.licenseCategory.trim(),
+            licenseExpiration: data.licenseExpiration.trim() || null,
+            relationshipType: data.relationshipType,
+            employeeId: data.employeeId?.trim() || null,
+            resourceId: data.resourceId?.trim() || null,
+            status: data.status,
+            currentTripId: data.currentTripId.trim() || null,
+        }),
     });
+    return res.id;
 }
 
 export async function updateDriver(id: string, data: DriverEditInput): Promise<void> {
+    const companyId = requireActiveCompanyId();
     const payload: Record<string, unknown> = {};
     if (data.firstName !== undefined) payload.firstName = data.firstName;
     if (data.lastName !== undefined) payload.lastName = data.lastName;
@@ -101,13 +95,15 @@ export async function updateDriver(id: string, data: DriverEditInput): Promise<v
     if (data.resourceId !== undefined) payload.resourceId = data.resourceId?.trim() || null;
     if (data.status !== undefined) payload.status = data.status;
     if (data.currentTripId !== undefined) payload.currentTripId = data.currentTripId?.trim() || null;
-    await updateDocument(COLLECTION, id, payload);
+    await webFetch(`/transport/drivers/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ companyId, ...payload }),
+    });
 }
 
 export async function deleteDriver(id: string): Promise<void> {
-    return deleteDocument(COLLECTION, id);
-}
-
-export async function deleteDrivers(ids: string[]): Promise<void> {
-    return deleteManyDocuments(COLLECTION, ids);
+    const companyId = requireActiveCompanyId();
+    await webFetch(`/transport/drivers/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+        method: "DELETE",
+    });
 }

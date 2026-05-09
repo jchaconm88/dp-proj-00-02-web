@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { getAuthUser } from "~/lib/get-auth-user";
 import {
   getPlans,
   deletePlan,
-  deletePlans,
   type PlanRecord,
 } from "~/features/transport/plans";
 import type { Route } from "./+types/PlansPage";
@@ -26,6 +26,7 @@ type PlanRow = PlanRecord & { orderIdsStr?: string };
 const TABLE_DEF = moduleTableDef("plan", { status: PLAN_STATUS });
 
 export async function clientLoader() {
+  await getAuthUser();
   const { items } = await getPlans();
   return {
     items: items.map((p) => ({
@@ -78,11 +79,7 @@ export default function PlansPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deletePlan(ids[0]);
-      } else {
-        await deletePlans(ids);
-      }
+      await Promise.all(ids.map(deletePlan));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

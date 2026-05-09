@@ -1,17 +1,5 @@
-import { where } from "firebase/firestore";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-  getSubcollection,
-  getDocumentFromSubcollection,
-  addDocumentToSubcollection,
-  updateDocumentInSubcollection,
-  deleteDocumentFromSubcollection,
-  getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import {
   BILLING_CYCLE,
   CALCULATION_TYPE,
@@ -33,27 +21,6 @@ import type {
   RateRuleConditions,
   RateRuleCalculation,
 } from "./transport-contracts.types";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
-
-const COLLECTION = "transport-contracts";
-const RATE_RULES_SUB = "transport-rate-rules";
-
-// -- Mapper helpers --
-function toContractRecord(doc: { id: string } & Record<string, unknown>): ContractRecord {
-  return {
-    id: doc.id,
-    clientId: String(doc.clientId ?? ""),
-    client: String(doc.client ?? ""),
-    contractCode: String(doc.contractCode ?? ""),
-    description: String(doc.description ?? ""),
-    currency: String(doc.currency ?? "PEN"),
-    validFrom: String(doc.validFrom ?? ""),
-    validTo: String(doc.validTo ?? ""),
-    billingCycle: parseStatus(doc.billingCycle, BILLING_CYCLE) as BillingCycle,
-    paymentTermsDays: Number(doc.paymentTermsDays) || 30,
-    status: parseStatus(doc.status, CONTRACT_STATUS) as ContractStatus,
-  };
-}
 
 function toConditions(v: unknown): RateRuleConditions {
   if (!v || typeof v !== "object") return {};
@@ -82,63 +49,81 @@ function toCalculation(v: unknown): RateRuleCalculation {
   };
 }
 
-function toRateRuleRecord(doc: { id: string } & Record<string, unknown>): RateRuleRecord {
+function toContractRecord(data: Record<string, unknown> & { id?: string }): ContractRecord {
   return {
-    id: doc.id,
-    code: String(doc.code ?? ""),
-    name: String(doc.name ?? ""),
-    active: doc.active === true,
-    priority: Number(doc.priority) || 0,
-    ruleType: parseStatus(doc.ruleType, RATE_RULE_TYPE) as RateRuleType,
-    calculationType: parseStatus(doc.calculationType, CALCULATION_TYPE) as CalculationType,
-    transportServiceId: String(doc.transportServiceId ?? ""),
-    transportService: String(doc.transportService ?? ""),
-    vehicleType: String(doc.vehicleType ?? ""),
-    conditions: toConditions(doc.conditions),
-    calculation: toCalculation(doc.calculation),
-    stackable: doc.stackable === true,
-    validFrom: String(doc.validFrom ?? ""),
-    validTo: String(doc.validTo ?? ""),
+    id: String(data.id ?? ""),
+    clientId: String(data.clientId ?? ""),
+    client: String(data.client ?? ""),
+    contractCode: String(data.contractCode ?? ""),
+    description: String(data.description ?? ""),
+    currency: String(data.currency ?? "PEN"),
+    validFrom: String(data.validFrom ?? ""),
+    validTo: String(data.validTo ?? ""),
+    billingCycle: parseStatus(data.billingCycle, BILLING_CYCLE) as BillingCycle,
+    paymentTermsDays: Number(data.paymentTermsDays) || 30,
+    status: parseStatus(data.status, CONTRACT_STATUS) as ContractStatus,
   };
 }
 
-// --- Contracts API ---
+function toRateRuleRecord(data: Record<string, unknown> & { id?: string }): RateRuleRecord {
+  return {
+    id: String(data.id ?? ""),
+    code: String(data.code ?? ""),
+    name: String(data.name ?? ""),
+    active: data.active === true,
+    priority: Number(data.priority) || 0,
+    ruleType: parseStatus(data.ruleType, RATE_RULE_TYPE) as RateRuleType,
+    calculationType: parseStatus(data.calculationType, CALCULATION_TYPE) as CalculationType,
+    transportServiceId: String(data.transportServiceId ?? ""),
+    transportService: String(data.transportService ?? ""),
+    vehicleType: String(data.vehicleType ?? ""),
+    conditions: toConditions(data.conditions),
+    calculation: toCalculation(data.calculation),
+    stackable: data.stackable === true,
+    validFrom: String(data.validFrom ?? ""),
+    validTo: String(data.validTo ?? ""),
+  };
+}
+
 export async function getContract(id: string): Promise<ContractRecord | null> {
-  const doc = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return doc ? toContractRecord(doc) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/transport-contracts/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toContractRecord(data) : null;
 }
 
 export async function getContracts(): Promise<{ items: ContractRecord[]; total: number }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  const items = list.map(toContractRecord);
-  return { items, total: items.length };
+  const res = await webFetch<{ items: ContractRecord[]; total: number }>(
+    `/transport/transport-contracts?companyId=${encodeURIComponent(companyId)}`
+  );
+  return { items: res.items ?? [], total: res.total ?? 0 };
 }
 
 export async function addContract(data: ContractAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
-    companyId,
-    accountId,
-    clientId: data.clientId.trim(),
-    client: data.client.trim(),
-    contractCode: data.contractCode.trim(),
-    description: data.description.trim(),
-    currency: data.currency.trim() || "PEN",
-    validFrom: data.validFrom.trim(),
-    validTo: data.validTo.trim(),
-    billingCycle: data.billingCycle,
-    paymentTermsDays: Number(data.paymentTermsDays) || 30,
-    status: data.status,
+  const res = await webFetch<{ id: string }>("/transport/transport-contracts", {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      clientId: data.clientId.trim(),
+      client: data.client.trim(),
+      contractCode: data.contractCode.trim(),
+      description: data.description.trim(),
+      currency: data.currency.trim() || "PEN",
+      validFrom: data.validFrom.trim(),
+      validTo: data.validTo.trim(),
+      billingCycle: data.billingCycle,
+      paymentTermsDays: Number(data.paymentTermsDays) || 30,
+      status: data.status,
+    }),
   });
+  return res.id;
 }
 
 export async function updateContract(id: string, data: ContractEditInput): Promise<void> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {};
   if (data.clientId !== undefined) payload.clientId = data.clientId;
   if (data.client !== undefined) payload.client = data.client;
@@ -150,62 +135,65 @@ export async function updateContract(id: string, data: ContractEditInput): Promi
   if (data.billingCycle !== undefined) payload.billingCycle = data.billingCycle;
   if (data.paymentTermsDays !== undefined) payload.paymentTermsDays = Number(data.paymentTermsDays) || 30;
   if (data.status !== undefined) payload.status = data.status;
-  await updateDocument(COLLECTION, id, payload);
+  await webFetch(`/transport/transport-contracts/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...payload }),
+  });
 }
 
 export async function deleteContract(id: string): Promise<void> {
-  return deleteDocument(COLLECTION, id);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/transport/transport-contracts/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+    method: "DELETE",
+  });
 }
 
-export async function deleteContracts(ids: string[]): Promise<void> {
-  return deleteManyDocuments(COLLECTION, ids);
-}
-
-// --- Rate Rules API ---
 export async function getRateRules(contractId: string): Promise<{ items: RateRuleRecord[]; total: number }> {
-  const list = await getSubcollection<Record<string, unknown>>(COLLECTION, contractId, RATE_RULES_SUB);
-  const items = list.map(toRateRuleRecord).sort((a, b) => a.priority - b.priority);
-  return { items, total: items.length };
+  const companyId = requireActiveCompanyId();
+  const res = await webFetch<{ items: RateRuleRecord[]; total: number }>(
+    `/transport/transport-contracts/${encodeURIComponent(contractId)}/transport-rate-rules?companyId=${encodeURIComponent(companyId)}`
+  );
+  return { items: res.items ?? [], total: res.total ?? 0 };
 }
 
 export async function getRateRule(contractId: string, ruleId: string): Promise<RateRuleRecord | null> {
-  const doc = await getDocumentFromSubcollection<Record<string, unknown>>(
-    COLLECTION,
-    contractId,
-    RATE_RULES_SUB,
-    ruleId
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/transport-contracts/${encodeURIComponent(contractId)}/transport-rate-rules/${encodeURIComponent(ruleId)}?companyId=${encodeURIComponent(companyId)}`
   );
-  return doc ? toRateRuleRecord(doc) : null;
+  return data ? toRateRuleRecord(data) : null;
 }
 
 export async function addRateRule(contractId: string, data: RateRuleAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocumentToSubcollection(COLLECTION, contractId, RATE_RULES_SUB, {
-    companyId,
-    accountId,
-    code: data.code.trim(),
-    name: data.name.trim(),
-    active: data.active,
-    priority: Number(data.priority) || 0,
-    ruleType: data.ruleType,
-    calculationType: data.calculationType,
-    transportServiceId: data.transportServiceId.trim(),
-    transportService: data.transportService.trim(),
-    vehicleType: data.vehicleType.trim(),
-    conditions: data.conditions ?? {},
-    calculation: data.calculation ?? {},
-    stackable: data.stackable,
-    validFrom: data.validFrom.trim(),
-    validTo: data.validTo.trim(),
-  });
+  const res = await webFetch<{ id: string }>(
+    `/transport/transport-contracts/${encodeURIComponent(contractId)}/transport-rate-rules`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        companyId,
+        code: data.code.trim(),
+        name: data.name.trim(),
+        active: data.active,
+        priority: Number(data.priority) || 0,
+        ruleType: data.ruleType,
+        calculationType: data.calculationType,
+        transportServiceId: data.transportServiceId.trim(),
+        transportService: data.transportService.trim(),
+        vehicleType: data.vehicleType.trim(),
+        conditions: data.conditions ?? {},
+        calculation: data.calculation ?? {},
+        stackable: data.stackable,
+        validFrom: data.validFrom.trim(),
+        validTo: data.validTo.trim(),
+      }),
+    }
+  );
+  return res.id;
 }
 
-export async function updateRateRule(
-  contractId: string,
-  ruleId: string,
-  data: RateRuleEditInput
-): Promise<void> {
+export async function updateRateRule(contractId: string, ruleId: string, data: RateRuleEditInput): Promise<void> {
+  const companyId = requireActiveCompanyId();
   const payload: Record<string, unknown> = {};
   if (data.code !== undefined) payload.code = data.code;
   if (data.name !== undefined) payload.name = data.name;
@@ -221,17 +209,19 @@ export async function updateRateRule(
   if (data.stackable !== undefined) payload.stackable = data.stackable;
   if (data.validFrom !== undefined) payload.validFrom = data.validFrom;
   if (data.validTo !== undefined) payload.validTo = data.validTo;
-
-  await updateDocumentInSubcollection(COLLECTION, contractId, RATE_RULES_SUB, ruleId, payload);
+  await webFetch(
+    `/transport/transport-contracts/${encodeURIComponent(contractId)}/transport-rate-rules/${encodeURIComponent(ruleId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ companyId, ...payload }),
+    }
+  );
 }
 
 export async function deleteRateRule(contractId: string, ruleId: string): Promise<void> {
-  return deleteDocumentFromSubcollection(COLLECTION, contractId, RATE_RULES_SUB, ruleId);
-}
-
-export async function deleteRateRules(contractId: string, ruleIds: string[]): Promise<void> {
-  const promises = ruleIds.map((id) =>
-    deleteDocumentFromSubcollection(COLLECTION, contractId, RATE_RULES_SUB, id)
+  const companyId = requireActiveCompanyId();
+  await webFetch(
+    `/transport/transport-contracts/${encodeURIComponent(contractId)}/transport-rate-rules/${encodeURIComponent(ruleId)}?companyId=${encodeURIComponent(companyId)}`,
+    { method: "DELETE" }
   );
-  await Promise.all(promises);
 }

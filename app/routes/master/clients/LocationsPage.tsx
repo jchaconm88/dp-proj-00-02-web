@@ -3,7 +3,7 @@ import { useNavigation, useNavigate, useRevalidator, useMatch, useParams } from 
 import {
     getClient,
     getClientLocations,
-    deleteClientLocations,
+    deleteClientLocation,
     type ClientLocationRecord,
 } from "~/features/master/clients";
 import type { Route } from "./+types/LocationsPage";
@@ -75,7 +75,7 @@ export default function LocationsPage({ loaderData }: Route.ComponentProps) {
         setSaving(true);
         setError(null);
         try {
-            await deleteClientLocations(clientId, selected.map((r) => r.id));
+            await Promise.all(selected.map((r) => deleteClientLocation(clientId, r.id)));
             tableRef.current?.clearSelectedRows();
             revalidator.revalidate();
         } catch (err) {

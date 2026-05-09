@@ -4,9 +4,9 @@ import { getTripById } from "~/features/transport/trips";
 import {
   getTripCharges,
   deleteTripCharge,
-  deleteTripCharges,
   type TripChargeRecord,
 } from "~/features/transport/trip-charges";
+import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripChargesPage";
 import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
@@ -45,6 +45,7 @@ const TRIP_CHARGES_FOOTER_TOTALS: DpTableFooterTotals = {
 };
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const tripId = (params?.id ?? "") as string;
   if (!tripId) throw new Error("ID de viaje no encontrado");
   const trip = await getTripById(tripId);
@@ -121,11 +122,7 @@ export default function TripChargesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteTripCharge(ids[0]);
-      } else {
-        await deleteTripCharges(ids);
-      }
+      await Promise.all(ids.map((id) => deleteTripCharge(id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

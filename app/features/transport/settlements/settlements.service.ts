@@ -1,18 +1,4 @@
-import { deleteField, where } from "firebase/firestore";
-import {
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  getCollection,
-  getDocument,
-  getCollectionWithMultiFilter,
-  getSubcollection,
-  getDocumentFromSubcollection,
-  addDocumentToSubcollection,
-  updateDocumentInSubcollection,
-  deleteDocumentFromSubcollection,
-} from "~/lib/firestore.service";
-import { callHttpsFunction } from "~/lib/functions.service";
+import { webFetch } from "~/lib/backend-client";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import {
   parseStatus,
@@ -47,7 +33,6 @@ function normalizeCategory(raw: unknown): Settlement["category"] {
   return parseStatus(s, SETTLEMENT_CATEGORY, "customer") as Settlement["category"];
 }
 
-/** Presentación: YYYY-MM-DD (o ISO con prefijo fecha) → dd/MM/yyyy. */
 export function formatSettlementPeriodDateForDisplay(raw: string): string {
   const s = String(raw ?? "").trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
@@ -55,7 +40,6 @@ export function formatSettlementPeriodDateForDisplay(raw: string): string {
   return s;
 }
 
-/** Etiqueta de periodo derivada (sin campo en mantenimiento). */
 export function buildSettlementPeriodLabel(start: string, end: string): string {
   const a = formatSettlementPeriodDateForDisplay(start);
   const b = formatSettlementPeriodDateForDisplay(end);
@@ -63,13 +47,13 @@ export function buildSettlementPeriodLabel(start: string, end: string): string {
   return a || b || "";
 }
 
-function mapSettlementDoc(id: string, data: Record<string, unknown>): Settlement {
+function mapSettlementDoc(data: Record<string, unknown>): Settlement {
   const entity = (data.entity as Record<string, unknown>) ?? {};
   const period = (data.period as Record<string, unknown>) ?? {};
   const totals = (data.totals as Record<string, unknown>) ?? {};
 
   return {
-    id,
+    id: String(data.id ?? ""),
     code: String(data.code ?? ""),
     type: parseStatus(data.type, SETTLEMENT_TYPE) as Settlement["type"],
     category: normalizeCategory(data.category),
@@ -94,7 +78,6 @@ function mapSettlementDoc(id: string, data: Record<string, unknown>): Settlement
   };
 }
 
-/** Deja `scheduledStart` del ítem como solo fecha YYYY-MM-DD si venía con hora. */
 function tripScheduledStartDateOnly(raw: unknown): string {
   const s = String(raw ?? "").trim();
   if (!s) return "";
@@ -103,11 +86,11 @@ function tripScheduledStartDateOnly(raw: unknown): string {
   return m ? m[1] : s.slice(0, 10);
 }
 
-function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
+function mapItemDoc(data: Record<string, unknown>): SettlementItem {
   const movement = (data.movement as Record<string, unknown>) ?? {};
   const trip = (data.trip as Record<string, unknown>) ?? {};
   return {
-    id,
+    id: String(data.id ?? ""),
     movement: {
       type: String(movement.type ?? ""),
       id: String(movement.id ?? ""),
@@ -130,18 +113,18 @@ function mapItemDoc(id: string, data: Record<string, unknown>): SettlementItem {
 
 export async function getSettlements(): Promise<Settlement[]> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const rows = await getCollectionWithMultiFilter(SETTLEMENTS_COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  return rows.map((r) => mapSettlementDoc(r.id, r as Record<string, unknown>));
+  const result = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/transport/settlements?companyId=${companyId}`
+  );
+  return result.items.map((r) => mapSettlementDoc(r));
 }
 
 export async function getSettlementById(id: string): Promise<Settlement | null> {
-  const doc = await getDocument(SETTLEMENTS_COLLECTION, id);
-  if (!doc) return null;
-  return mapSettlementDoc(doc.id, doc as Record<string, unknown>);
+  const result = await webFetch<Record<string, unknown> | null>(
+    `/transport/settlements/${id}?companyId=${requireActiveCompanyId()}`
+  );
+  if (!result) return null;
+  return mapSettlementDoc(result);
 }
 
 export function settlementToFormValues(s: Settlement): SettlementFormValues {
@@ -200,18 +183,20 @@ export function formValuesToSettlementPayload(
 
 export async function createSettlement(v: SettlementFormValues): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
   const payload = formValuesToSettlementPayload(v, null);
-  return addDocument(SETTLEMENTS_COLLECTION, { companyId, accountId, ...(payload as any) });
+  const result = await webFetch<{ ok: boolean; id: string }>("/transport/settlements", {
+    method: "POST",
+    body: JSON.stringify({ ...payload, companyId }),
+  });
+  return result.id;
 }
 
 export async function updateSettlement(id: string, v: SettlementFormValues): Promise<void> {
   const existing = await getSettlementById(id);
   const payload = formValuesToSettlementPayload(v, existing);
-  await updateDocument(SETTLEMENTS_COLLECTION, id, {
-    ...(payload as Record<string, unknown>),
-    /** Quitar legado `metadata` (ya existe createAt / auditoría en raíz). */
-    metadata: deleteField(),
+  await webFetch(`/transport/settlements/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...payload, companyId: requireActiveCompanyId() }),
   });
 }
 
@@ -219,10 +204,16 @@ export async function updateSettlementsStatus(
   ids: string[],
   status: SettlementDocStatus
 ): Promise<void> {
-  await Promise.all(ids.map((id) => updateDocument(SETTLEMENTS_COLLECTION, id, { status })));
+  await Promise.all(
+    ids.map((id) =>
+      webFetch(`/transport/settlements/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status, companyId: requireActiveCompanyId() }),
+      })
+    )
+  );
 }
 
-/** Respuesta de la Cloud Function `syncSettlementItems`. */
 export interface SyncSettlementItemsResult {
   ok: boolean;
   itemCount: number;
@@ -230,36 +221,16 @@ export interface SyncSettlementItemsResult {
   currency: string;
 }
 
-/**
- * Recalcula ítems y totales en servidor (viajes en el periodo → cargos o costos).
- * Solo aplica a categorías `customer` y `resource`.
- */
 export async function syncSettlementItemsFromTrips(
-  settlementId: string
+  _settlementId: string
 ): Promise<SyncSettlementItemsResult> {
-  const companyId = requireActiveCompanyId();
-  return callHttpsFunction<{ settlementId: string }, SyncSettlementItemsResult>(
-    "syncSettlementItems",
-    { settlementId, companyId } as any,
-    { errorFallback: "No se pudieron sincronizar los ítems de la liquidación." }
-  );
+  throw new Error("syncSettlementItemsFromTrips — pendiente de migrar a endpoint REST");
 }
 
 export async function deleteSettlement(id: string): Promise<void> {
-  const items = await getSubcollection(
-    SETTLEMENTS_COLLECTION,
-    id,
-    SETTLEMENT_ITEMS_SUBCOLLECTION
-  );
-  for (const row of items) {
-    await deleteDocumentFromSubcollection(
-      SETTLEMENTS_COLLECTION,
-      id,
-      SETTLEMENT_ITEMS_SUBCOLLECTION,
-      row.id
-    );
-  }
-  await deleteDocument(SETTLEMENTS_COLLECTION, id);
+  await webFetch(`/transport/settlements/${id}?companyId=${requireActiveCompanyId()}`, {
+    method: "DELETE",
+  });
 }
 
 export async function deleteSettlements(ids: string[]): Promise<void> {
@@ -267,26 +238,23 @@ export async function deleteSettlements(ids: string[]): Promise<void> {
 }
 
 export async function getSettlementItems(settlementId: string): Promise<SettlementItem[]> {
-  const rows = await getSubcollection(
-    SETTLEMENTS_COLLECTION,
-    settlementId,
-    SETTLEMENT_ITEMS_SUBCOLLECTION
+  requireActiveCompanyId();
+  const result = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/transport/settlements/${settlementId}/items`
   );
-  return rows.map((r) => mapItemDoc(r.id, r as Record<string, unknown>));
+  return result.items.map((r) => mapItemDoc(r));
 }
 
 export async function getSettlementItemById(
   settlementId: string,
   itemId: string
 ): Promise<SettlementItem | null> {
-  const doc = await getDocumentFromSubcollection(
-    SETTLEMENTS_COLLECTION,
-    settlementId,
-    SETTLEMENT_ITEMS_SUBCOLLECTION,
-    itemId
+  requireActiveCompanyId();
+  const result = await webFetch<Record<string, unknown> | null>(
+    `/transport/settlements/${settlementId}/items/${itemId}`
   );
-  if (!doc) return null;
-  return mapItemDoc(doc.id, doc as Record<string, unknown>);
+  if (!result) return null;
+  return mapItemDoc(result);
 }
 
 export function itemToFormValues(i: SettlementItem): SettlementItemFormValues {
@@ -331,13 +299,14 @@ export async function createSettlementItem(
   v: SettlementItemFormValues
 ): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocumentToSubcollection(
-    SETTLEMENTS_COLLECTION,
-    settlementId,
-    SETTLEMENT_ITEMS_SUBCOLLECTION,
-    { companyId, accountId, ...(formValuesToItemPayload(v) as any) }
+  const result = await webFetch<{ ok: boolean; id: string }>(
+    `/transport/settlements/${settlementId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify({ ...formValuesToItemPayload(v), companyId }),
+    }
   );
+  return result.id;
 }
 
 export async function updateSettlementItem(
@@ -345,21 +314,16 @@ export async function updateSettlementItem(
   itemId: string,
   v: SettlementItemFormValues
 ): Promise<void> {
-  await updateDocumentInSubcollection(
-    SETTLEMENTS_COLLECTION,
-    settlementId,
-    SETTLEMENT_ITEMS_SUBCOLLECTION,
-    itemId,
-    formValuesToItemPayload(v) as Record<string, unknown>
-  );
+  await webFetch(`/transport/settlements/${settlementId}/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...formValuesToItemPayload(v), companyId: requireActiveCompanyId() }),
+  });
 }
 
 export async function deleteSettlementItem(settlementId: string, itemId: string): Promise<void> {
-  await deleteDocumentFromSubcollection(
-    SETTLEMENTS_COLLECTION,
-    settlementId,
-    SETTLEMENT_ITEMS_SUBCOLLECTION,
-    itemId
+  await webFetch(
+    `/transport/settlements/${settlementId}/items/${itemId}?companyId=${requireActiveCompanyId()}`,
+    { method: "DELETE" }
   );
 }
 

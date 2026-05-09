@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import { getVehicles, deleteVehicle, deleteVehicles, type VehicleRecord } from "~/features/transport/vehicles";
+import { getAuthUser } from "~/lib/get-auth-user";
+import { getVehicles, deleteVehicle, type VehicleRecord } from "~/features/transport/vehicles";
 import type { Route } from "./+types/VehiclesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
@@ -21,6 +22,7 @@ type VehicleRow = VehicleRecord;
 const TABLE_DEF = moduleTableDef("vehicle", { type: VEHICLE_TYPE, status: VEHICLE_STATUS });
 
 export async function clientLoader() {
+  await getAuthUser();
   const { items } = await getVehicles();
   return { items };
 }
@@ -64,11 +66,7 @@ export default function VehiclesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteVehicle(ids[0]);
-      } else {
-        await deleteVehicles(ids);
-      }
+      await Promise.all(ids.map(deleteVehicle));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

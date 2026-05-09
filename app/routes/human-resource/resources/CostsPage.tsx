@@ -3,7 +3,7 @@ import { useNavigate, useNavigation, useRevalidator, useMatch, useParams } from 
 import {
   getResource,
   getResourceCosts,
-  deleteResourceCosts,
+  deleteResourceCost,
   type ResourceRecord,
   type ResourceCostRecord,
 } from "~/features/human-resource/resources";
@@ -69,10 +69,7 @@ export default function ResourceCostsPage({ loaderData }: Route.ComponentProps) 
     setSaving(true);
     setError(null);
     try {
-      await deleteResourceCosts(
-        resourceId,
-        selected.map((r) => r.id)
-      );
+      await Promise.all(selected.map((r) => deleteResourceCost(resourceId, r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

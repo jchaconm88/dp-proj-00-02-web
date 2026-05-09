@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import { getDocumentTypes, deleteDocumentType, deleteDocumentTypes, type DocumentTypeRecord } from "~/features/master/document-types";
+import { getDocumentTypes, deleteDocumentType, type DocumentTypeRecord } from "~/features/master/document-types";
 import type { Route } from "./+types/DocumentTypesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
@@ -67,7 +67,7 @@ export default function DocumentTypesPage({ loaderData }: Route.ComponentProps) 
       if (ids.length === 1) {
         await deleteDocumentType(ids[0]);
       } else {
-        await deleteDocumentTypes(ids);
+        await Promise.all(ids.map((id) => deleteDocumentType(id)));
       }
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);

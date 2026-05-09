@@ -1,20 +1,10 @@
-import { where } from "firebase/firestore";
-import {
-  getDocument,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-  getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { PositionRecord, PositionAddInput, PositionEditInput } from "./positions.types";
 
-const COLLECTION = "positions";
-
-function toPositionRecord(id: string, data: Record<string, unknown>): PositionRecord {
+function toPositionRecord(data: Record<string, unknown> & { id?: string }): PositionRecord {
   return {
-    id,
+    id: String(data.id ?? ""),
     code: String(data.code ?? ""),
     name: String(data.name ?? ""),
     active: data.active !== false,
@@ -22,46 +12,40 @@ function toPositionRecord(id: string, data: Record<string, unknown>): PositionRe
 }
 
 export async function getPosition(id: string): Promise<PositionRecord | null> {
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return d ? toPositionRecord(d.id, d) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/human-resource/positions/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+  );
+  return data ? toPositionRecord(data) : null;
 }
 
 export async function getPositions(): Promise<{ items: PositionRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-  ]);
-  const items = list.map((d) => toPositionRecord(d.id, d));
-  items.sort((a, b) => a.name.localeCompare(b.name));
+  const res = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/human-resource/positions?companyId=${encodeURIComponent(companyId)}`
+  );
+  const items = (res.items ?? []).map(toPositionRecord).sort((a, b) => a.name.localeCompare(b.name));
   return { items };
 }
 
 export async function addPosition(data: PositionAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  return addDocument(COLLECTION, {
-    companyId,
-    accountId,
-    code: data.code.trim(),
-    name: data.name.trim(),
-    active: data.active !== false,
+  const res = await webFetch<{ id: string }>("/human-resource/positions", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...data }),
   });
+  return res.id;
 }
 
 export async function updatePosition(id: string, data: PositionEditInput): Promise<void> {
-  const payload: Record<string, unknown> = {};
-  if (data.code !== undefined) payload.code = data.code.trim();
-  if (data.name !== undefined) payload.name = data.name.trim();
-  if (data.active !== undefined) payload.active = data.active;
-  await updateDocument(COLLECTION, id, payload);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/human-resource/positions/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ companyId, ...data }),
+  });
 }
 
 export async function deletePosition(id: string): Promise<void> {
-  await deleteDocument(COLLECTION, id);
-}
-
-export async function deletePositions(ids: string[]): Promise<void> {
-  await deleteManyDocuments(COLLECTION, ids);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/human-resource/positions/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, { method: "DELETE" });
 }

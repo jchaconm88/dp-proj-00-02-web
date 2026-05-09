@@ -4,9 +4,9 @@ import { getTripById } from "~/features/transport/trips";
 import {
   getTripAssignments,
   deleteTripAssignment,
-  deleteTripAssignments,
   type TripAssignmentRecord,
 } from "~/features/transport/trip-assignments";
+import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripAssignmentsPage";
 import { withUrlSearch } from "~/lib/url-search";
 import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
@@ -34,6 +34,7 @@ function scopeSummaryRow(a: TripAssignmentRecord): string {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const tripId = (params?.id ?? "") as string;
   if (!tripId) throw new Error("ID de viaje no encontrado");
   const trip = await getTripById(tripId);
@@ -95,11 +96,7 @@ export default function TripAssignmentsPage({ loaderData }: Route.ComponentProps
     setSaving(true);
     setError(null);
     try {
-      if (ids.length === 1) {
-        await deleteTripAssignment(ids[0]);
-      } else {
-        await deleteTripAssignments(ids);
-      }
+      await Promise.all(ids.map((id) => deleteTripAssignment(id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteIds(null);
       revalidator.revalidate();

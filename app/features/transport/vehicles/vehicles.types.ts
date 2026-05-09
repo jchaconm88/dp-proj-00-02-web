@@ -1,4 +1,5 @@
 export type VehicleStatus = "available" | "assigned" | "inactive";
+export type VehicleType = "truck" | "van" | "trailer" | "rigid" | "articulated" | "pickup" | "motorcycle";
 
 export interface VehicleRecord {
   id: string;

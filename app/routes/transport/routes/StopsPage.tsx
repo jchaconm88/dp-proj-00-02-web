@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { getAuthUser } from "~/lib/get-auth-user";
 import {
   getRouteById,
   getRouteStops,
@@ -28,6 +29,7 @@ type StopRow = StopRecord & { arrivalWindowStr?: string };
 const TABLE_DEF = moduleTableDef("route-stop", { status: STOP_STATUS, type: STOP_TYPE });
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const routeId = (params?.id ?? "") as string;
   if (!routeId) throw new Error("ID de ruta no encontrado");
   const route = await getRouteById(routeId);
@@ -92,9 +94,7 @@ export default function StopsPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      for (const id of ids) {
-        await deleteRouteStop(routeId, id);
-      }
+      await Promise.all(ids.map((id) => deleteRouteStop(routeId, id)));
       tableRef.current?.clearSelectedRows();
       setPendingDeleteStopIds(null);
       revalidator.revalidate();

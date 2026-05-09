@@ -9,9 +9,10 @@ import type { ReportDefinitionRecord, ReportRunRecord } from "~/features/reports
 import {
   formatRunTime,
   getReportDefinitionById,
-  getReportRunDownloadUrlCallable,
+  getReportRunDownloadUrl,
   getReportRunsByDefinitionId,
 } from "~/features/reports/reports.service";
+import { getAuthUser } from "~/lib/get-auth-user";
 import ReportRunDialog from "./ReportRunDialog";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -129,6 +130,7 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+  await getAuthUser();
   const definitionId = String(params.definitionId ?? "").trim();
   if (!definitionId) {
     throw new Response("Definición no indicada.", { status: 404 });
@@ -191,7 +193,7 @@ export default function ReportRunsPage({ loaderData }: Route.ComponentProps) {
     setDownloadBusyId(row.id);
     setError(null);
     try {
-      const { url, fileName } = await getReportRunDownloadUrlCallable({ reportRunId: row.id });
+      const { url, fileName } = await getReportRunDownloadUrl({ reportRunId: row.id });
       const a = document.createElement("a");
       a.href = url;
       a.download = fileName;

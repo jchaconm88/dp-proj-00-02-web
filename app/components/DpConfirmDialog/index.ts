@@ -1,3 +1,3 @@
-// Re-export from shared @jchaconm88/ui package
-export { DpConfirmDialog } from "@jchaconm88/ui";
-export type { DpConfirmDialogProps } from "@jchaconm88/ui";
+// Copia local de @jchaconm88/ui (Dp*). Sincronizar con packages/ui cuando se estabilice.
+export { default as DpConfirmDialog } from "./DpConfirmDialog";
+export type { DpConfirmDialogProps } from "./DpConfirmDialog";

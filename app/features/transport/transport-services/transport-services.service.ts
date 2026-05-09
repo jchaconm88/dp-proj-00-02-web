@@ -1,14 +1,6 @@
-import { where } from "firebase/firestore";
-import {
-    getDocument,
-    addDocument,
-    updateDocument,
-    deleteDocument,
-    deleteManyDocuments,
-    getCollectionWithMultiFilter,
-} from "~/lib/firestore.service";
-import { CALCULATION_TYPE, parseStatus, SERVICE_TYPE_CATEGORY } from "~/constants/status-options";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
+import { parseStatus, CALCULATION_TYPE, SERVICE_TYPE_CATEGORY } from "~/constants/status-options";
 import type {
     TransportServiceRecord,
     TransportServiceAddInput,
@@ -17,58 +9,59 @@ import type {
     CalculationType,
 } from "./transport-services.types";
 
-const COLLECTION = "transport-services";
-
-function toRecord(doc: { id: string } & Record<string, unknown>): TransportServiceRecord {
+function toRecord(data: Record<string, unknown> & { id?: string }): TransportServiceRecord {
     return {
-        id: doc.id,
-        code: String(doc.code ?? ""),
-        name: String(doc.name ?? ""),
-        description: String(doc.description ?? ""),
-        category: parseStatus(doc.category, SERVICE_TYPE_CATEGORY) as ServiceTypeCategory,
-        defaultServiceTimeMin: Number(doc.defaultServiceTimeMin) || 0,
-        calculationType: parseStatus(doc.calculationType, CALCULATION_TYPE) as CalculationType,
-        requiresAppointment: !!doc.requiresAppointment,
-        allowConsolidation: doc.allowConsolidation !== false, // Defaults to true in old system if undefined? Actually, we'll just cast boolean
-        active: doc.active !== false,
+        id: String(data.id ?? ""),
+        code: String(data.code ?? ""),
+        name: String(data.name ?? ""),
+        description: String(data.description ?? ""),
+        category: parseStatus(data.category, SERVICE_TYPE_CATEGORY) as ServiceTypeCategory,
+        defaultServiceTimeMin: Number(data.defaultServiceTimeMin) || 0,
+        calculationType: parseStatus(data.calculationType, CALCULATION_TYPE) as CalculationType,
+        requiresAppointment: !!data.requiresAppointment,
+        allowConsolidation: data.allowConsolidation !== false,
+        active: data.active !== false,
     };
 }
 
 export async function getTransportService(id: string): Promise<TransportServiceRecord | null> {
-    const doc = await getDocument<Record<string, unknown>>(COLLECTION, id);
-    return doc ? toRecord(doc) : null;
+    const companyId = requireActiveCompanyId();
+    const data = await webFetch<Record<string, unknown> | null>(
+        `/transport/transport-services/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+    );
+    return data ? toRecord(data) : null;
 }
 
 export async function getTransportServices(): Promise<{ items: TransportServiceRecord[]; total: number }> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-        where("companyId", "==", companyId),
-        where("accountId", "==", accountId),
-    ]);
-    const items = list.map(toRecord);
-    return { items, total: items.length };
+    const res = await webFetch<{ items: TransportServiceRecord[]; total: number }>(
+        `/transport/transport-services?companyId=${encodeURIComponent(companyId)}`
+    );
+    return { items: res.items ?? [], total: res.total ?? 0 };
 }
 
 export async function addTransportService(data: TransportServiceAddInput): Promise<string> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    return addDocument(COLLECTION, {
-        companyId,
-        accountId,
-        code: data.code.trim(),
-        name: data.name.trim(),
-        description: (data.description ?? "").trim(),
-        category: data.category,
-        defaultServiceTimeMin: Number(data.defaultServiceTimeMin) || 0,
-        calculationType: data.calculationType,
-        requiresAppointment: !!data.requiresAppointment,
-        allowConsolidation: data.allowConsolidation !== false,
-        active: data.active !== false,
+    const res = await webFetch<{ id: string }>("/transport/transport-services", {
+        method: "POST",
+        body: JSON.stringify({
+            companyId,
+            code: data.code.trim(),
+            name: data.name.trim(),
+            description: (data.description ?? "").trim(),
+            category: data.category,
+            defaultServiceTimeMin: Number(data.defaultServiceTimeMin) || 0,
+            calculationType: data.calculationType,
+            requiresAppointment: !!data.requiresAppointment,
+            allowConsolidation: data.allowConsolidation !== false,
+            active: data.active !== false,
+        }),
     });
+    return res.id;
 }
 
 export async function updateTransportService(id: string, data: TransportServiceEditInput): Promise<void> {
+    const companyId = requireActiveCompanyId();
     const payload: Record<string, unknown> = {};
     if (data.code !== undefined) payload.code = String(data.code).trim();
     if (data.name !== undefined) payload.name = String(data.name).trim();
@@ -79,13 +72,15 @@ export async function updateTransportService(id: string, data: TransportServiceE
     if (data.requiresAppointment !== undefined) payload.requiresAppointment = !!data.requiresAppointment;
     if (data.allowConsolidation !== undefined) payload.allowConsolidation = !!data.allowConsolidation;
     if (data.active !== undefined) payload.active = !!data.active;
-    await updateDocument(COLLECTION, id, payload);
+    await webFetch(`/transport/transport-services/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ companyId, ...payload }),
+    });
 }
 
 export async function deleteTransportService(id: string): Promise<void> {
-    return deleteDocument(COLLECTION, id);
-}
-
-export async function deleteTransportServices(ids: string[]): Promise<void> {
-    return deleteManyDocuments(COLLECTION, ids);
+    const companyId = requireActiveCompanyId();
+    await webFetch(`/transport/transport-services/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+        method: "DELETE",
+    });
 }

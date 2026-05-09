@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import { getPositions, deletePositions, type PositionRecord } from "~/features/human-resource/positions";
+import { getPositions, deletePosition, type PositionRecord } from "~/features/human-resource/positions";
 import type { Route } from "./+types/PositionsPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
@@ -43,7 +43,7 @@ export default function PositionsPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      await deletePositions(selected.map((r) => r.id));
+      await Promise.all(selected.map((r) => deletePosition(r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

@@ -1,12 +1,4 @@
-import {
-  getDocument,
-  getCollectionWithMultiFilter,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-  deleteManyDocuments,
-} from "~/lib/firestore.service";
-import { where } from "firebase/firestore";
+import { webFetch } from "~/lib/backend-client";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import {
   parseStatus,
@@ -24,8 +16,6 @@ import type {
   TripAssignmentScopeType,
 } from "./trip-assignments.types";
 
-const COLLECTION = "trip-assignments";
-
 function parseScope(raw: unknown): TripAssignmentScope {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
@@ -37,9 +27,9 @@ function parseScope(raw: unknown): TripAssignmentScope {
   };
 }
 
-function toRecord(doc: { id: string } & Record<string, unknown>): TripAssignmentRecord {
+function toRecord(doc: Record<string, unknown>): TripAssignmentRecord {
   return {
-    id: doc.id,
+    id: String(doc.id ?? ""),
     code: String(doc.code ?? ""),
     tripId: String(doc.tripId ?? ""),
     chargeTypeId: String(doc.chargeTypeId ?? "").trim(),
@@ -54,63 +44,71 @@ function toRecord(doc: { id: string } & Record<string, unknown>): TripAssignment
   };
 }
 
+function queryParams(companyId: string): string {
+  return `?companyId=${encodeURIComponent(companyId)}`;
+}
+
 export async function getTripAssignments(tripId: string): Promise<{ items: TripAssignmentRecord[] }> {
   const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-    where("companyId", "==", companyId),
-    where("accountId", "==", accountId),
-    where("tripId", "==", tripId),
-  ]);
-  return { items: list.map(toRecord) };
+  const data = await webFetch<{ items: Record<string, unknown>[] }>(
+    `/transport/trip-assignments?companyId=${encodeURIComponent(companyId)}&tripId=${encodeURIComponent(tripId)}`
+  );
+  return { items: (data.items ?? []).map((doc: Record<string, unknown>) => toRecord({ ...doc, id: doc.id })) };
 }
 
 export async function getTripAssignmentById(id: string): Promise<TripAssignmentRecord | null> {
-  const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  return d ? toRecord(d) : null;
+  const companyId = requireActiveCompanyId();
+  const data = await webFetch<Record<string, unknown> | null>(
+    `/transport/trip-assignments/${encodeURIComponent(id)}${queryParams(companyId)}`
+  );
+  return data ? toRecord(data) : null;
 }
 
 export async function addTripAssignment(data: TripAssignmentAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
   const accountId = await resolveActiveAccountId();
-  const payload: Record<string, unknown> = {
-    companyId,
-    accountId,
-    chargeTypeId: data.chargeTypeId.trim(),
-    chargeType: data.chargeType.trim(),
-    type: data.type,
-    code: data.code.trim(),
-    tripId: data.tripId.trim(),
-    entityType: data.entityType,
-    entityId: data.entityId.trim(),
-    position: data.position.trim(),
-    positionId: data.positionId.trim(),
-    displayName: data.displayName.trim(),
-    scope: {
-      type: data.scope.type,
-      stopId: data.scope.stopId.trim(),
-      fromStopId: data.scope.fromStopId.trim(),
-      toStopId: data.scope.toStopId.trim(),
-      display: data.scope.display.trim(),
-    },
-  };
-  return addDocument(COLLECTION, payload);
+  const result = await webFetch<{ id: string }>("/transport/trip-assignments", {
+    method: "POST",
+    body: JSON.stringify({
+      companyId,
+      accountId,
+      chargeTypeId: data.chargeTypeId.trim(),
+      chargeType: data.chargeType.trim(),
+      type: data.type,
+      code: data.code.trim(),
+      tripId: data.tripId.trim(),
+      entityType: data.entityType,
+      entityId: data.entityId.trim(),
+      position: data.position.trim(),
+      positionId: data.positionId.trim(),
+      displayName: data.displayName.trim(),
+      scope: {
+        type: data.scope.type,
+        stopId: data.scope.stopId.trim(),
+        fromStopId: data.scope.fromStopId.trim(),
+        toStopId: data.scope.toStopId.trim(),
+        display: data.scope.display.trim(),
+      },
+    }),
+  });
+  return result.id;
 }
 
 export async function updateTripAssignment(id: string, data: TripAssignmentEditInput): Promise<void> {
-  const payload: Record<string, unknown> = {};
-  if (data.code !== undefined) payload.code = data.code.trim();
-  if (data.tripId !== undefined) payload.tripId = data.tripId.trim();
-  if (data.chargeTypeId !== undefined) payload.chargeTypeId = data.chargeTypeId.trim();
-  if (data.chargeType !== undefined) payload.chargeType = data.chargeType.trim();
-  if (data.type !== undefined) payload.type = data.type;
-  if (data.entityType !== undefined) payload.entityType = data.entityType;
-  if (data.entityId !== undefined) payload.entityId = data.entityId.trim();
-  if (data.position !== undefined) payload.position = data.position.trim();
-  if (data.positionId !== undefined) payload.positionId = data.positionId.trim();
-  if (data.displayName !== undefined) payload.displayName = data.displayName.trim();
+  const companyId = requireActiveCompanyId();
+  const patch: Record<string, unknown> = { companyId };
+  if (data.code !== undefined) patch.code = data.code.trim();
+  if (data.tripId !== undefined) patch.tripId = data.tripId.trim();
+  if (data.chargeTypeId !== undefined) patch.chargeTypeId = data.chargeTypeId.trim();
+  if (data.chargeType !== undefined) patch.chargeType = data.chargeType.trim();
+  if (data.type !== undefined) patch.type = data.type;
+  if (data.entityType !== undefined) patch.entityType = data.entityType;
+  if (data.entityId !== undefined) patch.entityId = data.entityId.trim();
+  if (data.position !== undefined) patch.position = data.position.trim();
+  if (data.positionId !== undefined) patch.positionId = data.positionId.trim();
+  if (data.displayName !== undefined) patch.displayName = data.displayName.trim();
   if (data.scope !== undefined) {
-    payload.scope = {
+    patch.scope = {
       type: data.scope.type,
       stopId: data.scope.stopId.trim(),
       fromStopId: data.scope.fromStopId.trim(),
@@ -118,13 +116,14 @@ export async function updateTripAssignment(id: string, data: TripAssignmentEditI
       display: data.scope.display.trim(),
     };
   }
-  await updateDocument(COLLECTION, id, payload);
+  await webFetch(`/transport/trip-assignments/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) });
 }
 
 export async function deleteTripAssignment(id: string): Promise<void> {
-  return deleteDocument(COLLECTION, id);
+  const companyId = requireActiveCompanyId();
+  await webFetch(`/transport/trip-assignments/${encodeURIComponent(id)}${queryParams(companyId)}`, { method: "DELETE" });
 }
 
 export async function deleteTripAssignments(ids: string[]): Promise<void> {
-  return deleteManyDocuments(COLLECTION, ids);
+  await Promise.all(ids.map((id) => deleteTripAssignment(id)));
 }

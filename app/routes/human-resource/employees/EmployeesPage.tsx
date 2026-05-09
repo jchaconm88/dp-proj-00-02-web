@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import { getEmployees, deleteEmployee, deleteEmployees, type EmployeeRecord } from "~/features/human-resource/employees";
+import { getEmployees, deleteEmployee, type EmployeeRecord } from "~/features/human-resource/employees";
 import type { Route } from "./+types/EmployeesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, type DpTableRef } from "~/components/DpTable";
@@ -62,7 +62,7 @@ export default function EmployeesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      await deleteEmployees(selected.map((r) => r.id));
+      await Promise.all(selected.map((r) => deleteEmployee(r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {

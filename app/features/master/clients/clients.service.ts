@@ -1,25 +1,12 @@
-import { where } from "firebase/firestore";
+import { webFetch } from "~/lib/backend-client";
 import {
-    getDocument,
-    addDocument,
-    updateDocument,
-    deleteDocument,
-    deleteManyDocuments,
-    getCollectionWithMultiFilter,
-    getSubcollection,
-    getDocumentFromSubcollection,
-    addDocumentToSubcollection,
-    updateDocumentInSubcollection,
-    deleteDocumentFromSubcollection,
-} from "~/lib/firestore.service";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
-import {
-  CLIENT_LOCATION_TYPE,
-  CLIENT_STATUS,
-  parseStatus,
-  PAYMENT_CONDITION,
-  statusDefaultKey,
+    CLIENT_LOCATION_TYPE,
+    CLIENT_STATUS,
+    parseStatus,
+    PAYMENT_CONDITION,
+    statusDefaultKey,
 } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type {
     ClientRecord,
     ClientStatus,
@@ -28,297 +15,226 @@ import type {
     ClientLogistics,
     PaymentCondition,
     ClientAddInput,
-    ClientEditInput,
-    ClientFiscalLocation,
-    LocationType,
-    ClientLocationGeo,
-    ClientLocationDeliveryWindow,
     ClientLocationRecord,
     ClientLocationAddInput,
     ClientLocationEditInput,
+    LocationType,
+    ClientLocationGeo,
+    ClientLocationDeliveryWindow,
 } from "./clients.types";
 
-const COLLECTION = "clients";
-
-function defaultContact(): ClientContact {
-    return { contactName: "", email: "", phone: "" };
-}
-
-function defaultBilling(): ClientBilling {
+function toRecord(d: Record<string, unknown>): ClientRecord {
+    const status = parseStatus(d.status, CLIENT_STATUS) as ClientStatus;
+    const contact = d.contact && typeof d.contact === "object" ? (d.contact as Record<string, unknown>) : {};
+    const billing = d.billing && typeof d.billing === "object" ? (d.billing as Record<string, unknown>) : {};
+    const logistics = d.logistics && typeof d.logistics === "object" ? (d.logistics as Record<string, unknown>) : {};
+    const fiscal = d.fiscal && typeof d.fiscal === "object" ? (d.fiscal as Record<string, unknown>) : null;
+    const paymentCondition = parseStatus(billing.paymentCondition, PAYMENT_CONDITION) as PaymentCondition;
     return {
-        creditDays: 0,
-        creditLimit: 0,
-        currency: "PEN",
-        paymentCondition: statusDefaultKey(PAYMENT_CONDITION) as PaymentCondition,
-    };
-}
-
-function defaultLogistics(): ClientLogistics {
-    return { priority: 0, requiresAppointment: false, defaultServiceTimeMin: 0 };
-}
-
-function toContact(v: unknown): ClientContact {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        return {
-            contactName: String(o.contactName ?? ""),
-            email: String(o.email ?? ""),
-            phone: String(o.phone ?? ""),
-        };
-    }
-    return defaultContact();
-}
-
-function toBilling(v: unknown): ClientBilling {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        const paymentCondition = parseStatus(o.paymentCondition, PAYMENT_CONDITION) as PaymentCondition;
-        return {
-            creditDays: Number(o.creditDays) || 0,
-            creditLimit: Number(o.creditLimit) || 0,
-            currency: String(o.currency ?? "PEN"),
+        id: String(d.id ?? ""),
+        code: String(d.code ?? ""),
+        businessName: String(d.businessName ?? ""),
+        commercialName: String(d.commercialName ?? ""),
+        documentTypeId: String(d.documentTypeId ?? ""),
+        documentType: String(d.documentType ?? ""),
+        documentNumber: String(d.documentNumber ?? ""),
+        contact: {
+            contactName: String(contact.contactName ?? ""),
+            email: String(contact.email ?? ""),
+            phone: String(contact.phone ?? ""),
+        },
+        billing: {
+            creditDays: Number(billing.creditDays) || 0,
+            creditLimit: Number(billing.creditLimit) || 0,
+            currency: String(billing.currency ?? "PEN"),
             paymentCondition,
-        };
-    }
-    return defaultBilling();
-}
-
-function toLogistics(v: unknown): ClientLogistics {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        return {
-            priority: Number(o.priority) || 0,
-            requiresAppointment: o.requiresAppointment === true,
-            defaultServiceTimeMin: Number(o.defaultServiceTimeMin) || 0,
-        };
-    }
-    return defaultLogistics();
-}
-
-function toFiscal(v: unknown): ClientFiscalLocation | undefined {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        const address = String(o.address ?? "").trim();
-        const district = String(o.district ?? "").trim();
-        const city = String(o.city ?? "").trim();
-        const country = String(o.country ?? "").trim();
-        const ubigeo = String(o.ubigeo ?? "").trim();
-        if (!address && !district && !city && !country && !ubigeo) return undefined;
-        return { address, district, city, country: country || "PE", ubigeo };
-    }
-    return undefined;
-}
-
-function toRecord(doc: { id: string } & Record<string, unknown>): ClientRecord {
-    const status = parseStatus(doc.status, CLIENT_STATUS) as ClientStatus;
-    return {
-        id: doc.id,
-        code: String(doc.code ?? ""),
-        businessName: String(doc.businessName ?? ""),
-        commercialName: String(doc.commercialName ?? ""),
-        documentTypeId: String(doc.documentTypeId ?? ""),
-        documentType: String(doc.documentType ?? ""),
-        documentNumber: String(doc.documentNumber ?? ""),
-        contact: toContact(doc.contact),
-        billing: toBilling(doc.billing),
-        logistics: toLogistics(doc.logistics),
+        },
+        logistics: {
+            priority: Number(logistics.priority) || 0,
+            requiresAppointment: logistics.requiresAppointment === true,
+            defaultServiceTimeMin: Number(logistics.defaultServiceTimeMin) || 0,
+        },
         status,
-        fiscal: toFiscal(doc.fiscal),
+        fiscal: fiscal ? {
+            address: String(fiscal.address ?? "").trim(),
+            district: String(fiscal.district ?? "").trim(),
+            city: String(fiscal.city ?? "").trim(),
+            country: String(fiscal.country ?? "PE").trim(),
+            ubigeo: String(fiscal.ubigeo ?? "").trim(),
+        } : undefined,
     };
-}
-
-export async function getClient(id: string): Promise<ClientRecord | null> {
-    const d = await getDocument<Record<string, unknown>>(COLLECTION, id);
-    return d ? toRecord(d) : null;
 }
 
 export async function getClients(): Promise<{ items: ClientRecord[]; total: number }> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    const list = await getCollectionWithMultiFilter<Record<string, unknown>>(COLLECTION, [
-        where("companyId", "==", companyId),
-        where("accountId", "==", accountId),
-    ]);
-    const items = list.map(toRecord);
-    return { items, total: items.length };
+    const raw = await webFetch<{ items: Record<string, unknown>[]; total: number }>(
+        `/master/clients?companyId=${encodeURIComponent(companyId)}`
+    );
+    return {
+        items: raw.items.map(toRecord),
+        total: raw.total ?? raw.items.length,
+    };
+}
+
+export async function getClient(id: string): Promise<ClientRecord | null> {
+    const companyId = requireActiveCompanyId();
+    const raw = await webFetch<Record<string, unknown> | null>(
+        `/master/clients/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
+    );
+    if (!raw) return null;
+    return toRecord(raw);
 }
 
 export async function addClient(data: ClientAddInput): Promise<string> {
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    return addDocument(COLLECTION, {
-        companyId,
-        accountId,
-        code: data.code.trim(),
-        businessName: data.businessName.trim(),
-        commercialName: data.commercialName.trim(),
-        documentTypeId: data.documentTypeId.trim(),
-        documentType: data.documentType.trim(),
-        documentNumber: data.documentNumber.trim(),
-        contact: {
-            contactName: data.contact.contactName.trim(),
-            email: data.contact.email.trim(),
-            phone: data.contact.phone.trim(),
-        },
-        billing: {
-            creditDays: Number(data.billing.creditDays) || 0,
-            creditLimit: Number(data.billing.creditLimit) || 0,
-            currency: data.billing.currency.trim() || "PEN",
-            paymentCondition: data.billing.paymentCondition,
-        },
-        logistics: {
-            priority: Number(data.logistics.priority) || 0,
-            requiresAppointment: data.logistics.requiresAppointment,
-            defaultServiceTimeMin: Number(data.logistics.defaultServiceTimeMin) || 0,
-        },
-        status: data.status,
-        ...(data.fiscal && {
-            fiscal: {
+    const res = await webFetch<{ id?: string }>("/master/clients", {
+        method: "POST",
+        body: JSON.stringify({
+            companyId,
+            code: data.code?.trim(),
+            businessName: data.businessName.trim(),
+            commercialName: data.commercialName.trim(),
+            documentTypeId: data.documentTypeId.trim(),
+            documentType: data.documentType.trim(),
+            documentNumber: data.documentNumber.trim(),
+            contact: {
+                contactName: data.contact.contactName.trim(),
+                email: data.contact.email.trim(),
+                phone: data.contact.phone.trim(),
+            },
+            billing: {
+                creditDays: Number(data.billing.creditDays) || 0,
+                creditLimit: Number(data.billing.creditLimit) || 0,
+                currency: data.billing.currency.trim() || "PEN",
+                paymentCondition: data.billing.paymentCondition,
+            },
+            logistics: {
+                priority: Number(data.logistics.priority) || 0,
+                requiresAppointment: data.logistics.requiresAppointment,
+                defaultServiceTimeMin: Number(data.logistics.defaultServiceTimeMin) || 0,
+            },
+            status: data.status,
+            fiscal: data.fiscal ? {
                 address: data.fiscal.address.trim(),
                 district: data.fiscal.district.trim(),
                 city: data.fiscal.city.trim(),
                 country: data.fiscal.country.trim() || "PE",
                 ubigeo: data.fiscal.ubigeo.trim(),
-            },
+            } : undefined,
         }),
+    });
+    return String(res?.id ?? "");
+}
+
+export async function updateClient(id: string, data: Partial<ClientAddInput>): Promise<void> {
+    const companyId = requireActiveCompanyId();
+    await webFetch(`/master/clients/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ companyId, ...data }),
     });
 }
 
-export async function updateClient(id: string, data: ClientEditInput): Promise<void> {
-    const payload: Record<string, unknown> = {};
-    if (data.code !== undefined) payload.code = data.code;
-    if (data.businessName !== undefined) payload.businessName = data.businessName;
-    if (data.commercialName !== undefined) payload.commercialName = data.commercialName;
-    if (data.documentTypeId !== undefined) payload.documentTypeId = data.documentTypeId;
-    if (data.documentType !== undefined) payload.documentType = data.documentType;
-    if (data.documentNumber !== undefined) payload.documentNumber = data.documentNumber;
-    if (data.contact !== undefined) payload.contact = data.contact;
-    if (data.billing !== undefined) payload.billing = data.billing;
-    if (data.logistics !== undefined) payload.logistics = data.logistics;
-    if (data.status !== undefined) payload.status = data.status;
-    if (data.fiscal !== undefined) {
-        payload.fiscal = data.fiscal
-            ? {
-                  address: data.fiscal.address.trim(),
-                  district: data.fiscal.district.trim(),
-                  city: data.fiscal.city.trim(),
-                  country: data.fiscal.country.trim() || "PE",
-                  ubigeo: data.fiscal.ubigeo.trim(),
-              }
-            : null;
-    }
-    await updateDocument(COLLECTION, id, payload);
-}
-
 export async function deleteClient(id: string): Promise<void> {
-    return deleteDocument(COLLECTION, id);
+    const companyId = requireActiveCompanyId();
+    await webFetch(`/master/clients/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
+        method: "DELETE",
+    });
 }
 
-export async function deleteClients(ids: string[]): Promise<void> {
-    return deleteManyDocuments(COLLECTION, ids);
-}
+// ===== Client Locations =====
 
-const SUBCOLLECTION = "locations";
-
-function toGeo(v: unknown): ClientLocationGeo {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        const lat = o.latitude ?? (o as { latitude?: number }).latitude;
-        const lng = o.longitude ?? (o as { longitude?: number }).longitude;
-        if (typeof lat === "number" && typeof lng === "number") return { latitude: lat, longitude: lng };
-    }
-    if (v && typeof v === "object" && "latitude" in v && "longitude" in v) {
-        const gp = v as { latitude: number; longitude: number };
-        return { latitude: gp.latitude, longitude: gp.longitude };
-    }
-    return { latitude: 0, longitude: 0 };
-}
-
-function toDeliveryWindow(v: unknown): ClientLocationDeliveryWindow {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        return {
-            start: String(o.start ?? "08:00"),
-            end: String(o.end ?? "16:00"),
-        };
-    }
-    return { start: "08:00", end: "16:00" };
-}
-
-function toLocationRecord(doc: { id: string } & Record<string, unknown>): ClientLocationRecord {
-    const type = parseStatus(doc.type, CLIENT_LOCATION_TYPE) as LocationType;
-    const geo = toGeo(doc.geo ?? doc.geoPoint);
+function toLocationRecord(d: Record<string, unknown>): ClientLocationRecord {
+    const type = parseStatus(d.type, CLIENT_LOCATION_TYPE) as LocationType;
+    const geo = (d.geo && typeof d.geo === "object" ? d.geo : { latitude: 0, longitude: 0 }) as { latitude: number; longitude: number };
+    const deliveryWindow = (d.deliveryWindow && typeof d.deliveryWindow === "object"
+        ? d.deliveryWindow
+        : { start: "08:00", end: "16:00" }) as { start: string; end: string };
     return {
-        id: doc.id,
-        name: String(doc.name ?? ""),
+        id: String(d.id ?? ""),
+        name: String(d.name ?? ""),
         type,
-        address: String(doc.address ?? ""),
-        district: String(doc.district ?? ""),
-        city: String(doc.city ?? ""),
-        country: String(doc.country ?? ""),
-        geo,
-        deliveryWindow: toDeliveryWindow(doc.deliveryWindow),
-        serviceTimeMin: Number(doc.serviceTimeMin) || 0,
-        active: doc.active === true,
+        address: String(d.address ?? ""),
+        district: String(d.district ?? ""),
+        city: String(d.city ?? ""),
+        country: String(d.country ?? ""),
+        geo: {
+            latitude: Number(geo.latitude) || 0,
+            longitude: Number(geo.longitude) || 0,
+        },
+        deliveryWindow: {
+            start: String(deliveryWindow.start || "08:00"),
+            end: String(deliveryWindow.end || "16:00"),
+        },
+        serviceTimeMin: Number(d.serviceTimeMin) || 0,
+        active: d.active === true,
     };
 }
 
 export async function getClientLocations(clientId: string): Promise<{ items: ClientLocationRecord[]; total: number }> {
-    const list = await getSubcollection<Record<string, unknown>>(COLLECTION, clientId, SUBCOLLECTION);
-    const items = list.map(toLocationRecord);
-    return { items, total: items.length };
+    const companyId = requireActiveCompanyId();
+    const raw = await webFetch<{ items: Record<string, unknown>[]; total: number }>(
+        `/master/clients/${encodeURIComponent(clientId)}/locations?companyId=${encodeURIComponent(companyId)}`
+    );
+    return {
+        items: raw.items.map(toLocationRecord),
+        total: raw.total ?? raw.items.length,
+    };
 }
 
 export async function getClientLocation(clientId: string, locationId: string): Promise<ClientLocationRecord | null> {
-    const d = await getDocumentFromSubcollection<Record<string, unknown>>(COLLECTION, clientId, SUBCOLLECTION, locationId);
-    return d ? toLocationRecord(d) : null;
+    const companyId = requireActiveCompanyId();
+    const raw = await webFetch<Record<string, unknown> | null>(
+        `/master/clients/${encodeURIComponent(clientId)}/locations/${encodeURIComponent(locationId)}?companyId=${encodeURIComponent(companyId)}`
+    );
+    if (!raw) return null;
+    return toLocationRecord(raw);
 }
 
 export async function addClientLocation(clientId: string, data: ClientLocationAddInput): Promise<string> {
-    const lat = Number(data.geo.latitude) || 0;
-    const lng = Number(data.geo.longitude) || 0;
     const companyId = requireActiveCompanyId();
-    const accountId = await resolveActiveAccountId();
-    return addDocumentToSubcollection(COLLECTION, clientId, SUBCOLLECTION, {
-        companyId,
-        accountId,
-        name: data.name.trim(),
-        type: data.type,
-        address: data.address.trim(),
-        district: data.district.trim(),
-        city: data.city.trim(),
-        country: data.country.trim(),
-        geo: { latitude: lat, longitude: lng },
-        deliveryWindow: {
-            start: data.deliveryWindow.start.trim() || "08:00",
-            end: data.deliveryWindow.end.trim() || "16:00",
-        },
-        serviceTimeMin: Number(data.serviceTimeMin) || 0,
-        active: data.active,
-    });
+    const res = await webFetch<{ id?: string }>(
+        `/master/clients/${encodeURIComponent(clientId)}/locations`,
+        {
+            method: "POST",
+            body: JSON.stringify({
+                companyId,
+                name: data.name.trim(),
+                type: data.type,
+                address: data.address.trim(),
+                district: data.district.trim(),
+                city: data.city.trim(),
+                country: data.country.trim(),
+                geo: {
+                    latitude: Number(data.geo.latitude) || 0,
+                    longitude: Number(data.geo.longitude) || 0,
+                },
+                deliveryWindow: {
+                    start: data.deliveryWindow.start.trim() || "08:00",
+                    end: data.deliveryWindow.end.trim() || "16:00",
+                },
+                serviceTimeMin: Number(data.serviceTimeMin) || 0,
+                active: data.active,
+            }),
+        }
+    );
+    return String(res?.id ?? "");
 }
 
 export async function updateClientLocation(clientId: string, locationId: string, data: ClientLocationEditInput): Promise<void> {
-    const payload: Record<string, unknown> = {};
-    if (data.name !== undefined) payload.name = data.name;
-    if (data.type !== undefined) payload.type = data.type;
-    if (data.address !== undefined) payload.address = data.address;
-    if (data.district !== undefined) payload.district = data.district;
-    if (data.city !== undefined) payload.city = data.city;
-    if (data.country !== undefined) payload.country = data.country;
-    if (data.geo !== undefined) {
-        const lat = Number(data.geo.latitude) || 0;
-        const lng = Number(data.geo.longitude) || 0;
-        payload.geo = { latitude: lat, longitude: lng };
-    }
-    if (data.deliveryWindow !== undefined) payload.deliveryWindow = data.deliveryWindow;
-    if (data.serviceTimeMin !== undefined) payload.serviceTimeMin = Number(data.serviceTimeMin) || 0;
-    if (data.active !== undefined) payload.active = data.active;
-    await updateDocumentInSubcollection(COLLECTION, clientId, SUBCOLLECTION, locationId, payload);
+    const companyId = requireActiveCompanyId();
+    await webFetch(
+        `/master/clients/${encodeURIComponent(clientId)}/locations/${encodeURIComponent(locationId)}`,
+        {
+            method: "PUT",
+            body: JSON.stringify({ companyId, ...data }),
+        }
+    );
 }
 
-export async function deleteClientLocations(clientId: string, locationIds: string[]): Promise<void> {
-    for (const id of locationIds) {
-        await deleteDocumentFromSubcollection(COLLECTION, clientId, SUBCOLLECTION, id);
-    }
+export async function deleteClientLocation(clientId: string, locationId: string): Promise<void> {
+    const companyId = requireActiveCompanyId();
+    await webFetch(
+        `/master/clients/${encodeURIComponent(clientId)}/locations/${encodeURIComponent(locationId)}?companyId=${encodeURIComponent(companyId)}`,
+        { method: "DELETE" }
+    );
 }

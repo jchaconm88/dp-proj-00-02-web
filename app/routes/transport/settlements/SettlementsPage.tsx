@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import {
-  getSettlements,
+import { getAuthUser } from "~/lib/get-auth-user";
+import { getSettlements,
   deleteSettlement,
   deleteSettlements,
   updateSettlementsStatus,
@@ -59,6 +59,7 @@ const SETTLEMENT_STATUS_OPTIONS = statusToSelectOptions(SETTLEMENT_STATUS);
 const PAY_TERM_OPTIONS = statusToSelectOptions(PAYMENT_CONDITION);
 
 export async function clientLoader() {
+  await getAuthUser();
   const items = await getSettlements();
   return { items };
 }

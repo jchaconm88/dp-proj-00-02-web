@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
-import { getResources, deleteResources, type ResourceRecord } from "~/features/human-resource/resources";
+import { getResources, deleteResource, type ResourceRecord } from "~/features/human-resource/resources";
 import type { Route } from "./+types/ResourcesPage";
 import { DpContent, DpContentHeader } from "~/components/DpContent";
 import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
@@ -63,7 +63,7 @@ export default function ResourcesPage({ loaderData }: Route.ComponentProps) {
     setSaving(true);
     setError(null);
     try {
-      await deleteResources(selected.map((r) => r.id));
+      await Promise.all(selected.map((r) => deleteResource(r.id)));
       tableRef.current?.clearSelectedRows();
       revalidator.revalidate();
     } catch (err) {
