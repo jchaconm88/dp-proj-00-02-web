@@ -70,12 +70,6 @@ jobs:
         with:
           credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
 
-      - name: Deploy Firestore indexes (canon: dp-proj-00-02-backend)
-        env:
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-        working-directory: dp-proj-00-02-backend
-        run: firebase deploy --project "${GCP_PROJECT_ID}" --only firestore:indexes --non-interactive
-
       - name: Deploy Web hosting & Firestore rules
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}

@@ -2,7 +2,7 @@
 
 ## Fuente única
 
-El archivo canonico es **`dp-proj-00-02-web/firestore.rules`**. El despliegue de reglas y hosting lo hace el workflow del proyecto web; los **índices compuestos** viven en **`dp-proj-00-02-backend/firestore.indexes.json`** y el mismo workflow los despliega con `firebase deploy --only firestore:indexes` desde esa carpeta. El repo de functions **no** duplica ni despliega reglas.
+El archivo canonico es **`dp-proj-00-02-web/firestore.rules`**. El despliegue de reglas y hosting lo hace el workflow del proyecto web; los **índices compuestos** viven en **`dp-proj-00-02-backend/firestore.indexes.json`** y se despliegan desde el pipeline del backend. El repo de functions **no** duplica ni despliega reglas.
 
 ## Objetivo
 
