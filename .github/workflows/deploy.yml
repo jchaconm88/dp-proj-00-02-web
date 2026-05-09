@@ -73,5 +73,4 @@ jobs:
       - name: Deploy Web hosting & Firestore rules
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-        working-directory: dp-proj-00-02-web
         run: firebase deploy --project "${GCP_PROJECT_ID}" --only hosting,firestore:rules --non-interactive
