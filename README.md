@@ -145,7 +145,7 @@ En **CI** (`.github/workflows/deploy.yml`) el target es el **GitHub Environment*
 | Nombre | Tipo | Uso |
 |---|---|---|
 | `GCP_PROJECT_ID` | Variable | `project_id` del ambiente (output `dp-proj-00-02-infra`). |
-| `WEB_BACKEND_BASE_URL` | Variable | URL absoluta del backend del ambiente, p.ej. `https://<servicio>.a.run.app/web`. Se inyecta como `VITE_WEB_BACKEND_BASE_URL` en el build. |
+| `BACKEND_BASE_URL` | Variable | URL absoluta base del backend del ambiente, p.ej. `https://<servicio>.a.run.app`. Se inyecta como `VITE_WEB_BACKEND_BASE_URL` en el build. |
 | `FIREBASE_SERVICE_ACCOUNT` | Secret | JSON de la SA `github-deploy-web@…` (creada por infra). |
 | `VITE_FIREBASE_*` | Secrets | `API_KEY`, `AUTH_DOMAIN`, `PROJECT_ID`, `STORAGE_BUCKET`, `MESSAGING_SENDER_ID`, `APP_ID` del proyecto Firebase del ambiente. |
 | `DEPLOY_ENVIRONMENT` | Variable repo (opcional) | Entorno por defecto para `push` a `main` (p.ej. `dev`). |

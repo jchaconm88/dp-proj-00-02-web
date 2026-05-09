@@ -1,9 +1,15 @@
 import { auth } from "~/lib/firebase";
 import { getAuthUser } from "~/lib/get-auth-user";
 
+function resolveWebBaseUrl(): string {
+  const configured = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "")
+    .trim()
+    .replace(/\/$/, "");
+  return configured || (import.meta.env.DEV ? "/web-backend" : "");
+}
+
 export async function webFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const configured = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "").trim().replace(/\/$/, "");
-  const base = configured || (import.meta.env.DEV ? "/web-backend" : "");
+  const base = resolveWebBaseUrl();
   if (!base) throw new Error("Falta VITE_WEB_BACKEND_BASE_URL (build/prod)");
   const user = auth.currentUser ?? (await getAuthUser());
   if (!user) throw new Error("Sesión no lista: no hay usuario autenticado.");
@@ -11,7 +17,8 @@ export async function webFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
   if (!headers.has("Content-Type") && init?.body) headers.set("Content-Type", "application/json");
-  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = `${base}/web${normalizedPath}`;
   const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
     const text = await res.text().catch(() => "");

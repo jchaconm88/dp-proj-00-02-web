@@ -32,8 +32,8 @@ jobs:
             echo "::error::Define la variable del Environment GCP_PROJECT_ID (output de dp-proj-00-02-infra)."
             exit 1
           fi
-          if [[ -z "${{ vars.WEB_BACKEND_BASE_URL }}" ]]; then
-            echo "::error::Define WEB_BACKEND_BASE_URL (URL del backend Cloud Run + /web del ambiente)."
+          if [[ -z "${{ vars.BACKEND_BASE_URL }}" ]]; then
+            echo "::error::Define BACKEND_BASE_URL (URL base del backend Cloud Run del ambiente)."
             exit 1
           fi
 
@@ -60,7 +60,7 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_WEB_BACKEND_BASE_URL: ${{ vars.WEB_BACKEND_BASE_URL }}
+          VITE_WEB_BACKEND_BASE_URL: ${{ vars.BACKEND_BASE_URL }}
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
