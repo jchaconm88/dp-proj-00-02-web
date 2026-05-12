@@ -45,7 +45,23 @@
         "link": "/system/dashboard-metrics",
         "permission": [
           "view",
-          "company"
+          "dashboard-metrics"
+        ]
+      },
+      {
+        "title": "Config. Dashboard",
+        "link": "/system/dashboard-config",
+        "permission": [
+          "view",
+          "dashboard-config"
+        ]
+      },
+      {
+        "title": "Accesos Dashboard",
+        "link": "/system/dashboard-overrides",
+        "permission": [
+          "view",
+          "dashboard-config"
         ]
       },
       {

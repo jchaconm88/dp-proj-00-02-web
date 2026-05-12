@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import DpDashboardActivityPanel from "~/components/DpDashboard/DpDashboardActivityPanel";
-import DpDashboardKpiCard from "~/components/DpDashboard/DpDashboardKpiCard";
-import type { DashboardSnapshot } from "~/features/system/dashboard";
-import { loadDashboardSnapshot, PREPARING_DASHBOARD_MESSAGE } from "~/features/system/dashboard";
+import {
+  DashboardRenderer,
+  getSnapshot,
+  loadDashboardSnapshot,
+  loadDefinitions,
+} from "~/features/system/dashboard";
+import type { DashboardSnapshot, DashboardSnapshotResponse, OverrideEntry } from "~/features/system/dashboard";
 import { currentUsagePeriod } from "~/features/system/usage-months";
+import { useCompany } from "~/lib/company-context";
+import { getEffectivePermissions } from "~/lib/effective-permissions";
+import { getAllRoles, type RoleRecord } from "~/features/system/roles";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/DashboardHome";
 
 export function meta({}: Route.MetaArgs) {
@@ -23,56 +31,112 @@ function buildRecentPeriods(maxMonths = 12): string[] {
 }
 
 export default function DashboardHome() {
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  // Legacy snapshot state (for activity panels)
+  const [legacySnapshot, setLegacySnapshot] = useState<DashboardSnapshot | null>(null);
+
+  // New configurable dashboard state
+  const [snapshot, setSnapshot] = useState<DashboardSnapshotResponse | null>(null);
+  const [overrides, setOverrides] = useState<OverrideEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState(currentUsagePeriod());
-  const periodOptions = useMemo(() => buildRecentPeriods(18), []);
 
-  useEffect(() => {
-    const id = window.setTimeout(() => setMounted(true), 20);
-    return () => window.clearTimeout(id);
-  }, []);
+  // Permissions
+  const { companyUsers, activeCompanyId } = useCompany();
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    let retryTimer: number | null = null;
+    async function run() {
+      if (!activeCompanyId) return;
+      try {
+        const next = await getAllRoles(activeCompanyId);
+        if (!cancelled) setRoles(next);
+      } catch {
+        if (!cancelled) setRoles([]);
+      }
+    }
+    void run();
+    return () => { cancelled = true; };
+  }, [activeCompanyId]);
+
+  const activeCompanyUserRows = useMemo(() => {
+    if (!activeCompanyId) return [];
+    return companyUsers.filter((x) => x.companyId === activeCompanyId && x.status === "active");
+  }, [companyUsers, activeCompanyId]);
+
+  const companyUserRoleIds = useMemo(
+    () => (activeCompanyUserRows[0]?.webRoleIds ?? []).map((x: unknown) => String(x)),
+    [activeCompanyUserRows]
+  );
+  const companyUserRoleNames = useMemo(
+    () => (activeCompanyUserRows[0]?.webRoleNames ?? []).map((x: unknown) => String(x)),
+    [activeCompanyUserRows]
+  );
+  const effectivePermissions = useMemo(
+    () => getEffectivePermissions(companyUserRoleIds, companyUserRoleNames, roles),
+    [companyUserRoleIds, companyUserRoleNames, roles]
+  );
+
+  // Load snapshot + overrides
+  useEffect(() => {
+    let cancelled = false;
     async function run() {
       setLoading(true);
       setError(null);
       try {
-        const data = await loadDashboardSnapshot(selectedPeriod);
-        if (!cancelled) setSnapshot(data);
+        const companyId = requireActiveCompanyId();
+        const [snapshotData, defsData] = await Promise.all([
+          getSnapshot(companyId, selectedPeriod),
+          loadDefinitions().catch(() => null),
+        ]);
+        if (!cancelled) {
+          setSnapshot(snapshotData);
+          setOverrides(defsData?.overrides ?? null);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "No se pudo cargar el dashboard.";
         if (!cancelled) setError(msg);
-        if (!cancelled && msg === PREPARING_DASHBOARD_MESSAGE) {
-          retryTimer = window.setTimeout(() => {
-            setReloadToken((v) => v + 1);
-          }, 2000);
-        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     void run();
-    return () => {
-      cancelled = true;
-      if (retryTimer != null) window.clearTimeout(retryTimer);
-    };
-  }, [reloadToken, selectedPeriod]);
+    return () => { cancelled = true; };
+  }, [selectedPeriod]);
 
-  const cards = useMemo(() => snapshot?.cards ?? [], [snapshot?.cards]);
-  const reports = snapshot?.activityReports ?? [];
-  const trips = snapshot?.activityTrips ?? [];
+  // Load legacy snapshot for activity panels
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const data = await loadDashboardSnapshot(selectedPeriod);
+        if (!cancelled) setLegacySnapshot(data);
+      } catch {
+        // Activity panels are non-critical; ignore errors
+      }
+    }
+    void run();
+    return () => { cancelled = true; };
+  }, [selectedPeriod]);
 
-  const isPreparing = error === PREPARING_DASHBOARD_MESSAGE;
-  const hasUsageForPeriod = snapshot?.hasUsageForPeriod !== false;
+  const reports = legacySnapshot?.activityReports ?? [];
+  const trips = legacySnapshot?.activityTrips ?? [];
+
+  const handleRetry = () => {
+    // Trigger re-fetch by toggling period
+    const current = selectedPeriod;
+    setSelectedPeriod("");
+    setTimeout(() => setSelectedPeriod(current), 0);
+  };
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+  };
 
   return (
     <div className="space-y-6">
+      {/* Hero header */}
       <section className="dp-glass-panel dp-neon-glow-primary relative overflow-hidden rounded-3xl p-6 md:p-8">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-[color-mix(in_srgb,var(--dp-primary)_14%,transparent)] via-transparent to-[color-mix(in_srgb,var(--dp-secondary)_10%,transparent)]" />
         <div className="relative flex flex-wrap items-start justify-between gap-5">
@@ -92,77 +156,22 @@ export default function DashboardHome() {
               Límites de plan, uso mensual y actividad operativa del tenant.
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="dp-pill-toggle flex items-center p-1">
-              <button type="button" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--dp-on-surface-soft)]">
-                Day
-              </button>
-              <button type="button" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--dp-on-surface-soft)]">
-                Week
-              </button>
-              <button type="button" className="dp-pill-toggle-active rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]">
-                Month
-              </button>
-              <button type="button" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--dp-on-surface-soft)]">
-                Year
-              </button>
-            </div>
-            <div className="dp-pill-toggle flex items-center gap-2 px-3 py-1.5">
-              <i className="pi pi-calendar text-xs text-[var(--dp-on-surface-soft)]" aria-hidden />
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-[var(--dp-on-surface)] outline-none"
-              >
-                {periodOptions.map((p) => (
-                  <option key={p} value={p} className="text-zinc-900">
-                    {p}
-                  </option>
-                ))}
-              </select>
-              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dp-on-surface-soft)]">
-                {snapshot?.period ?? "—"}
-              </span>
-            </div>
-          </div>
         </div>
       </section>
 
-      {error && (
-        <div
-          className={
-            isPreparing
-              ? "rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
-              : "rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-          }
-        >
-          {error}
-        </div>
-      )}
-      {!loading && !error && !hasUsageForPeriod && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Sin documento `usage-months` para este periodo. Los contadores de uso mensual pueden verse en 0.
-        </div>
-      )}
+      {/* Configurable Dashboard Renderer */}
+      <DashboardRenderer
+        snapshot={snapshot}
+        effectivePermissions={effectivePermissions}
+        overrides={overrides}
+        loading={loading}
+        error={error}
+        onRetry={handleRetry}
+        onPeriodChange={handlePeriodChange}
+        period={selectedPeriod}
+      />
 
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {loading &&
-          Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={`sk-${i}`}
-              className="relative h-44 animate-pulse overflow-hidden rounded-2xl border border-white/10 bg-[var(--dp-surface-low)]/80"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            </div>
-          ))}
-
-        {!loading &&
-          cards.map((card, i) => (
-            <DpDashboardKpiCard key={card.id} card={card} mounted={mounted} index={i} />
-          ))}
-      </section>
-
+      {/* Activity panels */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <DpDashboardActivityPanel title="Reportes recientes" items={reports} fallbackHref="/reports" />
         <DpDashboardActivityPanel title="Viajes recientes" items={trips} fallbackHref="/transport/trips" />

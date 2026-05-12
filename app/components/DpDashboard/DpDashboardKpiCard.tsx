@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { DashboardKpiCard } from "~/features/system/dashboard";
+import type { DashboardKpiCard } from "~/features/system/dashboard/dashboard.types";
 import DpDashboardSparkline from "./DpDashboardSparkline";
 
 interface DpDashboardKpiCardProps {

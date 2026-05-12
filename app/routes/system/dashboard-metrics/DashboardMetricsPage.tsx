@@ -1,353 +1,360 @@
-import { useEffect, useMemo, useState } from "react";
-import { DpContent } from "~/components/DpContent";
+import { useRef, useState } from "react";
+import { useRevalidator } from "react-router";
+import { DpContent, DpContentHeader, DpContentSet } from "~/components/DpContent";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpConfirmDialog } from "~/components/DpConfirmDialog";
 import { DpInput } from "~/components/DpInput";
-import {
-  createEntityCountMetricTemplate,
-  deleteDashboardCardDefinition,
-  deleteMetricDefinition,
-  listDashboardCardDefinitions,
-  listMetricDefinitions,
-  updateDashboardCardDefinition,
-  updateMetricDefinition,
-  type DashboardCardDefinitionRecord,
-  type MetricDefinitionRecord,
-} from "~/features/system/dashboard-config";
+import { getMetrics, createMetric, updateMetric, deleteMetric } from "~/features/system/dashboard";
+import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/DashboardMetricsPage";
+import type { StatusSeverity } from "~/constants/status-options";
+
+// ─── Flat row type for DpTable ────────────────────────────────────────────────
+
+interface MetricTableRow {
+  id: string;
+  metricKey: string;
+  label: string;
+  type: string;
+  measureType: string;
+  source: string;
+  readonly: string;
+  _record: any;
+}
+
+// ─── Table definition ─────────────────────────────────────────────────────────
+
+const SOURCE_OPTIONS: Record<string, { label: string; severity: StatusSeverity }> = {
+  default: { label: "Default", severity: "info" },
+  custom: { label: "Custom", severity: "success" },
+};
+
+const READONLY_OPTIONS: Record<string, { label: string; severity: StatusSeverity }> = {
+  true: { label: "Readonly", severity: "warning" },
+  false: { label: "Editable", severity: "secondary" },
+};
+
+const METRICS_TABLE_DEF: DpTableDefColumn[] = [
+  { header: "Metric Key", column: "metricKey", order: 1, display: true, filter: true, sort: true },
+  { header: "Label", column: "label", order: 2, display: true, filter: true, sort: true },
+  { header: "Tipo", column: "type", order: 3, display: true, filter: true, sort: true },
+  { header: "Medición", column: "measureType", order: 4, display: true, filter: true, sort: true },
+  { header: "Source", column: "source", order: 5, display: true, filter: true, type: "status", typeOptions: SOURCE_OPTIONS },
+  { header: "Readonly", column: "readonly", order: 6, display: true, filter: true, type: "status", typeOptions: READONLY_OPTIONS },
+];
+
+// ─── Form options ─────────────────────────────────────────────────────────────
+
+const METRIC_TYPE_OPTIONS = [
+  { label: "Entity Count", value: "entityCount" },
+  { label: "Sum", value: "sum" },
+  { label: "Ratio", value: "ratio" },
+  { label: "Custom", value: "custom" },
+];
+
+const MEASURE_TYPE_OPTIONS = [
+  { label: "Counter Monthly", value: "counterMonthly" },
+  { label: "Gauge Current", value: "gaugeCurrent" },
+];
+
+const VALUE_FORMAT_OPTIONS = [
+  { label: "Number", value: "number" },
+  { label: "Currency", value: "currency" },
+  { label: "Percentage", value: "percentage" },
+  { label: "Bytes", value: "bytes" },
+];
+
+// ─── Flatten helper ───────────────────────────────────────────────────────────
+
+function flattenMetrics(records: any[]): MetricTableRow[] {
+  return records.map((r) => ({
+    id: r.data.id,
+    metricKey: r.data.metricKey,
+    label: r.data.label,
+    type: r.data.type,
+    measureType: r.data.measureType,
+    source: r.source,
+    readonly: String(r.readonly),
+    _record: r,
+  }));
+}
+
+// ─── Meta ─────────────────────────────────────────────────────────────────────
 
 export function meta(_args: Route.MetaArgs) {
   return [
     { title: "Métricas dashboard" },
-    { name: "description", content: "Configuración dinámica de métricas y tarjetas de dashboard" },
+    { name: "description", content: "Gestión de métricas de dashboard" },
   ];
 }
 
-type TemplateForm = {
-  entityLabel: string;
-  metricKey: string;
-  collectionName: string;
-  planLimitKey: string;
-  href: string;
-  icon: string;
-  accentClass: string;
-};
+// ─── Client Loader ────────────────────────────────────────────────────────────
 
-const EMPTY_FORM: TemplateForm = {
-  entityLabel: "",
-  metricKey: "",
-  collectionName: "",
-  planLimitKey: "",
-  href: "",
-  icon: "chart-line",
-  accentClass: "text-sky-600",
-};
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
+  await getAuthUser();
+  const items = await getMetrics();
+  return { metrics: flattenMetrics(items) };
+}
 
-export default function DashboardMetricsPage() {
-  const [metrics, setMetrics] = useState<MetricDefinitionRecord[]>([]);
-  const [cards, setCards] = useState<DashboardCardDefinitionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function DashboardMetricsPage({ loaderData }: Route.ComponentProps) {
+  const revalidator = useRevalidator();
+  const tableRef = useRef<DpTableRef<MetricTableRow>>(null);
+  const [filterValue, setFilterValue] = useState("");
+  const [selectedCount, setSelectedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<TemplateForm>(EMPTY_FORM);
 
-  async function reload() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [metricRows, cardRows] = await Promise.all([listMetricDefinitions(), listDashboardCardDefinitions()]);
-      setMetrics(metricRows);
-      setCards(cardRows);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al cargar configuración.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Delete state
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
-  useEffect(() => {
-    void reload();
-  }, []);
+  // Form state
+  const [formVisible, setFormVisible] = useState(false);
+  const [formEdit, setFormEdit] = useState<any | null>(null);
+  const [formSaving, setFormSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const metricKeys = useMemo(() => new Set(metrics.map((m) => m.metricKey)), [metrics]);
+  // Form fields
+  const [metricKey, setMetricKey] = useState("");
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState("entityCount");
+  const [measureType, setMeasureType] = useState("counterMonthly");
+  const [valueFormat, setValueFormat] = useState("number");
+  const [collectionName, setCollectionName] = useState("");
+  const [active, setActive] = useState(true);
 
-  async function handleCreateTemplate() {
-    const metricKey = form.metricKey.trim();
-    const entityLabel = form.entityLabel.trim();
-    const collectionName = form.collectionName.trim();
-    if (!metricKey || !entityLabel || !collectionName) return;
-    if (metricKeys.has(metricKey)) {
-      setError(`Ya existe una métrica con key "${metricKey}".`);
+  const isLoading = revalidator.state === "loading";
+
+  const handleFilter = (value: string) => {
+    setFilterValue(value);
+    tableRef.current?.filter(value);
+  };
+
+  // ─── Create / Edit ────────────────────────────────────────────────────────
+
+  const openCreate = () => {
+    setFormEdit(null);
+    setMetricKey("");
+    setLabel("");
+    setType("entityCount");
+    setMeasureType("counterMonthly");
+    setValueFormat("number");
+    setCollectionName("");
+    setActive(true);
+    setFormError(null);
+    setFormVisible(true);
+  };
+
+  const openEdit = (row: MetricTableRow) => {
+    if (row.readonly === "true") {
+      setError("Las métricas default no se pueden editar.");
       return;
     }
-    setSaving(true);
-    setError(null);
-    try {
-      await createEntityCountMetricTemplate({
-        entityLabel,
-        metricKey,
-        collectionName,
-        planLimitKey: form.planLimitKey.trim() || undefined,
-        href: form.href.trim() || undefined,
-        icon: form.icon.trim() || "chart-line",
-        accentClass: form.accentClass.trim() || "text-sky-600",
-      });
-      setForm(EMPTY_FORM);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear la plantilla.");
-    } finally {
-      setSaving(false);
-    }
-  }
+    const d = row._record.data;
+    setFormEdit(row._record);
+    setMetricKey(d.metricKey);
+    setLabel(d.label);
+    setType(d.type);
+    setMeasureType(d.measureType);
+    setValueFormat(d.valueFormat);
+    setCollectionName(d.source?.collectionName ?? "");
+    setActive(d.active);
+    setFormError(null);
+    setFormVisible(true);
+  };
 
-  async function removeMetric(metricId: string) {
-    setSaving(true);
-    setError(null);
-    try {
-      await deleteMetricDefinition(metricId);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar la métrica.");
-    } finally {
-      setSaving(false);
+  const handleFormSave = async () => {
+    // Basic validation
+    if (!metricKey.trim() || !label.trim() || !collectionName.trim()) {
+      setFormError("Metric Key, Label y Collection Name son requeridos.");
+      return;
     }
-  }
 
-  async function removeCard(cardId: string) {
-    setSaving(true);
-    setError(null);
-    try {
-      await deleteDashboardCardDefinition(cardId);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar la tarjeta.");
-    } finally {
-      setSaving(false);
-    }
-  }
+    setFormSaving(true);
+    setFormError(null);
 
-  async function toggleMetricActive(metric: MetricDefinitionRecord) {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateMetricDefinition(metric.id, { active: !metric.active });
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar la métrica.");
-    } finally {
-      setSaving(false);
-    }
-  }
+    const payload: any = {
+      metricKey: metricKey.trim(),
+      label: label.trim(),
+      type,
+      measureType,
+      valueFormat,
+      source: { collectionName: collectionName.trim() },
+      active,
+      target: "web",
+    };
 
-  async function toggleCardVisible(card: DashboardCardDefinitionRecord) {
-    setSaving(true);
+    try {
+      if (formEdit) {
+        await updateMetric(formEdit.data.id, payload);
+      } else {
+        await createMetric(payload);
+      }
+      setFormVisible(false);
+      revalidator.revalidate();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Error al guardar.");
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  // ─── Delete ───────────────────────────────────────────────────────────────
+
+  const openDeleteConfirm = () => {
+    const selected = tableRef.current?.getSelectedRows() ?? [];
+    if (!selected.length) return;
+    if (selected.some((s) => s.readonly === "true")) {
+      setError("Las métricas default no se pueden eliminar.");
+      return;
+    }
+    setPendingDeleteIds(selected.map((s) => s.id));
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = pendingDeleteIds;
+    if (!ids?.length) return;
+    setDeleteSaving(true);
     setError(null);
     try {
-      await updateDashboardCardDefinition(card.id, { visible: !card.visible });
-      await reload();
+      await Promise.all(ids.map((id) => deleteMetric(id)));
+      tableRef.current?.clearSelectedRows();
+      setPendingDeleteIds(null);
+      revalidator.revalidate();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar la tarjeta.");
+      setError(e instanceof Error ? e.message : "Error al eliminar.");
     } finally {
-      setSaving(false);
+      setDeleteSaving(false);
     }
-  }
+  };
 
   return (
-    <DpContent title="MÉTRICAS DASHBOARD" breadcrumbItems={["SISTEMA", "MÉTRICAS DASHBOARD"]}>
-      <div className="space-y-4 text-sm">
-        <p className="text-surface-600 dark:text-surface-400">
-          Administración dinámica de <code>metric-definitions</code> y <code>dashboard-card-definitions</code>.
-          Usa el asistente para alta rápida de métricas estándar por entidad.
-        </p>
+    <>
+      <DpContent title="MÉTRICAS DASHBOARD" breadcrumbItems={["SISTEMA", "MÉTRICAS DASHBOARD"]} onCreate={openCreate}>
+        <DpContentHeader
+          filterValue={filterValue}
+          onFilter={handleFilter}
+          onLoad={() => revalidator.revalidate()}
+          showCreateButton={false}
+          onDelete={openDeleteConfirm}
+          deleteDisabled={selectedCount === 0 || deleteSaving}
+          loading={isLoading}
+          filterPlaceholder="Filtrar métricas..."
+        />
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
             {error}
           </div>
         )}
 
-        <section className="space-y-3 rounded-xl border border-surface-200 p-4 dark:border-navy-600">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
-            Asistente: métrica estándar por entidad
-          </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <DpInput
-              type="input"
-              label="Nombre de entidad"
-              value={form.entityLabel}
-              onChange={(v) => setForm((f) => ({ ...f, entityLabel: v }))}
-              placeholder="Facturas"
-            />
-            <DpInput
-              type="input"
-              label="metricKey"
-              value={form.metricKey}
-              onChange={(v) => setForm((f) => ({ ...f, metricKey: v }))}
-              placeholder="invoicesCount"
-            />
-            <DpInput
-              type="input"
-              label="Colección Firestore"
-              value={form.collectionName}
-              onChange={(v) => setForm((f) => ({ ...f, collectionName: v }))}
-              placeholder="invoices"
-            />
-            <DpInput
-              type="input"
-              label="planLimitKey (opcional)"
-              value={form.planLimitKey}
-              onChange={(v) => setForm((f) => ({ ...f, planLimitKey: v }))}
-              placeholder="maxInvoices"
-            />
-            <DpInput
-              type="input"
-              label="Ruta tarjeta (opcional)"
-              value={form.href}
-              onChange={(v) => setForm((f) => ({ ...f, href: v }))}
-              placeholder="/sales/invoices"
-            />
-            <DpInput
-              type="input"
-              label="Icono PrimeIcon"
-              value={form.icon}
-              onChange={(v) => setForm((f) => ({ ...f, icon: v }))}
-              placeholder="file"
-            />
-            <DpInput
-              type="input"
-              label="Clase color"
-              value={form.accentClass}
-              onChange={(v) => setForm((f) => ({ ...f, accentClass: v }))}
-              placeholder="text-sky-600"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              disabled={
-                saving || !form.entityLabel.trim() || !form.metricKey.trim() || !form.collectionName.trim()
-              }
-              onClick={() => void handleCreateTemplate()}
-            >
-              Crear métrica y tarjeta
-            </button>
-            <button
-              type="button"
-              className="rounded border border-surface-300 px-3 py-2 text-xs font-semibold dark:border-navy-500"
-              disabled={saving}
-              onClick={() => setForm(EMPTY_FORM)}
-            >
-              Limpiar
-            </button>
-          </div>
-        </section>
+        <DpTable<MetricTableRow>
+          ref={tableRef}
+          data={loaderData.metrics}
+          loading={isLoading}
+          tableDef={METRICS_TABLE_DEF}
+          linkColumn="metricKey"
+          onDetail={openEdit}
+          onEdit={openEdit}
+          onSelectionChange={(rows) => setSelectedCount(rows.length)}
+          showFilterInHeader={false}
+          emptyMessage="No hay métricas definidas."
+          emptyFilterMessage="No hay resultados para el filtro."
+        />
+      </DpContent>
 
-        <section className="space-y-2 rounded-xl border border-surface-200 p-4 dark:border-navy-600">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
-            Métricas definidas ({metrics.length})
-          </h2>
-          {loading ? (
-            <p className="text-surface-500">Cargando...</p>
-          ) : (
-            <div className="overflow-auto rounded border border-surface-200 dark:border-navy-600">
-              <table className="min-w-full text-xs">
-                <thead className="bg-surface-100 dark:bg-navy-800">
-                  <tr>
-                    <th className="p-2 text-left">metricKey</th>
-                    <th className="p-2 text-left">Tipo</th>
-                    <th className="p-2 text-left">Colección</th>
-                    <th className="p-2 text-left">Límite</th>
-                    <th className="p-2 text-left">Estado</th>
-                    <th className="p-2 text-left">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.map((m) => (
-                    <tr key={m.id} className="border-t border-surface-200 dark:border-navy-700">
-                      <td className="p-2 font-mono">{m.metricKey}</td>
-                      <td className="p-2">{m.type}</td>
-                      <td className="p-2">{m.source.collectionName ?? "—"}</td>
-                      <td className="p-2">{m.planLimitKey ?? "—"}</td>
-                      <td className="p-2">{m.active ? "Activa" : "Inactiva"}</td>
-                      <td className="p-2">
-                        <button
-                          type="button"
-                          className="mr-2 rounded border border-surface-300 px-2 py-1 dark:border-navy-500"
-                          disabled={saving}
-                          onClick={() => void toggleMetricActive(m)}
-                        >
-                          {m.active ? "Desactivar" : "Activar"}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded border border-red-300 px-2 py-1 text-red-700 dark:border-red-900 dark:text-red-300"
-                          disabled={saving}
-                          onClick={() => void removeMetric(m.id)}
-                        >
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+      {/* Create/Edit Form Dialog */}
+      <DpContentSet
+        title={formEdit ? "Editar Métrica" : "Nueva Métrica"}
+        visible={formVisible}
+        onHide={() => !formSaving && setFormVisible(false)}
+        onCancel={() => setFormVisible(false)}
+        onSave={handleFormSave}
+        saving={formSaving}
+        saveDisabled={formSaving}
+        showError={!!formError}
+        errorMessage={formError ?? ""}
+      >
+        <div className="flex flex-col gap-4">
+          <DpInput
+            type="input"
+            label="Metric Key"
+            name="metricKey"
+            value={metricKey}
+            onChange={setMetricKey}
+            disabled={!!formEdit}
+            placeholder="ej: trips-count"
+          />
+          <DpInput
+            type="input"
+            label="Label"
+            name="label"
+            value={label}
+            onChange={setLabel}
+            placeholder="Nombre descriptivo"
+          />
+          <DpInput
+            type="select"
+            label="Tipo"
+            name="type"
+            value={type}
+            onChange={(v) => setType(String(v))}
+            options={METRIC_TYPE_OPTIONS}
+            placeholder="Seleccionar tipo"
+          />
+          <DpInput
+            type="select"
+            label="Medición"
+            name="measureType"
+            value={measureType}
+            onChange={(v) => setMeasureType(String(v))}
+            options={MEASURE_TYPE_OPTIONS}
+            placeholder="Seleccionar medición"
+          />
+          <DpInput
+            type="select"
+            label="Formato de Valor"
+            name="valueFormat"
+            value={valueFormat}
+            onChange={(v) => setValueFormat(String(v))}
+            options={VALUE_FORMAT_OPTIONS}
+            placeholder="Seleccionar formato"
+          />
+          <DpInput
+            type="input"
+            label="Collection Name"
+            name="collectionName"
+            value={collectionName}
+            onChange={setCollectionName}
+            placeholder="ej: trips"
+          />
+          <DpInput
+            type="check"
+            label="Activa"
+            name="active"
+            value={active}
+            onChange={setActive}
+          />
+        </div>
+      </DpContentSet>
 
-        <section className="space-y-2 rounded-xl border border-surface-200 p-4 dark:border-navy-600">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
-            Tarjetas definidas ({cards.length})
-          </h2>
-          {loading ? (
-            <p className="text-surface-500">Cargando...</p>
-          ) : (
-            <div className="overflow-auto rounded border border-surface-200 dark:border-navy-600">
-              <table className="min-w-full text-xs">
-                <thead className="bg-surface-100 dark:bg-navy-800">
-                  <tr>
-                    <th className="p-2 text-left">cardKey</th>
-                    <th className="p-2 text-left">metricKey</th>
-                    <th className="p-2 text-left">Título</th>
-                    <th className="p-2 text-left">Orden</th>
-                    <th className="p-2 text-left">Visible</th>
-                    <th className="p-2 text-left">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cards.map((c) => (
-                    <tr key={c.id} className="border-t border-surface-200 dark:border-navy-700">
-                      <td className="p-2 font-mono">{c.cardKey}</td>
-                      <td className="p-2 font-mono">{c.metricKey}</td>
-                      <td className="p-2">{c.title}</td>
-                      <td className="p-2">{c.order}</td>
-                      <td className="p-2">{c.visible ? "Sí" : "No"}</td>
-                      <td className="p-2">
-                        <button
-                          type="button"
-                          className="mr-2 rounded border border-surface-300 px-2 py-1 dark:border-navy-500"
-                          disabled={saving}
-                          onClick={() => void toggleCardVisible(c)}
-                        >
-                          {c.visible ? "Ocultar" : "Mostrar"}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded border border-red-300 px-2 py-1 text-red-700 dark:border-red-900 dark:text-red-300"
-                          disabled={saving}
-                          onClick={() => void removeCard(c.id)}
-                        >
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    </DpContent>
+      {/* Delete Confirmation */}
+      <DpConfirmDialog
+        visible={pendingDeleteIds !== null}
+        onHide={() => !deleteSaving && setPendingDeleteIds(null)}
+        title="Eliminar métricas"
+        message={
+          pendingDeleteIds?.length
+            ? `¿Eliminar ${pendingDeleteIds.length} métrica(s)? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDelete}
+        severity="danger"
+        loading={deleteSaving}
+      />
+    </>
   );
 }

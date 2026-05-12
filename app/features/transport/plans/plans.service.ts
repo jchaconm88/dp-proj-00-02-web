@@ -9,7 +9,7 @@ import type {
 } from "./plans.types";
 
 function toRecord(data: Record<string, unknown> & { id?: string }): PlanRecord {
-  const status = PLAN_STATUS.includes(String(data.status))
+  const status = String(data.status) in PLAN_STATUS
     ? (data.status as PlanStatus)
     : "draft";
   const orderIds = Array.isArray(data.orderIds) ? data.orderIds.map((x) => String(x)).filter(Boolean) : [];

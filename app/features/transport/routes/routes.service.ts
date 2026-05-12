@@ -27,10 +27,10 @@ function toRouteRecord(data: Record<string, unknown> & { id?: string }): RouteRe
 
 function toStopRecord(data: Record<string, unknown> & { id?: string }): StopRecord {
   const sequence = Number(data.sequence ?? data.order) || 0;
-  const status = STOP_STATUS.includes(String(data.status))
+  const status = String(data.status) in STOP_STATUS
     ? (data.status as StopStatus)
     : "pending";
-  const type = STOP_TYPE.includes(String(data.type))
+  const type = String(data.type) in STOP_TYPE
     ? (data.type as StopType)
     : "checkpoint";
   return {

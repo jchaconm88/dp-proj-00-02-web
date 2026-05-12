@@ -31,6 +31,8 @@ export default [
     route("system/roles/:id", "routes/system/roles/RolesDetail.tsx"),
     route("system/modules", "routes/system/modules/ModulesPage.tsx"),
     route("system/modules/:id", "routes/system/modules/ModulesDetail.tsx"),
+    route("system/dashboard-config", "routes/system/dashboard-config/DashboardConfigPage.tsx"),
+    route("system/dashboard-overrides", "routes/system/dashboard-overrides/DashboardOverridesPage.tsx"),
     route("system/sequences", "routes/system/sequences/SequencesPage.tsx", [
       route("add", "routes/system/sequences/SequenceAdd.tsx"),
       route("edit/:id", "routes/system/sequences/SequenceEdit.tsx"),

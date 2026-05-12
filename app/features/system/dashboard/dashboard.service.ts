@@ -1,17 +1,63 @@
-import { getDocument } from "~/lib/firestore.service";
-import { callHttpsFunction } from "~/lib/functions.service";
-import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
-import { currentUsagePeriod } from "~/features/system/usage-months";
-import type { DashboardActivityItem, DashboardKpiCard, DashboardSnapshot } from "./dashboard.types";
+import { webFetch } from "~/lib/backend-client";
+import { requireActiveCompanyId } from "~/lib/tenant";
+import type { DashboardSnapshotResponse, DashboardSnapshot } from "./dashboard.types";
 
-const DASHBOARD_SNAPSHOT_COLLECTION = "dashboard-snapshots";
-export const PREPARING_DASHBOARD_MESSAGE =
-  "Preparando dashboard. Reintenta en unos segundos mientras se genera el snapshot.";
+// ---------------------------------------------------------------------------
+// New configurable dashboard service
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches the pre-computed dashboard snapshot for a given company and period.
+ * Uses GET /web/dashboard/snapshot with companyId and period query params.
+ */
+export async function getSnapshot(companyId: string, period: string): Promise<DashboardSnapshotResponse> {
+  const query = new URLSearchParams({ companyId, period }).toString();
+  return webFetch<DashboardSnapshotResponse>(`/dashboard/snapshot?${query}`);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy service (kept for backward compatibility until DashboardHome migration)
+// ---------------------------------------------------------------------------
+
+/** @deprecated Will be removed when DashboardHome is migrated to the new renderer */
+export const NO_DASHBOARD_DATA_MESSAGE = "No hay datos de dashboard disponibles.";
+
+/** @deprecated Use getSnapshot instead */
+export async function loadDashboardSnapshot(periodArg?: string): Promise<DashboardSnapshot> {
+  const companyId = requireActiveCompanyId();
+  const period = normalizePeriod(periodArg);
+  const query = new URLSearchParams({ companyId, period }).toString();
+
+  const data = await webFetch<Record<string, unknown>>(`/dashboard/snapshot?${query}`);
+
+  const cards = coerceCards(data.cards);
+  const activityReports = coerceActivityItems(data.activityReports);
+  const activityTrips = coerceActivityItems(data.activityTrips);
+
+  if (cards.length === 0) {
+    throw new Error(NO_DASHBOARD_DATA_MESSAGE);
+  }
+
+  return {
+    period: String(data.period ?? period),
+    cards,
+    activityReports,
+    activityTrips,
+    hasUsageForPeriod: hasUsageForPeriod(data.usage),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Legacy helpers
+// ---------------------------------------------------------------------------
 
 function normalizePeriod(period?: string): string {
   const raw = String(period ?? "").trim();
   if (/^\d{4}-\d{2}$/.test(raw)) return raw;
-  return currentUsagePeriod();
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
 function hasUsageForPeriod(raw: unknown): boolean {
@@ -19,12 +65,7 @@ function hasUsageForPeriod(raw: unknown): boolean {
   return Object.keys(raw as Record<string, unknown>).length > 0;
 }
 
-function snapshotLooksIncomplete(snap: Record<string, unknown>): boolean {
-  const cards = Array.isArray(snap.cards) ? snap.cards : [];
-  return cards.length === 0;
-}
-
-function coerceActivityItems(raw: unknown): DashboardActivityItem[] {
+function coerceActivityItems(raw: unknown): Array<{ id: string; title: string; meta: string; status: string; href?: string }> {
   if (!Array.isArray(raw)) return [];
   return raw.map((it, index) => {
     const item = it && typeof it === "object" ? (it as Record<string, unknown>) : {};
@@ -38,7 +79,7 @@ function coerceActivityItems(raw: unknown): DashboardActivityItem[] {
   });
 }
 
-function coerceCards(raw: unknown): DashboardKpiCard[] {
+function coerceCards(raw: unknown): Array<{ id: string; title: string; subtitle: string; icon: string; accentClass: string; value: string; progressPct: number | null; progressLabel: string; href?: string }> {
   if (!Array.isArray(raw)) return [];
   return raw.map((it, index) => {
     const card = it && typeof it === "object" ? (it as Record<string, unknown>) : {};
@@ -57,58 +98,3 @@ function coerceCards(raw: unknown): DashboardKpiCard[] {
     };
   });
 }
-
-async function createSnapshotOnDemand(companyId: string, period: string): Promise<void> {
-  await callHttpsFunction<{ companyId: string; period: string }, { ok: boolean }>(
-    "prepareDashboardSnapshot",
-    { companyId, period },
-    { errorFallback: "No se pudo preparar el dashboard en servidor." }
-  );
-}
-
-export async function loadDashboardSnapshot(periodArg?: string): Promise<DashboardSnapshot> {
-  const companyId = requireActiveCompanyId();
-  const accountId = await resolveActiveAccountId();
-  const period = normalizePeriod(periodArg);
-  const snapshotId = `${accountId}_${period}`;
-  let snap = await getDocument<Record<string, unknown>>(DASHBOARD_SNAPSHOT_COLLECTION, snapshotId);
-  if (snap) {
-    if (snapshotLooksIncomplete(snap)) {
-      await createSnapshotOnDemand(companyId, period);
-      snap = await getDocument<Record<string, unknown>>(DASHBOARD_SNAPSHOT_COLLECTION, snapshotId);
-    }
-  }
-  if (snap) {
-    const cards = coerceCards(snap.cards);
-    const activityReports = coerceActivityItems(snap.activityReports);
-    const activityTrips = coerceActivityItems(snap.activityTrips);
-    if (cards.length > 0) {
-      return {
-        period: String(snap.period ?? period),
-        cards,
-        activityReports,
-        activityTrips,
-        hasUsageForPeriod: hasUsageForPeriod(snap.usage),
-      };
-    }
-  }
-
-  await createSnapshotOnDemand(companyId, period);
-  snap = await getDocument<Record<string, unknown>>(DASHBOARD_SNAPSHOT_COLLECTION, snapshotId);
-  if (snap) {
-    const cards = coerceCards(snap.cards);
-    const activityReports = coerceActivityItems(snap.activityReports);
-    const activityTrips = coerceActivityItems(snap.activityTrips);
-    if (cards.length > 0) {
-      return {
-        period: String(snap.period ?? period),
-        cards,
-        activityReports,
-        activityTrips,
-        hasUsageForPeriod: hasUsageForPeriod(snap.usage),
-      };
-    }
-  }
-  throw new Error(PREPARING_DASHBOARD_MESSAGE);
-}
-

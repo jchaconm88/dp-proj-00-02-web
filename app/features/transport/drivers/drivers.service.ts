@@ -10,10 +10,10 @@ import type {
 } from "./drivers.types";
 
 function toRecord(data: Record<string, unknown> & { id?: string }): DriverRecord {
-    const relationshipType = DRIVER_RELATIONSHIP.includes(String(data.relationshipType))
+    const relationshipType = String(data.relationshipType) in DRIVER_RELATIONSHIP
         ? (data.relationshipType as DriverRelationshipType)
         : "resource";
-    const status = DRIVER_STATUS.includes(String(data.status))
+    const status = String(data.status) in DRIVER_STATUS
         ? (data.status as DriverStatus)
         : "available";
 

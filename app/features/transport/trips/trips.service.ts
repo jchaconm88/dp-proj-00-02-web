@@ -209,7 +209,11 @@ export async function deleteTrip(id: string): Promise<void> {
 export async function getTripCascadeDeleteCounts(tripId: string): Promise<TripCascadeDeleteCounts> {
   const companyId = requireActiveCompanyId();
   const accountId = await resolveActiveAccountId();
-  const dbHost = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "").trim().replace(/\/$/, "") || (import.meta.env.DEV ? "/web-backend" : "");
+  const configured = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "").trim().replace(/\/$/, "");
+  if (configured.endsWith("/web")) {
+    throw new Error("VITE_WEB_BACKEND_BASE_URL no debe incluir /web");
+  }
+  const dbHost = configured ? `${configured}/web` : (import.meta.env.DEV ? "/web-backend" : "");
   if (!dbHost) throw new Error("Falta VITE_WEB_BACKEND_BASE_URL");
   const user = await import("~/lib/firebase").then(m => m.auth.currentUser);
   if (!user) throw new Error("Sesión no lista.");

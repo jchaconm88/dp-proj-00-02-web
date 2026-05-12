@@ -5,7 +5,13 @@ function resolveWebBaseUrl(): string {
   const configured = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "")
     .trim()
     .replace(/\/$/, "");
-  return configured || (import.meta.env.DEV ? "/web-backend" : "");
+  if (configured) {
+    if (configured.endsWith("/web")) {
+      throw new Error("VITE_WEB_BACKEND_BASE_URL no debe incluir /web");
+    }
+    return `${configured}/web`;
+  }
+  return import.meta.env.DEV ? "/web-backend" : "";
 }
 
 export async function webFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -18,7 +24,7 @@ export async function webFetch<T>(path: string, init?: RequestInit): Promise<T> 
   headers.set("Authorization", `Bearer ${token}`);
   if (!headers.has("Content-Type") && init?.body) headers.set("Content-Type", "application/json");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${base}/web${normalizedPath}`;
+  const url = `${base}${normalizedPath}`;
   const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
