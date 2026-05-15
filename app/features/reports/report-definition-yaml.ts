@@ -183,7 +183,7 @@ const reportDefinitionYamlBodySchema = z
   .object({
     schemaVersion: z.literal(1),
     name: z.string().min(1),
-    source: z.literal("trips"),
+    source: z.enum(["trips", "purchase-orders", "sale-orders", "quotations", "inventory-movements", "stock-valuation"]),
     rowGranularity: z.enum(["perTrip", "perAssignment"]),
     templateId: z.enum(["dd-despacho-domicilio", "ra-reporte-apoyo"]),
     outputFormat: z.enum(["xlsx", "pdf"]),

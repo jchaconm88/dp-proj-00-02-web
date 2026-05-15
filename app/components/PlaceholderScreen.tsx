@@ -4,7 +4,6 @@ const TITLES: Record<string, string> = {
   "/system/modules": "Módulos",
   "/system/sequences": "Secuencias",
   "/system/counters": "Contadores",
-  "/master/document-types": "Tipos de Documento",
   "/master/documents": "Documentos",
   "/master/clients": "Clientes",
   "/human-resource/employees": "Empleados",

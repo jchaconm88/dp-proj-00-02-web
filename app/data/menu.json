@@ -65,14 +65,6 @@
         ]
       },
       {
-        "title": "Empresas",
-        "link": "/system/companies",
-        "permission": [
-          "view",
-          "company"
-        ]
-      },
-      {
         "title": "Usuarios",
         "link": "/system/users",
         "permission": [
@@ -111,14 +103,6 @@
     "enabled": true,
     "icon": "pencil",
     "children": [
-      {
-        "title": "Tipos de Documento",
-        "link": "/master/document-types",
-        "permission": [
-          "view",
-          "document-type"
-        ]
-      },
       {
         "title": "Clientes",
         "link": "/master/clients",
@@ -187,6 +171,99 @@
         "permission": [
           "view",
           "order"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Compras",
+    "enabled": true,
+    "icon": "shopping-cart",
+    "children": [
+      {
+        "title": "Proveedores",
+        "link": "/purchasing/suppliers",
+        "permission": [
+          "view",
+          "supplier"
+        ]
+      },
+      {
+        "title": "Órdenes de Compra",
+        "link": "/purchasing/purchase-orders",
+        "permission": [
+          "view",
+          "purchase-order"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Ventas",
+    "enabled": true,
+    "icon": "tag",
+    "children": [
+      {
+        "title": "Cotizaciones",
+        "link": "/sales/quotations",
+        "permission": [
+          "view",
+          "quotation"
+        ]
+      },
+      {
+        "title": "Órdenes de Venta",
+        "link": "/sales/sale-orders",
+        "permission": [
+          "view",
+          "sale-order"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Inventario",
+    "enabled": true,
+    "icon": "box",
+    "children": [
+      {
+        "title": "Categorías de Producto",
+        "link": "/inventory/product-categories",
+        "permission": [
+          "view",
+          "product-category"
+        ]
+      },
+      {
+        "title": "Productos",
+        "link": "/inventory/products",
+        "permission": [
+          "view",
+          "product"
+        ]
+      },
+      {
+        "title": "Almacenes",
+        "link": "/inventory/warehouses",
+        "permission": [
+          "view",
+          "warehouse"
+        ]
+      },
+      {
+        "title": "Movimientos",
+        "link": "/inventory/movements",
+        "permission": [
+          "view",
+          "inventory-movement"
+        ]
+      },
+      {
+        "title": "Stock",
+        "link": "/inventory/stock",
+        "permission": [
+          "view",
+          "stock-level"
         ]
       }
     ]

@@ -69,6 +69,219 @@ export const REPORT_DATA_SOURCES: ReportDataSourceCatalogEntry[] = [
       },
     ],
   },
+  {
+    id: "purchase-orders",
+    label: "Compras por Periodo",
+    description:
+      "Órdenes de compra filtradas por rango de fechas y status, con totales por proveedor y moneda. " +
+      "Incluye resumen con total de registros y suma de montos al final.",
+    parameters: [
+      {
+        id: "dateFrom",
+        label: "Fecha desde",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de inicio del periodo a consultar (issueDate).",
+      },
+      {
+        id: "dateTo",
+        label: "Fecha hasta",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de fin del periodo a consultar (issueDate).",
+      },
+      {
+        id: "status",
+        label: "Estado",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por estado de la orden (draft, confirmed, partial_received, received, cancelled).",
+      },
+      {
+        id: "supplierId",
+        label: "Proveedor",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por proveedor específico.",
+      },
+    ],
+    granularities: [
+      {
+        id: "perTrip",
+        label: "Por orden de compra",
+        description: "Una fila por cada orden de compra en el periodo.",
+      },
+    ],
+  },
+  {
+    id: "sale-orders",
+    label: "Ventas por Periodo",
+    description:
+      "Órdenes de venta filtradas por rango de fechas y status, con totales por cliente y moneda. " +
+      "Incluye resumen con total de registros y suma de montos al final.",
+    parameters: [
+      {
+        id: "dateFrom",
+        label: "Fecha desde",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de inicio del periodo a consultar (issueDate).",
+      },
+      {
+        id: "dateTo",
+        label: "Fecha hasta",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de fin del periodo a consultar (issueDate).",
+      },
+      {
+        id: "status",
+        label: "Estado",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por estado de la orden (draft, confirmed, in_progress, delivered, invoiced, cancelled).",
+      },
+      {
+        id: "clientId",
+        label: "Cliente",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por cliente específico.",
+      },
+    ],
+    granularities: [
+      {
+        id: "perTrip",
+        label: "Por orden de venta",
+        description: "Una fila por cada orden de venta en el periodo.",
+      },
+    ],
+  },
+  {
+    id: "quotations",
+    label: "Cotizaciones",
+    description:
+      "Cotizaciones filtradas por rango de fechas y status, con tasa de conversión (confirmadas/total). " +
+      "Incluye resumen con total de registros, cotizaciones confirmadas y tasa de conversión.",
+    parameters: [
+      {
+        id: "dateFrom",
+        label: "Fecha desde",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de inicio del periodo a consultar (issueDate).",
+      },
+      {
+        id: "dateTo",
+        label: "Fecha hasta",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de fin del periodo a consultar (issueDate).",
+      },
+      {
+        id: "status",
+        label: "Estado",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por estado de la cotización (draft, sent, confirmed, rejected, expired).",
+      },
+      {
+        id: "clientId",
+        label: "Cliente",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por cliente específico.",
+      },
+    ],
+    granularities: [
+      {
+        id: "perTrip",
+        label: "Por cotización",
+        description: "Una fila por cada cotización en el periodo.",
+      },
+    ],
+  },
+  {
+    id: "inventory-movements",
+    label: "Movimientos de Inventario",
+    description:
+      "Movimientos de inventario filtrados por rango de fechas, tipo y almacén. " +
+      "Incluye resumen con total de registros y cantidades por tipo de movimiento.",
+    parameters: [
+      {
+        id: "dateFrom",
+        label: "Fecha desde",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de inicio del periodo a consultar.",
+      },
+      {
+        id: "dateTo",
+        label: "Fecha hasta",
+        kind: "date",
+        scope: "run",
+        description: "Fecha de fin del periodo a consultar.",
+      },
+      {
+        id: "type",
+        label: "Tipo de movimiento",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por tipo (entry, exit, transfer, adjustment).",
+      },
+      {
+        id: "warehouseId",
+        label: "Almacén",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por almacén específico.",
+      },
+      {
+        id: "productId",
+        label: "Producto",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por producto específico.",
+      },
+    ],
+    granularities: [
+      {
+        id: "perTrip",
+        label: "Por movimiento",
+        description: "Una fila por cada movimiento de inventario en el periodo.",
+      },
+    ],
+  },
+  {
+    id: "stock-valuation",
+    label: "Valorización de Stock",
+    description:
+      "Stock actual valorizado (quantity × purchasePrice) por producto y almacén. " +
+      "Muestra el valor monetario del inventario en un momento dado.",
+    parameters: [
+      {
+        id: "warehouseId",
+        label: "Almacén",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por almacén específico.",
+      },
+      {
+        id: "productId",
+        label: "Producto",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional por producto específico.",
+      },
+    ],
+    granularities: [
+      {
+        id: "perTrip",
+        label: "Por producto-almacén",
+        description: "Una fila por cada combinación de producto y almacén con stock.",
+      },
+    ],
+  },
 ];
 
 export function getReportDataSourceMeta(

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
+import { useLocation, useNavigate, useNavigation, useRevalidator, useMatch, Link } from "react-router";
 import { Button } from "primereact/button";
 import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import {
@@ -69,6 +69,7 @@ type InvoiceFiltersForm = {
   issuedRange: { from: string; to: string };
   status: string[];
   clientIds: string[];
+  origin: string;
 };
 
 type InvoiceRow = InvoiceRecord & {
@@ -77,6 +78,8 @@ type InvoiceRow = InvoiceRecord & {
   totalTaxFormatted: string;
   totalFormatted: string;
   issueBlockReason: string;
+  saleOrderCode: string;
+  saleOrderId: string;
 };
 
 export function meta({}: Route.MetaArgs) {
@@ -93,6 +96,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
   const toParam = String(params?.get("to") ?? "").trim();
   const statusParams = params?.getAll("status").map((x) => x.trim()).filter(Boolean) as InvoiceStatus[] | undefined;
   const clientIdParams = params?.getAll("clientId").map((x) => x.trim()).filter(Boolean) || undefined;
+  const originParam = String(params?.get("origin") ?? "").trim();
 
   const hasExplicitFilters = Boolean(params && Array.from(params.keys()).length > 0);
 
@@ -144,14 +148,26 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     totalTaxFormatted: formatAmountWithSymbol(invoice.totalTax, invoice.currency),
     totalFormatted: formatAmountWithSymbol(invoice.totalAmount, invoice.currency),
     issueBlockReason: invoice.issueBlockReason?.trim() || "",
+    saleOrderCode: invoice.saleOrderCode?.trim() || "",
+    saleOrderId: invoice.saleOrderId?.trim() || "",
   }));
 
+  // Apply origin filter client-side (saleOrderId presence)
+  const filteredRows = originParam
+    ? rows.filter((r) => {
+        if (originParam === "sale-order") return !!r.saleOrderId;
+        if (originParam === "manual") return !r.saleOrderId;
+        return true;
+      })
+    : rows;
+
   return {
-    items: rows,
+    items: filteredRows,
     appliedFilters: {
       issuedRange: { from: fromParam, to: toParam },
       status: statusParams ?? [],
       clientIds: clientIdParams ?? [],
+      origin: originParam,
     } satisfies InvoiceFiltersForm,
     hasExplicitFilters,
     sunatWarning,
@@ -201,6 +217,7 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
     issuedRange: { from: "", to: "" },
     status: [],
     clientIds: [],
+    origin: "",
   }).current;
 
   useEffect(() => {
@@ -366,6 +383,23 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
             .filter(Boolean)
             .join(", "),
       },
+      {
+        name: "origin",
+        label: "Origen",
+        type: "select",
+        options: [
+          { label: "— Todos —", value: "" },
+          { label: "Desde Orden de Venta", value: "sale-order" },
+          { label: "Manual", value: "manual" },
+        ],
+        placeholder: "— Todos —",
+        summary: (value) => {
+          const v = String(value ?? "").trim();
+          if (v === "sale-order") return "Desde Orden de Venta";
+          if (v === "manual") return "Manual";
+          return "";
+        },
+      },
     ],
     [statusLabelById, clientFilterOptions, clientLabelById]
   );
@@ -382,6 +416,7 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
       const v = String(id).trim();
       if (v) params.append("clientId", v);
     }
+    if (nextFilters.origin?.trim()) params.set("origin", nextFilters.origin.trim());
     const qs = params.toString();
     navigate(qs ? `/billing/invoices?${qs}` : "/billing/invoices");
   };
@@ -681,6 +716,20 @@ export default function InvoicesPage({ loaderData }: Route.ComponentProps) {
         emptyMessage="No hay facturas."
         emptyFilterMessage="No se encontraron facturas."
       >
+        <DpTColumn<InvoiceRow> name="saleOrderCode">
+          {(row) =>
+            row.saleOrderId ? (
+              <Link
+                to={`/sales/sale-orders/edit/${encodeURIComponent(row.saleOrderId)}`}
+                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {row.saleOrderCode || row.saleOrderId}
+              </Link>
+            ) : (
+              <span className="text-zinc-400">—</span>
+            )
+          }
+        </DpTColumn>
         <DpTColumn<InvoiceRow> name="invoiceItems">
           {(row) => (
             <button

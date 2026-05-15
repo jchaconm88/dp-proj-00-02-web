@@ -60,6 +60,8 @@ function toInvoiceRecord(data: Record<string, unknown>): InvoiceRecord {
     operationTypeCode: String(data.operationTypeCode ?? "0101"),
     dueDate: data.dueDate != null ? String(data.dueDate) : undefined,
     issueBlockReason: data.issueBlockReason != null ? String(data.issueBlockReason).trim() : undefined,
+    saleOrderId: data.saleOrderId != null ? String(data.saleOrderId) : undefined,
+    saleOrderCode: data.saleOrderCode != null ? String(data.saleOrderCode) : undefined,
   };
 }
 
@@ -127,7 +129,7 @@ export async function getInvoiceById(id: string): Promise<InvoiceRecord | null> 
 export async function addInvoice(data: InvoiceAddInput): Promise<string> {
   const companyId = requireActiveCompanyId();
   const accountId = await resolveActiveAccountId();
-  const body = { companyId, accountId, documentNo: data.documentNo.trim(), type: data.type, payTerm: data.payTerm, settlementId: data.settlementId ?? "", settlement: data.settlement ?? "", client: data.client, company: data.company, companyLocation: data.companyLocation, issueDate: data.issueDate, currency: data.currency, status: data.status, totalPrice: Number(data.totalPrice) || 0, totalTax: Number(data.totalTax) || 0, totalAmount: Number(data.totalAmount) || 0, comment: data.comment ?? "", zipUrl: data.zipUrl ?? "", cdrUrl: data.cdrUrl ?? "", pdfUrl: data.pdfUrl ?? "", operationTypeCode: data.operationTypeCode ?? "0101", ...(data.dueDate !== undefined && { dueDate: data.dueDate }) };
+  const body = { companyId, accountId, documentNo: data.documentNo.trim(), type: data.type, payTerm: data.payTerm, settlementId: data.settlementId ?? "", settlement: data.settlement ?? "", client: data.client, company: data.company, companyLocation: data.companyLocation, issueDate: data.issueDate, currency: data.currency, status: data.status, totalPrice: Number(data.totalPrice) || 0, totalTax: Number(data.totalTax) || 0, totalAmount: Number(data.totalAmount) || 0, comment: data.comment ?? "", zipUrl: data.zipUrl ?? "", cdrUrl: data.cdrUrl ?? "", pdfUrl: data.pdfUrl ?? "", operationTypeCode: data.operationTypeCode ?? "0101", ...(data.dueDate !== undefined && { dueDate: data.dueDate }), ...(data.saleOrderId && { saleOrderId: data.saleOrderId }), ...(data.saleOrderCode && { saleOrderCode: data.saleOrderCode }) };
   const result = await webFetch<{ ok: boolean; id: string }>("/billing/invoices", { method: "POST", body: JSON.stringify(body) });
   return result.id;
 }
@@ -135,7 +137,7 @@ export async function addInvoice(data: InvoiceAddInput): Promise<string> {
 export async function updateInvoice(id: string, data: InvoiceEditInput): Promise<void> {
   const companyId = requireActiveCompanyId();
   const patch: Record<string, unknown> = { companyId };
-  const keys = ["documentNo","type","payTerm","settlementId","settlement","client","company","companyLocation","issueDate","currency","status","totalPrice","totalTax","totalAmount","comment","zipUrl","cdrUrl","pdfUrl","operationTypeCode","dueDate","issueBlockReason"] as const;
+  const keys = ["documentNo","type","payTerm","settlementId","settlement","client","company","companyLocation","issueDate","currency","status","totalPrice","totalTax","totalAmount","comment","zipUrl","cdrUrl","pdfUrl","operationTypeCode","dueDate","issueBlockReason","saleOrderId","saleOrderCode"] as const;
   for (const key of keys) {
     if ((data as Record<string, unknown>)[key] !== undefined) patch[key] = (data as Record<string, unknown>)[key];
   }

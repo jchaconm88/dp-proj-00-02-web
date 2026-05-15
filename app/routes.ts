@@ -14,14 +14,6 @@ export default [
     route("reports/:definitionId/runs", "routes/reports/ReportRunsPage.tsx"),
     route("system/billing", "routes/system/billing/BillingPage.tsx"),
     route("system/dashboard-metrics", "routes/system/dashboard-metrics/DashboardMetricsPage.tsx"),
-    route("system/companies", "routes/system/companies/CompaniesPage.tsx", [
-      route("add", "routes/system/companies/CompanyAdd.tsx"),
-      route("edit/:id", "routes/system/companies/CompanyEdit.tsx"),
-    ]),
-    route("system/companies/:id/company-locations", "routes/system/company-locations/CompanyLocationsPage.tsx", [
-      route("add", "routes/system/company-locations/CompanyLocationAdd.tsx"),
-      route("edit/:locationId", "routes/system/company-locations/CompanyLocationEdit.tsx"),
-    ]),
     route("system/companies/:id/company-users", "routes/system/company-users/CompanyUsersPage.tsx", [
       route("add", "routes/system/company-users/CompanyUserAdd.tsx"),
       route("edit/:companyUserDocId", "routes/system/company-users/CompanyUserEdit.tsx"),
@@ -44,10 +36,6 @@ export default [
     route("master/document-sequences", "routes/master/document-sequences/DocumentSequencesPage.tsx", [
       route("add", "routes/master/document-sequences/DocumentSequenceAdd.tsx"),
       route("edit/:id", "routes/master/document-sequences/DocumentSequenceEdit.tsx"),
-    ]),
-    route("master/document-types", "routes/master/document-types/DocumentTypesPage.tsx", [
-      route("add", "routes/master/document-types/DocumentTypeAdd.tsx"),
-      route("edit/:id", "routes/master/document-types/DocumentTypeEdit.tsx"),
     ]),
     route("master/documents", "routes/placeholder/master-documents.tsx"),
     route("master/clients", "routes/master/clients/ClientsPage.tsx", [
@@ -160,5 +148,56 @@ export default [
       route("add", "routes/billing/invoice/InvoiceCreditAdd.tsx"),
       route("edit/:creditId", "routes/billing/invoice/InvoiceCreditEdit.tsx"),
     ]),
+
+    // Purchasing
+    route("purchasing/suppliers", "routes/purchasing/suppliers/SuppliersPage.tsx", [
+      route("add", "routes/purchasing/suppliers/SupplierAdd.tsx"),
+      route("edit/:id", "routes/purchasing/suppliers/SupplierEdit.tsx"),
+    ]),
+    route("purchasing/purchase-orders", "routes/purchasing/purchase-orders/PurchaseOrdersPage.tsx", [
+      route("add", "routes/purchasing/purchase-orders/PurchaseOrderAdd.tsx"),
+      route("edit/:id", "routes/purchasing/purchase-orders/PurchaseOrderEdit.tsx"),
+    ]),
+    route("purchasing/purchase-orders/:id/items", "routes/purchasing/purchase-orders/PurchaseOrderItemsPage.tsx", [
+      route("add", "routes/purchasing/purchase-orders/PurchaseOrderItemAdd.tsx"),
+      route("edit/:itemId", "routes/purchasing/purchase-orders/PurchaseOrderItemEdit.tsx"),
+    ]),
+
+    // Sales
+    route("sales/quotations", "routes/sales/quotations/QuotationsPage.tsx", [
+      route("add", "routes/sales/quotations/QuotationAdd.tsx"),
+      route("edit/:id", "routes/sales/quotations/QuotationEdit.tsx"),
+    ]),
+    route("sales/quotations/:id/items", "routes/sales/quotations/QuotationItemsPage.tsx", [
+      route("add", "routes/sales/quotations/QuotationItemAdd.tsx"),
+      route("edit/:itemId", "routes/sales/quotations/QuotationItemEdit.tsx"),
+    ]),
+    route("sales/sale-orders", "routes/sales/sale-orders/SaleOrdersPage.tsx", [
+      route("add", "routes/sales/sale-orders/SaleOrderAdd.tsx"),
+      route("edit/:id", "routes/sales/sale-orders/SaleOrderEdit.tsx"),
+    ]),
+    route("sales/sale-orders/:id/items", "routes/sales/sale-orders/SaleOrderItemsPage.tsx", [
+      route("add", "routes/sales/sale-orders/SaleOrderItemAdd.tsx"),
+      route("edit/:itemId", "routes/sales/sale-orders/SaleOrderItemEdit.tsx"),
+    ]),
+
+    // Inventory
+    route("inventory/product-categories", "routes/inventory/product-categories/ProductCategoriesPage.tsx", [
+      route("add", "routes/inventory/product-categories/ProductCategoryAdd.tsx"),
+      route("edit/:id", "routes/inventory/product-categories/ProductCategoryEdit.tsx"),
+    ]),
+    route("inventory/products", "routes/inventory/products/ProductsPage.tsx", [
+      route("add", "routes/inventory/products/ProductAdd.tsx"),
+      route("edit/:id", "routes/inventory/products/ProductEdit.tsx"),
+    ]),
+    route("inventory/warehouses", "routes/inventory/warehouses/WarehousesPage.tsx", [
+      route("add", "routes/inventory/warehouses/WarehouseAdd.tsx"),
+      route("edit/:id", "routes/inventory/warehouses/WarehouseEdit.tsx"),
+    ]),
+    route("inventory/movements", "routes/inventory/movements/MovementsPage.tsx", [
+      route("add", "routes/inventory/movements/MovementAdd.tsx"),
+      route("edit/:id", "routes/inventory/movements/MovementEdit.tsx"),
+    ]),
+    route("inventory/stock", "routes/inventory/stock/StockPage.tsx"),
   ]),
 ] satisfies RouteConfig;

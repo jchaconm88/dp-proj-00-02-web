@@ -8,6 +8,3 @@ export interface DocumentTypeRecord {
   createdAt?: string;
   updatedAt?: string;
 }
-
-export type DocumentTypeAddInput = Omit<DocumentTypeRecord, "id" | "createdAt" | "updatedAt">;
-export type DocumentTypeEditInput = Partial<DocumentTypeAddInput>;

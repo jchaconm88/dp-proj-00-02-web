@@ -418,6 +418,58 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Compras, Ventas e Inventario ---
+    match /suppliers/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
+    match /products/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
+    match /product-categories/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
+    match /warehouses/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
+    match /purchase-orders/{orderId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+      match /purchase-order-items/{itemId} {
+        allow read, write: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/purchase-orders/$(orderId)).data.companyId)
+          && effectiveAccountMatches();
+      }
+    }
+
+    match /quotations/{quotationId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+      match /quotation-items/{itemId} {
+        allow read, write: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/quotations/$(quotationId)).data.companyId)
+          && effectiveAccountMatches();
+      }
+    }
+
+    match /sale-orders/{orderId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+      match /sale-order-items/{itemId} {
+        allow read, write: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/sale-orders/$(orderId)).data.companyId)
+          && effectiveAccountMatches();
+      }
+    }
+
+    match /inventory-movements/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
+    match /stock-levels/{docId} {
+      allow read, write: if isSignedIn() && isMember(effectiveCompanyId()) && effectiveAccountMatches();
+    }
+
     match /sunat-config/{docId} {
       // Normalizado como otras colecciones raíz (ej. invoices, counters, etc.):
       // - read/write por membresía de la empresa del doc

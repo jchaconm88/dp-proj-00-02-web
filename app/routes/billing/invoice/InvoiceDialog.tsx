@@ -8,6 +8,7 @@ import type { DocumentSequenceRecord } from "~/features/master/document-sequence
 import { getClients, getClient, getClientLocations } from "~/features/master/clients";
 import { getCompanyById } from "~/features/system/companies";
 import { getActiveCompanyLocations, getCompanyLocation } from "~/features/system/company-locations";
+import { getActiveCompanyCurrencyOptions } from "~/features/system/companies";
 import { getActiveCompanyId, requireActiveCompanyId } from "~/lib/tenant";
 import {
   clientRecordToInvoiceClient,
@@ -20,7 +21,6 @@ import {
   INVOICE_STATUS,
   INVOICE_TYPE,
   PAYMENT_CONDITION,
-  CURRENCY,
   OPERATION_TYPE_CODE,
   statusDefaultKey,
   statusToSelectOptions,
@@ -37,7 +37,6 @@ export interface InvoiceDialogProps {
 const TYPE_OPTIONS = statusToSelectOptions(INVOICE_TYPE);
 const STATUS_OPTIONS = statusToSelectOptions(INVOICE_STATUS);
 const PAY_TERM_OPTIONS = statusToSelectOptions(PAYMENT_CONDITION);
-const CURRENCY_OPTIONS = statusToSelectOptions(CURRENCY);
 const OPERATION_TYPE_OPTIONS = statusToSelectOptions(OPERATION_TYPE_CODE);
 
 export default function InvoiceDialog({
@@ -61,12 +60,15 @@ export default function InvoiceDialog({
   const [dueDate, setDueDate] = useState("");
   const [settlementId, setSettlementId] = useState("");
   const [settlement, setSettlement] = useState("");
+  const [saleOrderId, setSaleOrderId] = useState("");
+  const [saleOrderCode, setSaleOrderCode] = useState("");
 
   const [clientId, setClientId] = useState("");
   const [companyLocationId, setCompanyLocationId] = useState("");
 
   const [clientOptions, setClientOptions] = useState<{ label: string; value: string }[]>([]);
   const [locationOptions, setLocationOptions] = useState<{ label: string; value: string }[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<{ label: string; value: string }[]>([]);
 
   const [activeSequence, setActiveSequence] = useState<DocumentSequenceRecord | null>(null);
   const [availableSequences, setAvailableSequences] = useState<DocumentSequenceRecord[]>([]);
@@ -137,6 +139,8 @@ export default function InvoiceDialog({
       setDueDate("");
       setSettlementId("");
       setSettlement("");
+      setSaleOrderId("");
+      setSaleOrderCode("");
       setClientId("");
       setCompanyLocationId("");
       setIssueBlockReason("");
@@ -171,6 +175,8 @@ export default function InvoiceDialog({
         setDueDate(data.dueDate ?? "");
         setSettlementId(data.settlementId ?? "");
         setSettlement(data.settlement ?? "");
+        setSaleOrderId(data.saleOrderId ?? "");
+        setSaleOrderCode(data.saleOrderCode ?? "");
         setClientId(data.client.id ?? "");
         setIssueBlockReason(data.issueBlockReason?.trim() ?? "");
 
@@ -181,6 +187,26 @@ export default function InvoiceDialog({
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
   }, [visible, invoiceId]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    getActiveCompanyCurrencyOptions()
+      .then(({ options, defaultCurrency }) => {
+        if (cancelled) return;
+        const mapped = options.map((opt) => ({ label: opt.label, value: opt.value }));
+        setCurrencyOptions(mapped);
+        setCurrency((prev) => (mapped.some((x) => x.value === prev) ? prev : defaultCurrency));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setCurrencyOptions([]);
+        setError(err instanceof Error ? err.message : "No se pudo cargar la configuración de monedas.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   const valid =
     issueDate.trim() !== "" &&
@@ -429,7 +455,7 @@ export default function InvoiceDialog({
           name="currency"
           value={currency}
           onChange={(v) => setCurrency(String(v))}
-          options={CURRENCY_OPTIONS}
+              options={currencyOptions}
           disabled={lockedByStatus}
         />
         <DpInput
@@ -470,6 +496,16 @@ export default function InvoiceDialog({
             <DpInput type="input" label="Liquidación (código)" name="settlement" value={settlement} onChange={setSettlement} disabled />
             <DpInput type="input" label="Liquidación (ID)" name="settlementId" value={settlementId} onChange={setSettlementId} disabled />
           </div>
+        )}
+        {isEdit && saleOrderId && (
+          <DpInput
+            type="input"
+            label="Orden de Venta"
+            name="saleOrderCode"
+            value={saleOrderCode || saleOrderId}
+            onChange={() => {}}
+            disabled
+          />
         )}
       </div>
     </DpContentSet>

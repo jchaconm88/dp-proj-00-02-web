@@ -56,6 +56,71 @@ export async function resolveActiveAccountId(): Promise<string> {
   return a || companyId;
 }
 
+// ─── Location helpers ───────────────────────────────────────────────────────
+
+function locationStorageKey(uid: string, companyId: string) {
+  return `active-location:${uid}:${companyId}`;
+}
+
+export function getActiveLocationId(): string | null {
+  const uid = auth.currentUser?.uid;
+  const companyId = getActiveCompanyId();
+  if (uid && companyId) {
+    try {
+      const v = window.localStorage.getItem(locationStorageKey(uid, companyId));
+      return v && v.trim() ? v.trim() : null;
+    } catch {
+      return null;
+    }
+  }
+  // Fallback: buscar cualquier clave active-location que coincida con la empresa activa
+  if (companyId) {
+    try {
+      const suffix = `:${companyId}`;
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith("active-location:") && k.endsWith(suffix)) {
+          const v = window.localStorage.getItem(k);
+          if (v && v.trim()) return v.trim();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
+export function requireActiveLocationId(): string {
+  const id = getActiveLocationId();
+  if (!id) throw new Error("No hay sede activa seleccionada.");
+  return id;
+}
+
+/**
+ * Returns true if the user has enabled "view all locations" mode.
+ * When true, services should skip the locationId filter.
+ */
+export function isViewAllLocationsActive(): boolean {
+  const uid = auth.currentUser?.uid;
+  const companyId = getActiveCompanyId();
+  if (!uid || !companyId) return false;
+  try {
+    return window.localStorage.getItem(`view-all-locations:${uid}:${companyId}`) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the active location ID or null if "view all locations" mode is active.
+ * Use this in services that should optionally skip the location filter.
+ */
+export function getLocationFilterId(): string | null {
+  if (isViewAllLocationsActive()) return null;
+  return getActiveLocationId();
+}
+
 /** Comprueba tenant en un doc ya leído (acepta docs sin `accountId` hasta backfill). */
 export function documentMatchesActiveTenant(
   d: Record<string, unknown>,

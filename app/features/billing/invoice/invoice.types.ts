@@ -90,6 +90,10 @@ export interface InvoiceRecord {
   dueDate?: string;
   /** Motivo por el cual no se pudo emitir (validación o PDF), si aplica. */
   issueBlockReason?: string;
+  /** ID de la orden de venta origen (si el comprobante fue generado desde una OV). */
+  saleOrderId?: string;
+  /** Código de la orden de venta origen (ej. "OV-00001"). */
+  saleOrderCode?: string;
 }
 
 export interface InvoiceAddInput {
@@ -114,6 +118,10 @@ export interface InvoiceAddInput {
   operationTypeCode: string;
   /** Igual que `InvoiceRecord.dueDate` (opcional en UBL; ver comentario allí). */
   dueDate?: string;
+  /** ID de la orden de venta origen (si el comprobante fue generado desde una OV). */
+  saleOrderId?: string;
+  /** Código de la orden de venta origen (ej. "OV-00001"). */
+  saleOrderCode?: string;
 }
 
 export type InvoiceEditInput = Partial<Omit<InvoiceRecord, "id">>;

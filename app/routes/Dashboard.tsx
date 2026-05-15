@@ -2,13 +2,16 @@ import { useMemo, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigation, useRevalidator, redirect } from "react-router";
 import { useAuth } from "~/lib/auth-context";
 import { useCompany } from "~/lib/company-context";
+import { useLocationContext } from "~/lib/location-context";
 import { useTheme } from "~/lib/theme-context";
+import { useCountry } from "~/lib/country-context";
 import type { Route } from "./+types/Dashboard";
 import menuData from "~/data/menu.json";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
 import { canNavigateToModule, isGranted } from "~/lib/accessService";
 import { getEffectivePermissions } from "~/lib/effective-permissions";
 import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
 import { getAuthUser } from "~/lib/get-auth-user";
 
 export type MenuItemJson = {
@@ -131,7 +134,16 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   const { user, profile, signOut } = useAuth();
   const { activeCompanyId, companies, companyUsers, loading: companyLoading, setActiveCompanyId } =
     useCompany();
+  const {
+    activeLocationId,
+    locations,
+    loading: locationLoading,
+    setActiveLocationId,
+    viewAllLocations,
+    setViewAllLocations,
+  } = useLocationContext();
   const { theme, setTheme } = useTheme();
+  const { activeCountry, countryOptions, setActiveCountry } = useCountry();
   const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -197,6 +209,10 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     [companyUserRoleIds, companyUserRoleNames, roles]
   );
   const menuLoading = Boolean(activeCompanyId) && rolesLoading;
+  const canViewAllLocations = useMemo(
+    () => isGranted(effectivePermissions, "view_all_locations", "company-location"),
+    [effectivePermissions]
+  );
   const filteredMenu = useMemo(
     () => {
       const menu = filterMenu(menuData as MenuItemJson[], effectivePermissions);
@@ -218,6 +234,10 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
   const companyOptions = useMemo(
     () => companies.map((c) => ({ name: c.name, code: c.id })),
     [companies]
+  );
+  const locationOptions = useMemo(
+    () => locations.map((l) => ({ name: l.name, code: l.id })),
+    [locations]
   );
   const activeCompany = useMemo(
     () => companies.find((c) => c.id === activeCompanyId) ?? null,
@@ -593,6 +613,55 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
               className="w-48"
               disabled={rolesLoading || companyOptions.length <= 1}
             />
+            <Dropdown
+              value={activeLocationId}
+              onChange={(e) => {
+                const next = String(e.value ?? "");
+                if (!next || next === activeLocationId) return;
+                setActiveLocationId(next);
+                revalidator.revalidate();
+              }}
+              options={locationOptions}
+              optionLabel="name"
+              optionValue="code"
+              placeholder={locationLoading ? "Cargando…" : locations.length === 0 ? "Sin sedes" : "Sede"}
+              className="w-40"
+              disabled={locationLoading || locationOptions.length <= 1 || viewAllLocations}
+            />
+            <Dropdown
+              value={activeCountry}
+              onChange={(e) => {
+                const next = String(e.value ?? "PE").toUpperCase();
+                if (next !== "PE" || next === activeCountry) return;
+                setActiveCountry("PE");
+                revalidator.revalidate();
+              }}
+              options={countryOptions.map((x) => ({ name: x.name, code: x.code }))}
+              optionLabel="name"
+              optionValue="code"
+              placeholder="País"
+              className="w-36"
+              disabled={countryOptions.length <= 1}
+            />
+            {canViewAllLocations && (
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  inputId="viewAllLocations"
+                  checked={viewAllLocations}
+                  onChange={(e) => {
+                    setViewAllLocations(!!e.checked);
+                    revalidator.revalidate();
+                  }}
+                  className="scale-90"
+                />
+                <label
+                  htmlFor="viewAllLocations"
+                  className="cursor-pointer text-[11px] text-[var(--dp-on-surface-soft)] whitespace-nowrap"
+                >
+                  Todas las sedes
+                </label>
+              </div>
+            )}
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[var(--dp-surface-low)]/70 px-2.5 py-1">
               <i className="pi pi-user text-xs text-[var(--dp-on-surface-soft)]" aria-hidden />
               <span className="max-w-28 truncate text-xs font-semibold text-[var(--dp-on-surface)]">

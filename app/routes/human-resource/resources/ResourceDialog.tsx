@@ -69,7 +69,7 @@ export default function ResourceDialog({
     if (!visible) return;
     setError(null);
     getPositions().then(({ items }) => setPositions(items.map((p) => ({ id: p.id, name: p.name })))).catch(() => setPositions([]));
-    getDocumentTypes().then(({ items }) => setDocTypesOpts(items.map((i) => ({ label: i.name, value: i.id })))).catch(() => setDocTypesOpts([]));
+    getDocumentTypes("identity").then(({ items }) => setDocTypesOpts(items.map((i) => ({ label: i.name, value: i.id })))).catch(() => setDocTypesOpts([]));
 
     if (!resourceId) {
       setCode("");

@@ -6,6 +6,7 @@ import type {
   PivotOutputKind,
   ReportColumnDef,
   ReportColumnFormRow,
+  ReportDataSource,
   ReportDefinitionFormValues,
   ReportDefinitionRecord,
   ReportFooterSpec,
@@ -54,6 +55,20 @@ import type {
   PreviewReportPivotRequest,
   PreviewReportPivotResponse,
 } from "./reports-callables.types";
+
+const VALID_DATA_SOURCES: ReportDataSource[] = [
+  "trips",
+  "purchase-orders",
+  "sale-orders",
+  "quotations",
+  "inventory-movements",
+  "stock-valuation",
+];
+
+function resolveDataSource(raw: string | undefined): ReportDataSource {
+  const s = String(raw ?? "trips").trim();
+  return VALID_DATA_SOURCES.includes(s as ReportDataSource) ? (s as ReportDataSource) : "trips";
+}
 
 function periodLabelFromRange(dateFrom: string, dateTo: string): string {
   const a = String(dateFrom).slice(0, 7).replace(/-/g, "");
@@ -568,7 +583,7 @@ function validatePivotRecord(record: ReportDefinitionRecord | null): string | nu
     String(record.exportFileNameTemplate ?? "").trim() || inferLegacyExportFileNameTemplate(record, gran);
   const fv: ReportDefinitionFormValues = {
     name: record.name,
-    source: record.source === "trips" ? "trips" : "trips",
+    source: resolveDataSource(record.source ?? "trips"),
     rowGranularity: gran,
     layoutKind: "pivot",
     pivot: pivotFormFromRecord(record, gran),
@@ -612,7 +627,7 @@ function toDefinitionRecord(doc: { id: string } & Record<string, unknown>): Repo
   return {
     id: doc.id,
     name: String(doc.name ?? ""),
-    source: doc.source === "trips" ? "trips" : "trips",
+    source: resolveDataSource(String(doc.source ?? "trips")),
     rowGranularity: gran,
     layoutKind,
     pivotSpec,
@@ -759,7 +774,7 @@ export function formValuesFromDefinition(row: ReportDefinitionRecord | null): Re
 
   return {
     name: row?.name ?? "",
-    source: row?.source === "trips" ? "trips" : "trips",
+    source: resolveDataSource(row?.source ?? "trips"),
     rowGranularity: gran,
     layoutKind: "pivot",
     pivot: pivotFormFromRecord(row, gran),

@@ -15,6 +15,8 @@ import {
 import { CLIENT_STATUS, PAYMENT_CONDITION, CURRENCY, statusToSelectOptions } from "~/constants/status-options";
 import { generateSequenceCode } from "~/features/system/sequences";
 import { getDocumentTypes } from "~/features/master/document-types";
+import { getUbigeos } from "~/features/system/ubigeos";
+import { getStoredCountryCode } from "~/lib/country-context";
 
 export interface ClientDialogProps {
     visible: boolean;
@@ -63,6 +65,8 @@ export default function ClientDialog({
     const [fiscalCity, setFiscalCity] = useState("");
     const [fiscalCountry, setFiscalCountry] = useState("PE");
     const [fiscalUbigeo, setFiscalUbigeo] = useState("");
+    const [ubigeoOptions, setUbigeoOptions] = useState<{ label: string; value: string }[]>([]);
+    const [ubigeoNameByCode, setUbigeoNameByCode] = useState<Record<string, string>>({});
 
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -77,11 +81,25 @@ export default function ClientDialog({
     useEffect(() => {
         if (!visible) return;
         setError(null);
-        getDocumentTypes()
+        getDocumentTypes("identity")
             .then(({ items }) => {
                 setDocTypesOpts(items.map((i) => ({ label: i.name, value: i.id })));
             })
             .catch(() => setDocTypesOpts([]));
+        getUbigeos("PE")
+            .then((items) => {
+                const byCode: Record<string, string> = {};
+                for (const item of items) byCode[item.code] = item.name;
+                setUbigeoNameByCode(byCode);
+                setUbigeoOptions(items.map((item) => ({
+                    label: `${item.name} (${item.code})`,
+                    value: item.code,
+                })));
+            })
+            .catch(() => {
+                setUbigeoNameByCode({});
+                setUbigeoOptions([]);
+            });
         if (!clientId) {
             setCode("");
             setBusinessName("");
@@ -103,7 +121,7 @@ export default function ClientDialog({
             setFiscalAddress("");
             setFiscalDistrict("");
             setFiscalCity("");
-            setFiscalCountry("PE");
+            setFiscalCountry(getStoredCountryCode());
             setFiscalUbigeo("");
             setLoading(false);
             return;
@@ -144,6 +162,14 @@ export default function ClientDialog({
             .finally(() => setLoading(false));
     }, [visible, clientId]);
 
+    const parseUbigeo = (name: string): { city: string; district: string } => {
+        const parts = name.split("—").map((x) => x.trim()).filter(Boolean);
+        return {
+            district: parts[0] ?? "",
+            city: parts[1] ?? parts[0] ?? "",
+        };
+    };
+
     const save = async () => {
         if (!businessName.trim()) return;
         if (isEdit && !code.trim()) return;
@@ -168,12 +194,13 @@ export default function ClientDialog({
                 fiscalDistrict.trim() ||
                 fiscalCity.trim() ||
                 fiscalUbigeo.trim();
+            const activeCountry = getStoredCountryCode();
             const fiscal: ClientFiscalLocation | undefined = hasFiscal
                 ? {
                       address: fiscalAddress.trim(),
                       district: fiscalDistrict.trim(),
                       city: fiscalCity.trim(),
-                      country: fiscalCountry.trim() || "PE",
+                      country: activeCountry,
                       ubigeo: fiscalUbigeo.trim(),
                   }
                 : undefined;
@@ -273,10 +300,35 @@ export default function ClientDialog({
                         <div className="flex flex-col gap-3">
                             <DpInput type="input" label="Dirección" name="fiscalAddress" value={fiscalAddress} onChange={setFiscalAddress} placeholder="Av. Principal 123" />
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <DpInput type="input" label="Distrito" name="fiscalDistrict" value={fiscalDistrict} onChange={setFiscalDistrict} />
-                                <DpInput type="input" label="Ciudad" name="fiscalCity" value={fiscalCity} onChange={setFiscalCity} />
-                                <DpInput type="input" label="País" name="fiscalCountry" value={fiscalCountry} onChange={setFiscalCountry} placeholder="PE" />
-                                <DpInput type="input" label="Ubigeo" name="fiscalUbigeo" value={fiscalUbigeo} onChange={setFiscalUbigeo} placeholder="150101" />
+                                {!isEdit && (
+                                    <DpInput
+                                        type="select"
+                                        label="Ubigeo"
+                                        name="fiscalUbigeo"
+                                        value={fiscalUbigeo}
+                                        onChange={(v) => {
+                                            const code = String(v);
+                                            const ubigeoName = ubigeoNameByCode[code] ?? "";
+                                            const parsed = parseUbigeo(ubigeoName);
+                                            setFiscalUbigeo(code);
+                                            setFiscalDistrict(ubigeoName ? parsed.district : "");
+                                            setFiscalCity(ubigeoName ? parsed.city : "");
+                                        }}
+                                        options={[{ label: "— Seleccionar distrito —", value: "" }, ...ubigeoOptions]}
+                                        placeholder="Buscar por nombre o UBIGEO"
+                                        filter
+                                    />
+                                )}
+                                {isEdit && (
+                                    <DpInput type="input" label="Distrito" name="fiscalDistrict" value={fiscalDistrict} onChange={setFiscalDistrict} />
+                                )}
+                                {isEdit && (
+                                    <DpInput type="input" label="Ciudad" name="fiscalCity" value={fiscalCity} onChange={setFiscalCity} />
+                                )}
+                                <input type="hidden" name="fiscalCountry" value={fiscalCountry} />
+                                {isEdit && (
+                                    <DpInput type="input" label="Ubigeo" name="fiscalUbigeo" value={fiscalUbigeo} onChange={setFiscalUbigeo} placeholder="150101" />
+                                )}
                             </div>
                         </div>
                     </div>

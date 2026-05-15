@@ -74,7 +74,7 @@ export default function EmployeeDialog({
       })
       .catch(() => setPositionsOpts([]));
 
-    getDocumentTypes()
+    getDocumentTypes("identity")
       .then(({ items }) => {
         setDocTypesOpts(items.map((i) => ({ label: i.name, value: i.id })));
       })

@@ -1,7 +1,8 @@
 import { webFetch } from "~/lib/backend-client";
 import { DOCUMENT_TYPE_CATEGORY, parseStatus } from "~/constants/status-options";
 import { requireActiveCompanyId } from "~/lib/tenant";
-import type { DocumentTypeRecord, DocumentTypeAddInput, DocumentTypeEditInput, DocumentTypeCategory } from "./document-types.types";
+import { getStoredCountryCode } from "~/lib/country-context";
+import type { DocumentTypeRecord, DocumentTypeCategory } from "./document-types.types";
 
 function toDocumentTypeRecord(d: Record<string, unknown>): DocumentTypeRecord {
   return {
@@ -14,43 +15,11 @@ function toDocumentTypeRecord(d: Record<string, unknown>): DocumentTypeRecord {
   };
 }
 
-export async function getDocumentTypes(): Promise<{ items: DocumentTypeRecord[] }> {
+export async function getDocumentTypes(type: DocumentTypeCategory = "identity"): Promise<{ items: DocumentTypeRecord[] }> {
   const companyId = requireActiveCompanyId();
+  const country = getStoredCountryCode();
   const res = await webFetch<{ items: Record<string, unknown>[] }>(
-    `/master/document-types?companyId=${encodeURIComponent(companyId)}`
+    `/master/document-types?companyId=${encodeURIComponent(companyId)}&country=${encodeURIComponent(country)}&type=${encodeURIComponent(type)}`
   );
   return { items: res.items.map(toDocumentTypeRecord) };
-}
-
-export async function getDocumentTypeById(id: string): Promise<DocumentTypeRecord | null> {
-  const companyId = requireActiveCompanyId();
-  const raw = await webFetch<Record<string, unknown> | null>(
-    `/master/document-types/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`
-  );
-  if (!raw) return null;
-  return toDocumentTypeRecord(raw);
-}
-
-export async function addDocumentType(data: DocumentTypeAddInput): Promise<string> {
-  const companyId = requireActiveCompanyId();
-  const res = await webFetch<{ id?: string }>("/master/document-types", {
-    method: "POST",
-    body: JSON.stringify({ companyId, name: data.name?.trim(), description: data.description?.trim(), type: data.type }),
-  });
-  return String(res?.id ?? "");
-}
-
-export async function updateDocumentType(id: string, data: DocumentTypeEditInput): Promise<void> {
-  const companyId = requireActiveCompanyId();
-  await webFetch(`/master/document-types/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    body: JSON.stringify({ companyId, ...data }),
-  });
-}
-
-export async function deleteDocumentType(id: string): Promise<void> {
-  const companyId = requireActiveCompanyId();
-  await webFetch(`/master/document-types/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`, {
-    method: "DELETE",
-  });
 }

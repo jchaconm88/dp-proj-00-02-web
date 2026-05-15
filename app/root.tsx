@@ -11,9 +11,11 @@ import { useEffect } from "react";
 import type { Route } from "./+types/root";
 import { AuthProvider } from "./lib/auth-context";
 import { CompanyProvider } from "./lib/company-context";
+import { LocationProvider } from "./lib/location-context";
 import { AccountProvider } from "./lib/account-context";
 import { ThemeProvider } from "./lib/theme-context";
 import { LoadingProvider } from "./lib/loading-context";
+import { CountryProvider } from "./lib/country-context";
 import PaceLoader from "./components/PaceLoader";
 import { PrimeReactProvider, addLocale } from "primereact/api";
 import "./app.css";
@@ -63,12 +65,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <ThemeProvider>
             <LoadingProvider>
               <AuthProvider>
-                <CompanyProvider>
-                  <AccountProvider>
-                    <PaceLoader />
-                    {children}
-                  </AccountProvider>
-                </CompanyProvider>
+                <CountryProvider>
+                  <CompanyProvider>
+                    <LocationProvider>
+                      <AccountProvider>
+                        <PaceLoader />
+                        {children}
+                      </AccountProvider>
+                    </LocationProvider>
+                  </CompanyProvider>
+                </CountryProvider>
               </AuthProvider>
             </LoadingProvider>
           </ThemeProvider>

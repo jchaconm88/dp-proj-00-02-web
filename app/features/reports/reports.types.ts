@@ -8,7 +8,13 @@ export type ReportRunStatus = "pending" | "processing" | "completed" | "error";
 export type ReportScheduleFrequency = "daily" | "weekly" | "monthly";
 
 /** Origen de datos del reporte (motor genérico). */
-export type ReportDataSource = "trips";
+export type ReportDataSource =
+  | "trips"
+  | "purchase-orders"
+  | "sale-orders"
+  | "quotations"
+  | "inventory-movements"
+  | "stock-valuation";
 
 /** Lista de columnas fijas (actual) vs diseño tipo tabla dinámica. */
 export type ReportLayoutKind = "tabular" | "pivot";

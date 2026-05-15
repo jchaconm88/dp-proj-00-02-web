@@ -14,5 +14,8 @@ export type CompanyRecord = {
   logoLightPath?: string;
   logoDarkUrl?: string;
   logoDarkPath?: string;
+  countryCode?: "PE";
+  allowedCurrencies?: Array<"PEN" | "USD" | "EUR">;
+  defaultCurrency?: "PEN" | "USD" | "EUR";
 };
 

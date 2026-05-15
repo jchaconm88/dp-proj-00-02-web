@@ -4,6 +4,7 @@ import { DpInput } from "~/components/DpInput";
 import { DpCodeInput } from "~/components/DpCodeInput";
 import { DpContentSet } from "~/components/DpContent";
 import { generateSequenceCode } from "~/features/system/sequences";
+import { getUbigeos } from "~/features/system/ubigeos";
 import {
   getTripStop,
   addTripStop,
@@ -14,7 +15,6 @@ import {
   type TripStopStatus,
 } from "~/features/transport/trips";
 import { STOP_TYPE, STOP_STATUS, statusToSelectOptions } from "~/constants/status-options";
-import { getDistrictNameById, peruDistrictSelectOptions } from "~/data/peru-districts";
 
 const TRIP_STOP_SEQUENCE_ENTITY = "trip-stop";
 
@@ -68,10 +68,25 @@ export default function TripStopDialog({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const districtOptions = useMemo(() => {
-    return [{ label: "— Seleccionar distrito —", value: "" }, ...peruDistrictSelectOptions()];
-  }, []);
+  const [districtOptions, setDistrictOptions] = useState<{ label: string; value: string }[]>([
+    { label: "— Seleccionar distrito —", value: "" },
+  ]);
+  const [districtMap, setDistrictMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!visible) return;
+    void getUbigeos("PE")
+      .then((items) => {
+        const options = items.map((item) => ({ label: `${item.name} (${item.code})`, value: item.code }));
+        setDistrictOptions([{ label: "— Seleccionar distrito —", value: "" }, ...options]);
+        const map: Record<string, string> = {};
+        for (const item of items) map[item.code] = item.name;
+        setDistrictMap(map);
+      })
+      .catch(() => {
+        setDistrictOptions([{ label: "— Seleccionar distrito —", value: "" }]);
+        setDistrictMap({});
+      });
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -111,7 +126,7 @@ export default function TripStopDialog({
         setExternalDocument(data.externalDocument ?? "");
         const did = (data.districtId ?? "").trim();
         setDistrictId(did);
-        const fromCatalog = did ? getDistrictNameById(did) : "";
+        const fromCatalog = did ? districtMap[did] ?? "" : "";
         setDistrictName(fromCatalog || (data.districtName ?? "").trim());
         setObservations(data.observations ?? "");
         setStatus(data.status ?? "pending");
@@ -127,7 +142,7 @@ export default function TripStopDialog({
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
-  }, [visible, tripId, stopId]);
+  }, [visible, tripId, stopId, districtMap]);
 
   const save = async () => {
     if (!name.trim()) return;
@@ -135,7 +150,7 @@ export default function TripStopDialog({
     setError(null);
     try {
       const did = districtId.trim();
-      const dname = did ? getDistrictNameById(did) || districtName.trim() : "";
+      const dname = did ? districtMap[did] || districtName.trim() : "";
       const finalCode = await generateSequenceCode(code, TRIP_STOP_SEQUENCE_ENTITY);
       const h = hiddenGeoRef.current;
       const payload = {
@@ -206,7 +221,7 @@ export default function TripStopDialog({
           onChange={(v) => {
             const id = String(v);
             setDistrictId(id);
-            setDistrictName(id ? getDistrictNameById(id) : "");
+            setDistrictName(id ? districtMap[id] ?? "" : "");
           }}
           options={districtOptions}
           placeholder="Buscar por nombre o UBIGEO"

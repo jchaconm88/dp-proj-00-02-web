@@ -127,6 +127,12 @@ export const CLIENT_STATUS: Record<string, StatusOption> = {
   suspended: { label: 'Suspendido', severity: 'warning' },
 };
 
+/** Estado de proveedor. */
+export const SUPPLIER_STATUS: Record<string, StatusOption> = {
+  active: { label: "Activo", severity: "success" },
+  inactive: { label: "Inactivo", severity: "secondary" },
+};
+
 /** Tipo de ubicación de cliente (`clients/{id}/locations`). */
 export const CLIENT_LOCATION_TYPE: Record<string, StatusOption> = {
   warehouse: { label: "Almacén", severity: "info" },
@@ -245,8 +251,7 @@ export const VEHICLE_TYPE: Record<string, StatusOption> = {
 /** Categoría de Tipo de Documento. */
 export const DOCUMENT_TYPE_CATEGORY: Record<string, StatusOption> = {
   identity: { label: "Identidad", severity: "info" },
-  transport: { label: "Transporte", severity: "warning" },
-  vehicle: { label: "Vehículo", severity: "success" },
+  billing: { label: "Facturación", severity: "success" },
 };
 
 /** Estado de plan de transporte. */
@@ -497,6 +502,64 @@ export const UNIT_CODE: Record<string, StatusOption> = {
   "TNE": { label: "Tonelada", severity: "secondary" },
 };
 export type UnitCode = keyof typeof UNIT_CODE;
+
+// ─── Compras, Ventas e Inventario ────────────────────────────────────────────
+
+/** Estado de orden de compra. */
+export const PURCHASE_ORDER_STATUS: Record<string, StatusOption> = {
+  draft: { label: "Borrador", severity: "secondary" },
+  confirmed: { label: "Confirmada", severity: "info" },
+  partial_received: { label: "Recepción parcial", severity: "warning" },
+  received: { label: "Recibida", severity: "success" },
+  cancelled: { label: "Cancelada", severity: "danger" },
+};
+
+/** Estado de cotización de venta. */
+export const QUOTATION_STATUS: Record<string, StatusOption> = {
+  draft: { label: "Borrador", severity: "secondary" },
+  sent: { label: "Enviada", severity: "info" },
+  confirmed: { label: "Confirmada", severity: "success" },
+  rejected: { label: "Rechazada", severity: "danger" },
+  expired: { label: "Expirada", severity: "warning" },
+};
+
+/** Estado de orden de venta. */
+export const SALE_ORDER_STATUS: Record<string, StatusOption> = {
+  draft: { label: "Borrador", severity: "secondary" },
+  confirmed: { label: "Confirmada", severity: "info" },
+  in_progress: { label: "En progreso", severity: "warning" },
+  delivered: { label: "Entregada", severity: "success" },
+  invoiced: { label: "Facturada", severity: "accent" },
+  cancelled: { label: "Cancelada", severity: "danger" },
+};
+
+/** Tipo de movimiento de inventario. */
+export const MOVEMENT_TYPE: Record<string, StatusOption> = {
+  entry: { label: "Entrada", severity: "success" },
+  exit: { label: "Salida", severity: "danger" },
+  transfer: { label: "Transferencia", severity: "info" },
+  adjustment: { label: "Ajuste", severity: "warning" },
+};
+
+/** Tipo de referencia de movimiento de inventario. */
+export const MOVEMENT_REFERENCE_TYPE: Record<string, StatusOption> = {
+  "purchase-order": { label: "Orden de Compra", severity: "info" },
+  "sale-order": { label: "Orden de Venta", severity: "info" },
+  manual: { label: "Manual", severity: "secondary" },
+};
+
+/** Tipo de almacén. */
+export const WAREHOUSE_TYPE: Record<string, StatusOption> = {
+  principal: { label: "Principal", severity: "success" },
+  secondary: { label: "Secundario", severity: "info" },
+  transit: { label: "Tránsito", severity: "warning" },
+};
+
+/** Tipo de producto. */
+export const PRODUCT_TYPE: Record<string, StatusOption> = {
+  good: { label: "Bien", severity: "info" },
+  service: { label: "Servicio", severity: "secondary" },
+};
 
 /** @deprecated Usar `INVOICE_STATUS` (mismo conjunto de claves). */
 export const INVOICE_SUNAT_STATUS = INVOICE_STATUS;
