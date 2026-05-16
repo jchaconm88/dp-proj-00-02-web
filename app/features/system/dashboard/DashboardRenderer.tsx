@@ -198,7 +198,11 @@ export default function DashboardRenderer({
       {!loading && !error && filteredCards.length > 0 && (
         <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredCards.map((card, i) => (
-            <DashboardKpiCard key={card.cardKey} card={card} index={i} />
+            <DashboardKpiCard
+              key={`${card.id || card.cardKey || "card"}-${card.metricKey || "metric"}-${i}`}
+              card={card}
+              index={i}
+            />
           ))}
         </section>
       )}
@@ -206,8 +210,11 @@ export default function DashboardRenderer({
       {/* Charts section */}
       {!loading && !error && filteredCharts.length > 0 && (
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {filteredCharts.map((chart) => (
-            <DashboardChart key={chart.id} chart={chart} />
+          {filteredCharts.map((chart, i) => (
+            <DashboardChart
+              key={`${chart.id || chart.chartKey || "chart"}-${chart.chartType || "type"}-${i}`}
+              chart={chart}
+            />
           ))}
         </section>
       )}

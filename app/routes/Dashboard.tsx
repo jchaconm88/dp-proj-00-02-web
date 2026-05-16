@@ -13,6 +13,7 @@ import { getEffectivePermissions } from "~/lib/effective-permissions";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { getAuthUser } from "~/lib/get-auth-user";
+import { SearchTrigger, SearchOverlay, useGlobalSearch } from "~/features/global-search";
 
 export type MenuItemJson = {
   title: string;
@@ -209,6 +210,13 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
     [companyUserRoleIds, companyUserRoleNames, roles]
   );
   const menuLoading = Boolean(activeCompanyId) && rolesLoading;
+
+  const globalSearch = useGlobalSearch({
+    effectivePermissions,
+    companyId: activeCompanyId,
+    userId: user?.uid ?? null,
+  });
+
   const canViewAllLocations = useMemo(
     () => isGranted(effectivePermissions, "view_all_locations", "company-location"),
     [effectivePermissions]
@@ -537,7 +545,9 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
       <button
         type="button"
         onClick={() => setSidebarOpen((o) => !o)}
-        className="fixed top-8 z-[60] rounded-full border border-white/15 bg-[var(--dp-surface-high)]/90 p-1.5 text-[var(--dp-on-surface-soft)] shadow-lg shadow-black/20 transition hover:text-[var(--dp-tertiary)]"
+        className={`fixed top-8 rounded-full border border-white/15 bg-[var(--dp-surface-high)]/90 p-1.5 text-[var(--dp-on-surface-soft)] shadow-lg shadow-black/20 transition hover:text-[var(--dp-tertiary)] ${
+          globalSearch.open ? "z-30 opacity-0 pointer-events-none" : "z-[60] opacity-100"
+        }`}
         style={{ left: sidebarOpen ? "15.25rem" : "3.95rem" }}
         aria-label="Menú"
       >
@@ -554,12 +564,7 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
         }}
       >
         <div className="relative w-56 md:w-80">
-          <i className="pi pi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--dp-on-surface-soft)]" />
-          <input
-            type="text"
-            placeholder="Search systems..."
-            className="w-full rounded-full border border-white/10 bg-[var(--dp-surface-low)]/70 py-1 pl-9 pr-4 text-sm text-[var(--dp-on-surface)] outline-none transition focus:border-[var(--dp-primary)]"
-          />
+          <SearchTrigger onClick={() => globalSearch.onOpenChange(true)} />
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
@@ -691,6 +696,24 @@ export default function DashboardLayout({ }: Route.ComponentProps) {
       >
         <Outlet />
       </main>
+
+      <SearchOverlay
+        open={globalSearch.open}
+        onOpenChange={globalSearch.onOpenChange}
+        query={globalSearch.query}
+        onQueryChange={globalSearch.onQueryChange}
+        onClearQuery={globalSearch.onClearQuery}
+        navigationResults={globalSearch.navigationResults}
+        entityResults={globalSearch.entityResults}
+        historyResults={globalSearch.historyResults}
+        entityLoading={globalSearch.entityLoading}
+        entityError={globalSearch.entityError}
+        rebuildingIndex={globalSearch.rebuildingIndex}
+        onRebuildIndex={globalSearch.onRebuildIndex}
+        onSelect={globalSearch.onSelect}
+        onRemoveHistory={globalSearch.onRemoveHistory}
+        onClearHistory={globalSearch.onClearHistory}
+      />
     </div>
   );
 }
