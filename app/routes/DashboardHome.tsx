@@ -12,6 +12,7 @@ import { useCompany } from "~/lib/company-context";
 import { getEffectivePermissions } from "~/lib/effective-permissions";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";
 import { requireActiveCompanyId } from "~/lib/tenant";
+import { webFetch } from "~/lib/backend-client";
 import type { Route } from "./+types/DashboardHome";
 
 export function meta({}: Route.MetaArgs) {
@@ -39,6 +40,7 @@ export default function DashboardHome() {
   const [overrides, setOverrides] = useState<OverrideEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recomposing, setRecomposing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(currentUsagePeriod());
 
   // Permissions
@@ -134,6 +136,25 @@ export default function DashboardHome() {
     setSelectedPeriod(period);
   };
 
+  const handleRecompose = async () => {
+    try {
+      setRecomposing(true);
+      const companyId = requireActiveCompanyId();
+      await webFetch("/dashboard/web/recompose", {
+        method: "POST",
+        body: JSON.stringify({ companyId, period: selectedPeriod }),
+      });
+      // Re-fetch snapshot by re-triggering the period effect
+      const current = selectedPeriod;
+      setSelectedPeriod("");
+      setTimeout(() => setSelectedPeriod(current), 0);
+    } catch {
+      // Error is non-critical; snapshot will eventually update
+    } finally {
+      setRecomposing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Hero header */}
@@ -169,6 +190,8 @@ export default function DashboardHome() {
         onRetry={handleRetry}
         onPeriodChange={handlePeriodChange}
         period={selectedPeriod}
+        onRecompose={handleRecompose}
+        recomposing={recomposing}
       />
 
       {/* Activity panels */}

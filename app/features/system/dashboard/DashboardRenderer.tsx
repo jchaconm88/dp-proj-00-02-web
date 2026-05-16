@@ -16,6 +16,8 @@ interface DashboardRendererProps {
   onRetry?: () => void;
   onPeriodChange?: (period: string) => void;
   period?: string;
+  onRecompose?: () => void;
+  recomposing?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,8 @@ export default function DashboardRenderer({
   onRetry,
   onPeriodChange,
   period,
+  onRecompose,
+  recomposing = false,
 }: DashboardRendererProps) {
   // Process cards through the pipeline
   const filteredCards = useMemo(() => {
@@ -121,10 +125,24 @@ export default function DashboardRenderer({
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Period selector + recompose button */}
       {onPeriodChange && period != null && (
         <div className="flex items-center gap-3">
           <DashboardPeriodSelector value={period} onChange={onPeriodChange} />
+          {onRecompose && (
+            <Button
+              type="button"
+              icon="pi pi-refresh"
+              size="small"
+              outlined
+              onClick={onRecompose}
+              loading={recomposing}
+              disabled={recomposing}
+              tooltip="Recomponer dashboard"
+              tooltipOptions={{ position: "top" }}
+              aria-label="Recomponer dashboard"
+            />
+          )}
         </div>
       )}
 
@@ -180,7 +198,7 @@ export default function DashboardRenderer({
       {!loading && !error && filteredCards.length > 0 && (
         <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredCards.map((card, i) => (
-            <DashboardKpiCard key={card.id} card={card} index={i} />
+            <DashboardKpiCard key={card.cardKey} card={card} index={i} />
           ))}
         </section>
       )}
