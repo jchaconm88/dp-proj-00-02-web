@@ -9,12 +9,12 @@ import {
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripCostsPage";
 import { withUrlSearch } from "~/lib/url-search";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
 import {
   DpTable,
   type DpTableRef,
   type DpTableFooterTotals,
-} from "~/components/DpTable";
+} from "~/components/ui";
 import {
   TRIP_COST_SOURCE,
   TRIP_COST_STATUS,
@@ -23,7 +23,7 @@ import {
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import { moduleTableDef } from "~/data/system-modules";
 import TripCostDialog from "./TripCostDialog";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpConfirmDialog } from "~/components/ui";
 
 type TripCostTableRow = TripCostRecord & { amountFormatted: string; chargeTypeLabel: string };
 

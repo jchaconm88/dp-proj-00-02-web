@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getEmployees, deleteEmployee, type EmployeeRecord } from "~/features/human-resource/employees";
 import type { Route } from "./+types/EmployeesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { EMPLOYEE_STATUS, CURRENCY } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import EmployeeDialog from "./EmployeeDialog";
@@ -116,12 +116,14 @@ export default function EmployeesPage({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <EmployeeDialog
-        visible={dialogVisible}
-        employeeId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <EmployeeDialog
+          visible={dialogVisible}
+          employeeId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
     </DpContent>
   );
 }

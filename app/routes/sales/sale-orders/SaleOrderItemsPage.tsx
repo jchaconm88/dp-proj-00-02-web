@@ -10,9 +10,9 @@ import {
 import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/SaleOrderItemsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import SaleOrderItemDialog from "./SaleOrderItemDialog";
 import GenerateInvoiceDialog from "./GenerateInvoiceDialog";
@@ -264,21 +264,25 @@ export default function SaleOrderItemsPage({ loaderData }: Route.ComponentProps)
         />
       )}
 
-      <SaleOrderDispatchDialog
-        visible={dispatchDialogVisible}
-        order={order}
-        items={items}
-        onSuccess={handleDispatchSuccess}
-        onHide={() => setDispatchDialogVisible(false)}
-      />
+      {dispatchDialogVisible && (
+        <SaleOrderDispatchDialog
+          visible={dispatchDialogVisible}
+          order={order}
+          items={items}
+          onSuccess={handleDispatchSuccess}
+          onHide={() => setDispatchDialogVisible(false)}
+        />
+      )}
 
-      <GenerateInvoiceDialog
-        visible={invoiceDialogVisible}
-        orderCurrency={order.currency}
-        onConfirm={handleGenerateInvoice}
-        onHide={() => setInvoiceDialogVisible(false)}
-        saving={generatingInvoice}
-      />
+      {invoiceDialogVisible && (
+        <GenerateInvoiceDialog
+          visible={invoiceDialogVisible}
+          orderCurrency={order.currency}
+          onConfirm={handleGenerateInvoice}
+          onHide={() => setInvoiceDialogVisible(false)}
+          saving={generatingInvoice}
+        />
+      )}
     </DpContentInfo>
   );
 }

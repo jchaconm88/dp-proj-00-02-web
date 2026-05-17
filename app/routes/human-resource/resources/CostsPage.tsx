@@ -8,8 +8,8 @@ import {
   type ResourceCostRecord,
 } from "~/features/human-resource/resources";
 import type { Route } from "./+types/CostsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { RESOURCE_COST_TYPE, CURRENCY } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import ResourceCostDialog from "./ResourceCostDialog";
@@ -127,13 +127,15 @@ export default function ResourceCostsPage({ loaderData }: Route.ComponentProps) 
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <ResourceCostDialog
-        visible={dialogVisible}
-        resourceId={resourceId}
-        costId={editCostId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <ResourceCostDialog
+          visible={dialogVisible}
+          resourceId={resourceId}
+          costId={editCostId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
     </DpContentInfo>
   );
 }

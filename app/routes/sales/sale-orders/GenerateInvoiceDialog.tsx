@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { getActiveSequencesByDocumentType } from "~/features/master/document-sequences";
 import type { DocumentSequenceRecord } from "~/features/master/document-sequences";
 import { getActiveCompanyLocations } from "~/features/system/company-locations";

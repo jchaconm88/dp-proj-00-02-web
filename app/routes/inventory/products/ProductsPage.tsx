@@ -9,9 +9,9 @@ import {
 import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/ProductsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { PRODUCT_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import ProductDialog from "./ProductDialog";

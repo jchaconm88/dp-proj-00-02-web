@@ -8,9 +8,9 @@ import {
   DpContentInfo,
   DpContentHeader,
   DpContentHeaderAction,
-} from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+} from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import { moduleTableDef } from "~/data/system-modules";
 import { withUrlSearch } from "~/lib/url-search";

@@ -10,16 +10,16 @@ import { getSettlements,
   type SettlementDocStatus,
 } from "~/features/transport/settlements";
 import type { Route } from "./+types/SettlementsPage";
-import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/DpContent";
+import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/ui";
 import { Button } from "primereact/button";
-import { DpInput } from "~/components/DpInput";
+import { DpInput } from "~/components/ui";
 import { createInvoiceFromSettlement } from "~/features/billing/invoice";
 import {
   getActiveSequencesByDocumentType,
   type DocumentSequenceRecord,
 } from "~/features/master/document-sequences";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import {
   SETTLEMENT_TYPE,

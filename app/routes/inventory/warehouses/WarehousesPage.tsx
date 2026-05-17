@@ -7,9 +7,9 @@ import {
   type WarehouseRecord,
 } from "~/features/inventory/warehouses";
 import type { Route } from "./+types/WarehousesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { WAREHOUSE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import WarehouseDialog from "./WarehouseDialog";

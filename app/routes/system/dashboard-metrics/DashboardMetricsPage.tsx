@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { useRevalidator } from "react-router";
-import { DpContent, DpContentHeader, DpContentSet } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-import { DpInput } from "~/components/DpInput";
+import { DpContent, DpContentHeader, DpContentSet } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import { getMetrics, createMetric, updateMetric, deleteMetric } from "~/features/system/dashboard";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/DashboardMetricsPage";

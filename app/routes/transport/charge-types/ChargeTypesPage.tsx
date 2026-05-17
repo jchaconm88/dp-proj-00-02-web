@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import type { Route } from "./+types/ChargeTypesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import {
   getChargeTypes,
   deleteChargeType,
@@ -117,12 +117,14 @@ export default function ChargeTypesPage({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <ChargeTypeDialog
-        visible={dialogVisible}
-        chargeTypeId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <ChargeTypeDialog
+          visible={dialogVisible}
+          chargeTypeId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
     </DpContent>
   );
 }

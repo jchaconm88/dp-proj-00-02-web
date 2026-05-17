@@ -3,9 +3,9 @@ import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { getModules, deleteModule, type ModuleRecord } from "~/features/system/modules";
 import { getActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/ModulesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import ModuleDialog from "./ModuleDialog";
 
@@ -135,20 +135,22 @@ export default function Modules({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <ModuleDialog
-        visible={dialogVisible}
-        moduleId={editingId}
-        onSuccess={(id) => {
-          setDialogVisible(false);
-          if (!editingId) {
-            // Si es nuevo, navegar a su detalle
-            navigate("/system/modules/" + encodeURIComponent(id));
-          } else {
-            revalidator.revalidate();
-          }
-        }}
-        onHide={() => setDialogVisible(false)}
-      />
+      {dialogVisible && (
+        <ModuleDialog
+          visible={dialogVisible}
+          moduleId={editingId}
+          onSuccess={(id) => {
+            setDialogVisible(false);
+            if (!editingId) {
+              // Si es nuevo, navegar a su detalle
+              navigate("/system/modules/" + encodeURIComponent(id));
+            } else {
+              revalidator.revalidate();
+            }
+          }}
+          onHide={() => setDialogVisible(false)}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

@@ -7,9 +7,9 @@ import {
   type RouteRecord,
 } from "~/features/transport/routes";
 import type { Route } from "./+types/RoutesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import RouteDialog from "./RouteDialog";
 

@@ -11,11 +11,11 @@ import {
 } from "~/features/purchasing/purchase-orders";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/PurchaseOrdersPage";
-import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpConfirmDialog } from "~/components/ui";
 import { PURCHASE_ORDER_STATUS, statusToSelectOptions } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import PurchaseOrderDialog from "./PurchaseOrderDialog";

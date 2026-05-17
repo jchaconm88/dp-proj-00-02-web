@@ -137,8 +137,7 @@ Nota: `{module}` debe coincidir con los grupos definidos en `app/data/menu.json`
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { get{Feature}s, delete{Feature} } from "~/features/{module}/{feature}";
 import type { Route } from "./+types/{Features}Page";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpContent, DpContentHeader, DpTable, type DpTableRef } from "~/components/ui";
 import {Feature}Dialog from "./{Feature}Dialog";
 
 export async function clientLoader() {
@@ -189,8 +188,7 @@ export default function {Feature}Add() { return null; }
 **`{Feature}Dialog.tsx`** — formulario modal:
 ```tsx
 import { useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput, DpContentSet } from "~/components/ui";
 
 export default function {Feature}Dialog({ visible, ... }) {
   const navigation = useNavigation();
@@ -373,7 +371,7 @@ Regla Cursor en repo raíz: **`.cursor/rules/dp-web-url-list-filters.mdc`**.
 Al implementar **Eliminar** en `*Page.tsx` (selección múltiple + `DpContentHeader`):
 
 1. **Prohibido** `confirm()` / `window.confirm()`.
-2. Usar **`DpConfirmDialog`** (`~/components/DpConfirmDialog`): estado `pendingDeleteIds` (o nombre explícito si hay varias entidades en la misma pantalla), `openDeleteConfirm`, `handleConfirmDelete`, `closeDeleteConfirm`; `severity="danger"`, `loading={saving}` mientras se borra; mensaje en español incluyendo *«Esta acción no se puede deshacer.»*
+2. Usar **`DpConfirmDialog`** (`~/components/ui`): estado `pendingDeleteIds` (o nombre explícito si hay varias entidades en la misma pantalla), `openDeleteConfirm`, `handleConfirmDelete`, `closeDeleteConfirm`; `severity="danger"`, `loading={saving}` mientras se borra; mensaje en español incluyendo *«Esta acción no se puede deshacer.»*
 3. Ver ejemplos en páginas existentes (p. ej. `TripCostsPage.tsx`, `TripsPage.tsx`).
 
 La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc` (repo raíz).
@@ -402,7 +400,7 @@ Patrón **igual en espíritu a `DpTColumn` en `DpTable`**: componente que retorn
 **Import:** `DpContentHeaderAction` desde `~/components/DpContent` (también se reexporta junto a `DpContentHeader`).
 
 ```tsx
-import { DpContentHeader, DpContentHeaderAction } from "~/components/DpContent";
+import { DpContentHeader, DpContentHeaderAction } from "~/components/ui";
 
 <DpContentHeader onLoad={…} onCreate={…} onDelete={…} …>
   <DpContentHeaderAction>
@@ -455,4 +453,7 @@ Los asistentes y el código deben tratar este archivo como **la única fuente** 
 - **DpInput select / DpContentSet dialog** — Ver sección 6 *«DpInput select + DpContentSet»* y **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`** (raíz del monorepo).
 - **Barra de lista con acciones extra** — Usar **`DpContentHeaderAction`** dentro de **`DpContentHeader`** (sección 6 *«DpContentHeaderAction»*); ejemplo **`TripsPage`** (cambio masivo de estado).
 - **Filtros en URL y rutas hijas** — Si la lista escribe filtros en `location.search`, propagar la query al navegar a add/edit/sub-rutas con **`withUrlSearch`** (sección 6 *«Preservar location.search»*) y regla **`.cursor/rules/dp-web-url-list-filters.mdc`**.
+- **Global Search Web (backend-first)** — consumir `GET /web/system/entity-search-index?companyId=...` y `POST /web/system/entity-search-index/rebuild?companyId=...`; prohibido volver a `onSnapshot` directo contra Firestore para este flujo.
+- **Dashboard Web (snapshot)** — consumir `GET /web/dashboard/snapshot?companyId=...&period=YYYY-MM`; usar `POST /web/dashboard/web/recompose` solo para recomposicion manual/operativa (no en cada mutacion de negocio).
+- **Nuevos modulos compatibles** — aplicar `../MODULOS_NUEVOS_COMPATIBILIDAD.md` para incorporar entidades nuevas sin romper search/dashboard ya implementado.
 - **Workflows de agente** — En **`dp-proj-00-02-web/.agents/workflows/`** hay guías resumidas (p. ej. nueva feature); **`AGENTS.md`** sigue siendo la fuente normativa.

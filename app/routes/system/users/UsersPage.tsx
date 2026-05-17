@@ -7,9 +7,9 @@ import {
   type ProfileRecord,
 } from "~/features/system/users";
 import type { Route } from "./+types/UsersPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 
 export function meta({}: Route.MetaArgs) {

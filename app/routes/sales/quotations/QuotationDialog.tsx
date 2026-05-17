@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpCodeInput } from "~/components/DpCodeInput";
-import { DpContentSet } from "~/components/DpContent";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpInput } from "~/components/ui";
+import { DpCodeInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import {
   getQuotationById,
   addQuotation,

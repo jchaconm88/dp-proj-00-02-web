@@ -1,10 +1,8 @@
+import { getCollectionWithMultiFilter } from "~/lib/firestore.service";
 import { COMPANY_USERS_COLLECTION } from "~/lib/auth-context";
 import { getCompanyById } from "~/features/system/companies";
 import {
   createDocumentWithId,
-  getCollectionWithFilter,
-  getCollectionWithMultiFilter,
-  getDocument,
 } from "~/lib/firestore.service";
 import { where, type QueryConstraint } from "firebase/firestore";
 import type { CompanyUserRecord } from "./company-users.types";
@@ -54,16 +52,13 @@ function toCompanyUserRecord(id: string, d: CompanyUserDoc): CompanyUserRecord {
 }
 
 export async function getCompanyUsersByUserId(userId: string): Promise<CompanyUserRecord[]> {
+  const { items } = await apiListMyCompanyUsers();
   const id = String(userId ?? "").trim();
   if (!id) return [];
-  const rows = await getCollectionWithFilter<CompanyUserDoc>(COMPANY_USERS_COLLECTION, "userId", id);
-  const items = rows.map((r) => toCompanyUserRecord(r.id, r));
-  items.sort((a, b) => a.companyId.localeCompare(b.companyId));
-  return items;
+  return items.filter((u) => u.userId === id);
 }
 
-/** Usuarios de empresa para la sesión: lookup directo por Auth UID. */
-export async function getCompanyUsersForSession(_authUid: string): Promise<CompanyUserRecord[]> {
+export async function getCompanyUsersForSession(_authUid?: string): Promise<CompanyUserRecord[]> {
   const { items } = await apiListMyCompanyUsers();
   return items;
 }
@@ -74,14 +69,9 @@ export async function getCompanyUsersByCompanyId(companyId: string): Promise<Com
 }
 
 export async function getCompanyUser(userId: string, companyId: string): Promise<CompanyUserRecord | null> {
+  const result = await apiListCompanyUsers(companyId);
   const id = String(userId ?? "").trim();
-  const filtersByUserId: QueryConstraint[] = [
-    where("userId", "==", id),
-    where("companyId", "==", companyId),
-  ];
-  const rows = await getCollectionWithMultiFilter<CompanyUserDoc>(COMPANY_USERS_COLLECTION, filtersByUserId);
-  const first = rows[0];
-  return first ? toCompanyUserRecord(first.id, first) : null;
+  return result.items.find((u: CompanyUserRecord) => u.userId === id) ?? null;
 }
 
 export async function addCompanyUser(data: {
@@ -95,13 +85,10 @@ export async function addCompanyUser(data: {
   webRoleNames?: string[];
   status?: "active" | "inactive";
 }): Promise<string> {
-  const id = `${data.companyId}_${data.userId}`;
-  const status = data.status === "inactive" ? "inactive" : "active";
   const comp = await getCompanyById(data.companyId);
   const accountId = comp?.accountId?.trim() || data.companyId;
-  await createDocumentWithId(COMPANY_USERS_COLLECTION, id, {
+  return apiUpsertCompanyUser({
     companyId: data.companyId,
-    accountId,
     userId: data.userId,
     user: data.user?.trim() || undefined,
     usersDocId: data.usersDocId?.trim() || undefined,
@@ -109,12 +96,10 @@ export async function addCompanyUser(data: {
     userDisplayName: data.userDisplayName?.trim() || undefined,
     webRoleIds: data.webRoleIds ?? [],
     webRoleNames: data.webRoleNames ?? [],
-    status,
-  });
-  return id;
+    status: data.status === "inactive" ? "inactive" : "active",
+  }).then(r => r.id);
 }
 
-/** Alta o actualización de usuario de empresa (mismo id determinístico). */
 export async function upsertCompanyUser(data: {
   companyId: string;
   userId: string;
@@ -140,4 +125,3 @@ export async function updateCompanyUser(
 ): Promise<void> {
   await apiUpdateCompanyUser(id, data);
 }
-

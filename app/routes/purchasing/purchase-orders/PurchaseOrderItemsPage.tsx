@@ -9,9 +9,9 @@ import {
 import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/PurchaseOrderItemsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import PurchaseOrderItemDialog from "./PurchaseOrderItemDialog";
 import PurchaseOrderReceptionDialog from "./PurchaseOrderReceptionDialog";
@@ -215,13 +215,15 @@ export default function PurchaseOrderItemsPage({ loaderData }: Route.ComponentPr
         />
       )}
 
-      <PurchaseOrderReceptionDialog
-        visible={receptionVisible}
-        orderId={orderId}
-        items={items}
-        onSuccess={handleReceptionSuccess}
-        onHide={() => setReceptionVisible(false)}
-      />
+      {receptionVisible && (
+        <PurchaseOrderReceptionDialog
+          visible={receptionVisible}
+          orderId={orderId}
+          items={items}
+          onSuccess={handleReceptionSuccess}
+          onHide={() => setReceptionVisible(false)}
+        />
+      )}
     </DpContentInfo>
   );
 }

@@ -1,7 +1,7 @@
-import { getDocument } from "~/lib/firestore.service";
+import { webFetch } from "~/lib/backend-client";
 import type { UsageMonthRecord } from "./usage-months.types";
 
-const COLLECTION = "usage-months";
+const BASE = "/platform/usage-months";
 
 export function currentUsagePeriod(): string {
   const d = new Date();
@@ -10,28 +10,23 @@ export function currentUsagePeriod(): string {
   return `${y}-${m}`;
 }
 
-function usageMonthDocId(accountId: string, period: string): string {
-  return `${accountId.trim()}_${period.trim()}`;
-}
-
-/**
- * Agregado del período actual (`{accountId}_{yyyy-mm}`) si existe.
- */
 export async function getUsageMonthForAccount(
   accountId: string,
   period = currentUsagePeriod()
 ): Promise<UsageMonthRecord | null> {
   const aid = accountId.trim();
   if (!aid) return null;
-  const id = usageMonthDocId(aid, period);
-  const snap = await getDocument<Record<string, unknown>>(COLLECTION, id);
-  if (!snap) return null;
-  const raw: Record<string, unknown> = { ...snap };
-  delete raw.id;
-  return {
-    id: snap.id,
-    accountId: String(snap.accountId ?? aid),
-    period: String(snap.period ?? period),
-    raw,
-  };
+  try {
+    const query = period ? `?period=${encodeURIComponent(period)}` : "";
+    const row = await webFetch<Record<string, unknown>>(`${BASE}/${encodeURIComponent(aid)}${query}`);
+    if (!row) return null;
+    return {
+      id: String(row.id ?? ""),
+      accountId: String(row.accountId ?? aid),
+      period: String(row.period ?? period),
+      raw: row as Record<string, unknown>,
+    };
+  } catch {
+    return null;
+  }
 }

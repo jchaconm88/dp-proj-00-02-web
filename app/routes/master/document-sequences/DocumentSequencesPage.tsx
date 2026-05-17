@@ -6,9 +6,9 @@ import {
   type DocumentSequenceRecord,
 } from "~/features/master/document-sequences";
 import type { Route } from "./+types/DocumentSequencesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { INVOICE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";

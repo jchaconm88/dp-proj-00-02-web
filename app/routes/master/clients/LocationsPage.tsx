@@ -7,8 +7,8 @@ import {
     type ClientLocationRecord,
 } from "~/features/master/clients";
 import type { Route } from "./+types/LocationsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import LocationDialog from "./LocationDialog";
 
@@ -130,13 +130,15 @@ export default function LocationsPage({ loaderData }: Route.ComponentProps) {
                 emptyFilterMessage="No hay resultados para el filtro."
             />
 
-            <LocationDialog
-                visible={dialogVisible}
-                clientId={clientId}
-                locationId={editLocationId}
-                onSuccess={handleSuccess}
-                onHide={handleHide}
-            />
+            {dialogVisible && (
+                <LocationDialog
+                    visible={dialogVisible}
+                    clientId={clientId}
+                    locationId={editLocationId}
+                    onSuccess={handleSuccess}
+                    onHide={handleHide}
+                />
+            )}
         </DpContentInfo>
     );
 }

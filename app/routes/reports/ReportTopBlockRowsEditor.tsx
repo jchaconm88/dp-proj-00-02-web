@@ -16,7 +16,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DpInput } from "~/components/DpInput";
+import { DpInput } from "~/components/ui";
 import { defaultTopBlockForGranularity } from "~/features/reports/report-columns.catalog";
 import { REPORT_TOP_RESOLVED_TITLE_TOKEN } from "~/features/reports/report-footer-normalize";
 import type {

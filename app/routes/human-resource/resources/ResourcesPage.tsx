@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getResources, deleteResource, type ResourceRecord } from "~/features/human-resource/resources";
 import type { Route } from "./+types/ResourcesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/ui";
 import { RESOURCE_ENGAGEMENT_TYPE, RESOURCE_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import ResourceDialog from "./ResourceDialog";
@@ -135,12 +135,14 @@ export default function ResourcesPage({ loaderData }: Route.ComponentProps) {
         </DpTColumn>
       </DpTable>
 
-      <ResourceDialog
-        visible={dialogVisible}
-        resourceId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <ResourceDialog
+          visible={dialogVisible}
+          resourceId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
     </DpContent>
   );
 }

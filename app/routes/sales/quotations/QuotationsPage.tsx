@@ -11,10 +11,10 @@ import {
   type QuotationStatus,
 } from "~/features/sales/quotations";
 import type { Route } from "./+types/QuotationsPage";
-import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-import { DpInput } from "~/components/DpInput";
+import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import { QUOTATION_STATUS, statusToSelectOptions } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
@@ -330,12 +330,14 @@ export default function QuotationsPage({ loaderData }: Route.ComponentProps) {
         </DpTable>
       </DpContent>
 
-      <QuotationDialog
-        visible={dialogVisible}
-        quotationId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <QuotationDialog
+          visible={dialogVisible}
+          quotationId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

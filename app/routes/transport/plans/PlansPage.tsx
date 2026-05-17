@@ -7,9 +7,9 @@ import {
   type PlanRecord,
 } from "~/features/transport/plans";
 import type { Route } from "./+types/PlansPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { PLAN_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import PlanDialog from "./PlanDialog";

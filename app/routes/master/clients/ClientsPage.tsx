@@ -6,8 +6,8 @@ import {
     type ClientRecord,
 } from "~/features/master/clients";
 import type { Route } from "./+types/ClientsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/ui";
 import { CLIENT_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import ClientDialog from "./ClientDialog";
@@ -140,12 +140,14 @@ export default function ClientsPage({ loaderData }: Route.ComponentProps) {
                 </DpTColumn>
             </DpTable>
 
-            <ClientDialog
-                visible={dialogVisible}
-                clientId={editId}
-                onSuccess={handleSuccess}
-                onHide={handleHide}
-            />
+            {dialogVisible && (
+                <ClientDialog
+                    visible={dialogVisible}
+                    clientId={editId}
+                    onSuccess={handleSuccess}
+                    onHide={handleHide}
+                />
+            )}
         </DpContent>
     );
 }

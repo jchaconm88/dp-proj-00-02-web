@@ -9,14 +9,14 @@ import {
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripChargesPage";
 import { withUrlSearch } from "~/lib/url-search";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
 import {
   DpTable,
   type DpTableRef,
   type DpTableFooterTotals,
-} from "~/components/DpTable";
+} from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpConfirmDialog } from "~/components/ui";
 import {
   TRIP_CHARGE_SOURCE,
   TRIP_CHARGE_STATUS,

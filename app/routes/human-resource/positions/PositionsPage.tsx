@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-router";
 import { getPositions, deletePosition, type PositionRecord } from "~/features/human-resource/positions";
 import type { Route } from "./+types/PositionsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import PositionDialog from "./PositionDialog";
 
@@ -100,11 +100,13 @@ export default function PositionsPage({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <PositionDialog
-        visible={isAdd || isEdit}
-        positionId={currentId}
-        onSuccess={handleSuccess}
-      />
+      {(isAdd || isEdit) && (
+        <PositionDialog
+          visible={isAdd || isEdit}
+          positionId={currentId}
+          onSuccess={handleSuccess}
+        />
+      )}
     </DpContent>
   );
 }

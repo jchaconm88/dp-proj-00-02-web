@@ -8,8 +8,8 @@ import {
     type CalculationType,
 } from "~/features/transport/transport-services";
 import type { Route } from "./+types/TransportServicesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { SERVICE_TYPE_CATEGORY, CALCULATION_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";
@@ -117,12 +117,14 @@ export default function TransportServicesPage({ loaderData }: Route.ComponentPro
                 emptyFilterMessage="No hay resultados para el filtro."
             />
 
-            <TransportServiceDialog
-                visible={dialogVisible}
-                serviceId={editId}
-                onSuccess={handleSuccess}
-                onHide={handleHide}
-            />
+            {dialogVisible && (
+                <TransportServiceDialog
+                    visible={dialogVisible}
+                    serviceId={editId}
+                    onSuccess={handleSuccess}
+                    onHide={handleHide}
+                />
+            )}
         </DpContent>
     );
 }

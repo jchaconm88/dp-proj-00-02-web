@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { Button } from "primereact/button";
 import type { Route } from "./+types/ReportRunsPage";
-import { DpContentHeader, DpContentHeaderAction, DpContentInfo } from "~/components/DpContent";
-import { DpTable, type DpTableDefColumn } from "~/components/DpTable";
+import { DpContentHeader, DpContentHeaderAction, DpContentInfo } from "~/components/ui";
+import { DpTable, type DpTableDefColumn } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import type { ReportDefinitionRecord, ReportRunRecord } from "~/features/reports/reports.types";
 import {
@@ -272,12 +272,14 @@ export default function ReportRunsPage({ loaderData }: Route.ComponentProps) {
         </DpTColumn>
       </DpTable>
 
-      <ReportRunDialog
-        visible={runDialogOpen}
-        definition={definition}
-        onHide={() => setRunDialogOpen(false)}
-        onSuccess={() => revalidator.revalidate()}
-      />
+      {runDialogOpen && (
+        <ReportRunDialog
+          visible={runDialogOpen}
+          definition={definition}
+          onHide={() => setRunDialogOpen(false)}
+          onSuccess={() => revalidator.revalidate()}
+        />
+      )}
     </DpContentInfo>
   );
 }

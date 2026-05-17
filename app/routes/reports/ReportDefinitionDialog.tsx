@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import type { MenuItem } from "primereact/menuitem";
 import { TabMenu } from "primereact/tabmenu";
-import { DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
+import { DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import type {
   PivotOutputKind,
   ReportDataSource,

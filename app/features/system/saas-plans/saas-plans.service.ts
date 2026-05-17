@@ -1,28 +1,24 @@
-import { getDocument, updateDocument } from "~/lib/firestore.service";
+import { webFetch } from "~/lib/backend-client";
 import type { SaasPlanRecord } from "./saas-plans.types";
 
-/** Catálogo SaaS (límites / features); colección raíz `plans`. */
-const COLLECTION = "plans";
-
-type PlanDoc = {
-  name?: string;
-  active?: boolean;
-  limits?: Record<string, unknown>;
-  features?: Record<string, unknown>;
-};
+const BASE = "/platform/saas-plans";
 
 export async function getSaasPlanById(id: string): Promise<SaasPlanRecord | null> {
-  const snap = await getDocument<PlanDoc>(COLLECTION, id);
-  if (!snap) return null;
-  const d = snap;
-  return {
-    id: snap.id,
-    name: d.name ?? snap.id,
-    active: d.active !== false,
-    planId: snap.id,
-    limits: d.limits && typeof d.limits === "object" ? d.limits : undefined,
-    features: d.features && typeof d.features === "object" ? d.features : undefined,
-  };
+  try {
+    const row = await webFetch<Record<string, unknown>>(`${BASE}/${encodeURIComponent(id)}`);
+    if (!row) return null;
+    const d = row;
+    return {
+      id: String(d.id ?? ""),
+      name: String(d.name ?? d.id ?? ""),
+      active: d.active !== false,
+      planId: String(d.planId ?? d.id ?? ""),
+      limits: d.limits && typeof d.limits === "object" ? d.limits as Record<string, unknown> : undefined,
+      features: d.features && typeof d.features === "object" ? d.features as Record<string, unknown> : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function updateSaasPlanLimits(planId: string, limits: Record<string, number>): Promise<void> {
@@ -31,7 +27,8 @@ export async function updateSaasPlanLimits(planId: string, limits: Record<string
       .map(([key, value]) => [String(key).trim(), Number(value)])
       .filter(([key, value]) => key && Number.isFinite(value))
   );
-  await updateDocument(COLLECTION, planId, {
-    limits: clean,
+  await webFetch(`${BASE}/${encodeURIComponent(planId)}/limits`, {
+    method: "PUT",
+    body: JSON.stringify({ limits: clean }),
   });
 }

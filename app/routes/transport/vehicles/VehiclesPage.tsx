@@ -3,9 +3,9 @@ import { useNavigate, useNavigation, useRevalidator, useMatch } from "react-rout
 import { getAuthUser } from "~/lib/get-auth-user";
 import { getVehicles, deleteVehicle, type VehicleRecord } from "~/features/transport/vehicles";
 import type { Route } from "./+types/VehiclesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { VEHICLE_STATUS, VEHICLE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import VehicleDialog from "./VehicleDialog";

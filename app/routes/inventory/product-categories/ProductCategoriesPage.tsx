@@ -7,9 +7,9 @@ import {
   type ProductCategoryRecord,
 } from "~/features/inventory/product-categories";
 import type { Route } from "./+types/ProductCategoriesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import ProductCategoryDialog from "./ProductCategoryDialog";
 import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";
@@ -148,13 +148,15 @@ export default function ProductCategoriesPage({ loaderData }: Route.ComponentPro
         />
       </DpContent>
 
-      <ProductCategoryDialog
-        visible={dialogVisible}
-        categoryId={editId}
-        categories={loaderData.items}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <ProductCategoryDialog
+          visible={dialogVisible}
+          categoryId={editId}
+          categories={loaderData.items}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

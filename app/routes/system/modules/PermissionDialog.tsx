@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { saveModule } from "~/features/system/modules";
 import type { ModulePermission } from "~/features/system/modules";
 

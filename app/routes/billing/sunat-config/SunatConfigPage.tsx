@@ -3,8 +3,8 @@ import { useNavigate, useNavigation, useRevalidator, useMatch, redirect } from "
 import { getAuthUser } from "~/lib/get-auth-user";
 import { listSunatConfigsForTable, type SunatConfigTableRow } from "~/features/billing/sunat-config";
 import type { Route } from "./+types/SunatConfigPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import SunatConfigDialog from "./SunatConfigDialog";
 

@@ -3,9 +3,9 @@ import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { getRoles, deleteRole, type RoleRecord } from "~/features/system/roles";
 import { getActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/RolesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import RoleDialog from "./RoleDialog";
 
@@ -137,16 +137,18 @@ export default function Roles({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <RoleDialog
-        visible={dialogVisible}
-        roleId={editingId}
-        companyId={loaderData.companyId}
-        onSuccess={() => {
-          setDialogVisible(false);
-          revalidator.revalidate();
-        }}
-        onHide={() => setDialogVisible(false)}
-      />
+      {dialogVisible && (
+        <RoleDialog
+          visible={dialogVisible}
+          roleId={editingId}
+          companyId={loaderData.companyId}
+          onSuccess={() => {
+            setDialogVisible(false);
+            revalidator.revalidate();
+          }}
+          onHide={() => setDialogVisible(false)}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

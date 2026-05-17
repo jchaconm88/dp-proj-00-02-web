@@ -35,10 +35,10 @@ import {
   DpContentSet,
   type DpContentFilterRef,
   type DpFilterDef,
-} from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-import { DpInput } from "~/components/DpInput";
+} from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import {
   INVOICE_STATUS,

@@ -12,9 +12,9 @@ import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import { getAuthUser } from "~/lib/get-auth-user";
 import { useLocationContext } from "~/lib/location-context";
 import type { Route } from "./+types/QuotationItemsPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableFooterTotals } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import QuotationItemDialog from "./QuotationItemDialog";
 

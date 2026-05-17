@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { getCounterById, addCounter, updateCounter } from "~/features/system/counters";
 import { getSequences, type SequenceRecord } from "~/features/system/sequences";
 

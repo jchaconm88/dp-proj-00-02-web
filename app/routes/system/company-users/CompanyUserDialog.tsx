@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigation } from "react-router";
 import { MultiSelect } from "primereact/multiselect";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { upsertCompanyUser, type CompanyUserRecord } from "~/features/system/company-users";
 import { resolveAuthUidByEmail } from "~/features/system/auth/resolve-auth-uid.service";
 import { getAllRoles, type RoleRecord } from "~/features/system/roles";

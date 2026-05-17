@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigation } from "react-router";
 import type { Route } from "./+types/BillingPage";
-import { DpContent } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
+import { DpContent } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import { useAccount } from "~/lib/account-context";
 import { useCompany } from "~/lib/company-context";
 import { getSubscriptionByAccountId } from "~/features/system/subscriptions";

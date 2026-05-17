@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { useNavigation } from "react-router";
-import { DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
+import { DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import { getSunatConfigById, saveSunatConfig } from "~/features/billing/sunat-config";
 import { readFileAsBase64 } from "~/lib/file-to-base64";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpConfirmDialog } from "~/components/ui";
 
 function downloadP12FromBase64(base64: string, fileName: string) {
   const binary = atob(base64);

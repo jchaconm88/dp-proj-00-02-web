@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { webFetch } from "~/lib/backend-client";
 import { requireActiveCompanyId } from "~/lib/tenant";
 import { getWarehouses, type WarehouseRecord } from "~/features/inventory/warehouses";

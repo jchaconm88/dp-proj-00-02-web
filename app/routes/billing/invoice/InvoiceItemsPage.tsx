@@ -8,13 +8,13 @@ import {
   DpContentInfo,
   DpContentHeader,
   DpContentHeaderAction,
-} from "~/components/DpContent";
+} from "~/components/ui";
 import {
   DpTable,
   type DpTableRef,
   type DpTableFooterTotals,
-} from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+} from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { INVOICE_ITEM_TYPE } from "~/constants/status-options";
 import { formatAmountWithSymbol } from "~/constants/currency-format";
 import { moduleTableDef } from "~/data/system-modules";

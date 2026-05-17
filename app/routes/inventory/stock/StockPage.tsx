@@ -3,8 +3,8 @@ import { useNavigation, useRevalidator } from "react-router";
 import { getAuthUser } from "~/lib/get-auth-user";
 import { getStockLevels, type StockLevelRecord } from "~/features/inventory/stock";
 import type { Route } from "./+types/StockPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 
 export function meta({}: Route.MetaArgs) {

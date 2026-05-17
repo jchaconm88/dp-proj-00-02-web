@@ -8,8 +8,8 @@ import {
   type BillingCycle,
 } from "~/features/transport/transport-contracts";
 import type { Route } from "./+types/TransportContractsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, DpTColumn, type DpTableRef } from "~/components/ui";
 import { CONTRACT_STATUS, BILLING_CYCLE, CURRENCY } from "~/constants/status-options";
 import { getAuthUser } from "~/lib/get-auth-user";
 import { moduleTableDef } from "~/data/system-modules";
@@ -137,12 +137,14 @@ export default function TransportContractsPage({ loaderData }: Route.ComponentPr
         </DpTColumn>
       </DpTable>
 
-      <TransportContractDialog
-        visible={dialogVisible}
-        contractId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <TransportContractDialog
+          visible={dialogVisible}
+          contractId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
     </DpContent>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
+import { DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import { reportNotifyTokensHelpInline } from "~/features/reports/report-notify-tokens";
 import { getReportDataSourceMeta } from "~/features/reports/report-data-sources.catalog";
 import type { ReportDefinitionRecord, ReportOutputFormat } from "~/features/reports/reports.types";

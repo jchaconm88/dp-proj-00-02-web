@@ -8,8 +8,8 @@ import {
   type RolePermissions,
 } from "~/features/system/roles";
 import type { Route } from "./+types/RolesDetail";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
 import RoleDialog from "./RoleDialog";
 import RolePermissionDialog from "./RolePermissionDialog";
 
@@ -211,22 +211,26 @@ export default function RoleDetail({ loaderData }: Route.ComponentProps) {
           />
         </section>
 
-        <RolePermissionDialog
-          visible={permissionDialogOpen}
-          roleId={roleId}
-          editModuleId={permissionEditModuleId}
-          currentPermissions={role.permissions ?? {}}
-          onSuccess={async () => { setPermissionDialogOpen(false); revalidator.revalidate(); }}
-          onHide={() => setPermissionDialogOpen(false)}
-        />
+        {permissionDialogOpen && (
+          <RolePermissionDialog
+            visible={permissionDialogOpen}
+            roleId={roleId}
+            editModuleId={permissionEditModuleId}
+            currentPermissions={role.permissions ?? {}}
+            onSuccess={async () => { setPermissionDialogOpen(false); revalidator.revalidate(); }}
+            onHide={() => setPermissionDialogOpen(false)}
+          />
+        )}
 
-        <RoleDialog
-          visible={editRoleOpen}
-          roleId={roleId}
-          companyId={role.companyId ?? null}
-          onSuccess={() => { setEditRoleOpen(false); revalidator.revalidate(); }}
-          onHide={() => setEditRoleOpen(false)}
-        />
+        {editRoleOpen && (
+          <RoleDialog
+            visible={editRoleOpen}
+            roleId={roleId}
+            companyId={role.companyId ?? null}
+            onSuccess={() => { setEditRoleOpen(false); revalidator.revalidate(); }}
+            onHide={() => setEditRoleOpen(false)}
+          />
+        )}
       </div>
     </DpContentInfo>
   );

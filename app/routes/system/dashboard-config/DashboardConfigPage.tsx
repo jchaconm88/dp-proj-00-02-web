@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRevalidator } from "react-router";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
-import { DpContent, DpContentHeader, DpContentSet } from "~/components/DpContent";
-import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
-import { DpInput } from "~/components/DpInput";
+import { DpContent, DpContentHeader, DpContentSet } from "~/components/ui";
+import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import { getAuthUser } from "~/lib/get-auth-user";
 import {
   getCards,

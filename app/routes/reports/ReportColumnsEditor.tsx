@@ -16,7 +16,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DpInput } from "~/components/DpInput";
+import { DpInput } from "~/components/ui";
 import type { ReportColumnFormRow, ReportRowGranularity } from "~/features/reports/reports.types";
 import {
   getBindingIdForOutputKey,

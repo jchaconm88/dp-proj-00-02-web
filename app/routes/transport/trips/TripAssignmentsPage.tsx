@@ -9,9 +9,9 @@ import {
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripAssignmentsPage";
 import { withUrlSearch } from "~/lib/url-search";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { TRIP_ASSIGNMENT_ENTITY_TYPE, TRIP_ASSIGNMENT_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import TripAssignmentDialog from "./TripAssignmentDialog";

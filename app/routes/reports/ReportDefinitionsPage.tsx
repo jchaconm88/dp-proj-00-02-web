@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { Button } from "primereact/button";
 import type { Route } from "./+types/ReportDefinitionsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import type { ReportDefinitionRecord } from "~/features/reports/reports.types";
 import {
@@ -151,12 +151,14 @@ export default function ReportDefinitionsPage({ loaderData }: Route.ComponentPro
         </DpTColumn>
       </DpTable>
 
-      <ReportDefinitionDialog
-        visible={defDialogOpen}
-        editing={editingDef}
-        onHide={() => setDefDialogOpen(false)}
-        onSuccess={() => revalidator.revalidate()}
-      />
+      {defDialogOpen && (
+        <ReportDefinitionDialog
+          visible={defDialogOpen}
+          editing={editingDef}
+          onHide={() => setDefDialogOpen(false)}
+          onSuccess={() => revalidator.revalidate()}
+        />
+      )}
 
       <DpConfirmDialog
         visible={deleteConfirm}

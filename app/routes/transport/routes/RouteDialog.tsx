@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useNavigation } from "react-router";
 import { Button } from "primereact/button";
-import { DpInput } from "~/components/DpInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import {
   getRouteById,
   addRoute,

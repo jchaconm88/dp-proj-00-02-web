@@ -26,10 +26,10 @@ import {
   createDateRangeMaxDaysRule,
   type DpContentFilterRef,
   type DpFilterDef,
-} from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+} from "~/components/ui";
+import { DpInput } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
 import { TRIP_STATUS, TRIP_STATUS_DEFAULT, statusToSelectOptions } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";

@@ -7,9 +7,9 @@ import {
   type SupplierRecord,
 } from "~/features/purchasing/suppliers";
 import type { Route } from "./+types/SuppliersPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { SUPPLIER_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";
@@ -138,12 +138,14 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
         />
       </DpContent>
 
-      <SupplierDialog
-        visible={dialogVisible}
-        supplierId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <SupplierDialog
+          visible={dialogVisible}
+          supplierId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

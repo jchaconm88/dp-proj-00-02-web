@@ -10,9 +10,9 @@ import { getCompanyById } from "~/features/system/companies";
 import { getProfiles } from "~/features/system/users";
 import { getAllRoles } from "~/features/system/roles";
 import type { Route } from "./+types/CompanyUsersPage";
-import { DpContentHeader, DpContentInfo } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentHeader, DpContentInfo } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import CompanyUserDialog from "./CompanyUserDialog";
 import type { StatusOption } from "~/constants/status-options";
@@ -274,13 +274,15 @@ export default function CompanyUsersPage({ loaderData }: Route.ComponentProps) {
         emptyFilterMessage="No hay resultados para el filtro."
       />
 
-      <CompanyUserDialog
-        visible={dialogVisible}
-        companyId={loaderData.companyId}
-        companyUser={isAdd ? null : editingCompanyUser}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <CompanyUserDialog
+          visible={dialogVisible}
+          companyId={loaderData.companyId}
+          companyUser={isAdd ? null : editingCompanyUser}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

@@ -6,9 +6,9 @@ import {
   type OrderRecord,
 } from "~/features/logistic/orders";
 import type { Route } from "./+types/OrdersPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { ORDER_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import OrderDialog from "./OrderDialog";

@@ -3,8 +3,8 @@ import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { getModule, saveModule } from "~/features/system/modules";
 import type { ModuleRecord, ModulePermission, ModuleColumn } from "~/features/system/modules";
 import type { Route } from "./+types/ModulesDetail";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/DpTable";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
 import PermissionDialog from "./PermissionDialog";
 import ColumnDialog from "./ColumnDialog";
 import ModuleDialog from "./ModuleDialog";
@@ -241,30 +241,36 @@ export default function ModuleDetail({ loaderData }: Route.ComponentProps) {
           />
         </section>
 
-        <PermissionDialog
-          visible={permissionDialogOpen}
-          moduleId={moduleId}
-          permissionIndex={permissionEditIndex}
-          currentPermissions={Array.isArray(module.permissions) ? module.permissions : []}
-          onSuccess={async () => { setPermissionDialogOpen(false); revalidator.revalidate(); }}
-          onHide={() => setPermissionDialogOpen(false)}
-        />
+        {permissionDialogOpen && (
+          <PermissionDialog
+            visible={permissionDialogOpen}
+            moduleId={moduleId}
+            permissionIndex={permissionEditIndex}
+            currentPermissions={Array.isArray(module.permissions) ? module.permissions : []}
+            onSuccess={async () => { setPermissionDialogOpen(false); revalidator.revalidate(); }}
+            onHide={() => setPermissionDialogOpen(false)}
+          />
+        )}
 
-        <ColumnDialog
-          visible={columnDialogOpen}
-          moduleId={moduleId}
-          columnIndex={columnEditIndex}
-          currentColumns={Array.isArray(module.columns) ? module.columns : []}
-          onSuccess={async () => { setColumnDialogOpen(false); revalidator.revalidate(); }}
-          onHide={() => setColumnDialogOpen(false)}
-        />
+        {columnDialogOpen && (
+          <ColumnDialog
+            visible={columnDialogOpen}
+            moduleId={moduleId}
+            columnIndex={columnEditIndex}
+            currentColumns={Array.isArray(module.columns) ? module.columns : []}
+            onSuccess={async () => { setColumnDialogOpen(false); revalidator.revalidate(); }}
+            onHide={() => setColumnDialogOpen(false)}
+          />
+        )}
 
-        <ModuleDialog
-          visible={editModuleOpen}
-          moduleId={moduleId}
-          onSuccess={() => { setEditModuleOpen(false); revalidator.revalidate(); }}
-          onHide={() => setEditModuleOpen(false)}
-        />
+        {editModuleOpen && (
+          <ModuleDialog
+            visible={editModuleOpen}
+            moduleId={moduleId}
+            onSuccess={() => { setEditModuleOpen(false); revalidator.revalidate(); }}
+            onHide={() => setEditModuleOpen(false)}
+          />
+        )}
       </div>
     </DpContentInfo>
   );

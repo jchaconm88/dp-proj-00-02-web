@@ -1,5 +1,5 @@
 import type { ModulePermission, ModuleRecord } from "~/features/system/modules";
-import type { DpTableDefColumn, DpTableDefColumnType } from "~/components/DpTable";
+import type { DpTableDefColumn, DpTableDefColumnType } from "~/components/ui";
 import type { StatusOption } from "~/constants/status-options";
 
 const CRUD_PERMISSIONS: ModulePermission[] = [

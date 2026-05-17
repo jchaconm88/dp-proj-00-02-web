@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigation } from "react-router";
-import { DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
+import { DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
 import {
   INVOICE_TYPE,
   statusToSelectOptions,

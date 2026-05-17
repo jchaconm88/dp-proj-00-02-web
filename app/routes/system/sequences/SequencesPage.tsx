@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useNavigate, useMatch, Outlet, useNavigation, useRevalidator } from "react-router";
 import { getSequences, deleteSequence, type SequenceRecord } from "~/features/system/sequences";
 import type { Route } from "./+types/SequencesPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import SequenceDialog from "./SequenceDialog";
 import { RESET_PERIOD } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
@@ -140,12 +140,14 @@ export default function Sequences({ loaderData }: Route.ComponentProps) {
         />
       </DpContent>
 
-      <SequenceDialog
-        visible={dialogVisible}
-        sequenceId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <SequenceDialog
+          visible={dialogVisible}
+          sequenceId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

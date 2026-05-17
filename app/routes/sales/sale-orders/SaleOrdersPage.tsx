@@ -12,11 +12,11 @@ import {
 } from "~/features/sales/sale-orders";
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/SaleOrdersPage";
-import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/DpContent";
-import { DpInput } from "~/components/DpInput";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader, DpContentHeaderAction, DpContentSet } from "~/components/ui";
+import { DpInput } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import DpTColumn from "~/components/DpTable/DpTColumn";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpConfirmDialog } from "~/components/ui";
 import { SALE_ORDER_STATUS, statusToSelectOptions, statusDefaultKey } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import SaleOrderDialog from "./SaleOrderDialog";
@@ -327,13 +327,15 @@ export default function SaleOrdersPage({ loaderData }: Route.ComponentProps) {
         />
       </DpContentSet>
 
-      <GenerateInvoiceDialog
-        visible={invoiceDialogVisible}
-        orderCurrency="PEN"
-        onConfirm={handleInvoiceConfirmed}
-        onHide={() => setInvoiceDialogVisible(false)}
-        saving={generatingInvoice}
-      />
+      {invoiceDialogVisible && (
+        <GenerateInvoiceDialog
+          visible={invoiceDialogVisible}
+          orderCurrency="PEN"
+          onConfirm={handleInvoiceConfirmed}
+          onHide={() => setInvoiceDialogVisible(false)}
+          saving={generatingInvoice}
+        />
+      )}
 
       <Outlet />
     </>

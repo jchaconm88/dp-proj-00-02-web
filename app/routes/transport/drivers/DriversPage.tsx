@@ -7,8 +7,8 @@ import {
     type DriverRecord,
 } from "~/features/transport/drivers";
 import type { Route } from "./+types/DriversPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { DRIVER_STATUS, DRIVER_RELATIONSHIP } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import DriverDialog from "./DriverDialog";
@@ -122,12 +122,14 @@ export default function DriversPage({ loaderData }: Route.ComponentProps) {
                 emptyFilterMessage="No hay resultados para el filtro."
             />
 
-            <DriverDialog
-                visible={dialogVisible}
-                driverId={editId}
-                onSuccess={handleSuccess}
-                onHide={handleHide}
-            />
+            {dialogVisible && (
+                <DriverDialog
+                    visible={dialogVisible}
+                    driverId={editId}
+                    onSuccess={handleSuccess}
+                    onHide={handleHide}
+                />
+            )}
         </DpContent>
     );
 }

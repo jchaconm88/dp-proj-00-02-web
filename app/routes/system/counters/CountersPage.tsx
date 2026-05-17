@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useNavigate, useMatch, Outlet, useNavigation, useRevalidator } from "react-router";
 import { getCounters, deleteCounter, type CounterRecord } from "~/features/system/counters";
 import type { Route } from "./+types/CountersPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { moduleTableDef } from "~/data/system-modules";
 import CounterDialog from "./CounterDialog";
 
@@ -125,12 +125,14 @@ export default function Counters({ loaderData }: Route.ComponentProps) {
         />
       </DpContent>
 
-      <CounterDialog
-        visible={dialogVisible}
-        counterId={editId}
-        onSuccess={handleSuccess}
-        onHide={handleHide}
-      />
+      {dialogVisible && (
+        <CounterDialog
+          visible={dialogVisible}
+          counterId={editId}
+          onSuccess={handleSuccess}
+          onHide={handleHide}
+        />
+      )}
 
       <DpConfirmDialog
         visible={pendingDeleteIds !== null}

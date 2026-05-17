@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpCodeInput } from "~/components/DpCodeInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpCodeInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { generateSequenceCode } from "~/features/system/sequences";
 import {
   getChargeType,

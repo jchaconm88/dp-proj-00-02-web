@@ -10,9 +10,9 @@ import {
 import { getAuthUser } from "~/lib/get-auth-user";
 import type { Route } from "./+types/TripStopsPage";
 import { withUrlSearch } from "~/lib/url-search";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
-import { DpConfirmDialog } from "~/components/DpConfirmDialog";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpConfirmDialog } from "~/components/ui";
 import { STOP_TYPE, STOP_STATUS } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import TripStopDialog from "./TripStopDialog";

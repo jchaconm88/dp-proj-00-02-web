@@ -8,8 +8,8 @@ import {
   type RateRuleRecord,
 } from "~/features/transport/transport-contracts";
 import type { Route } from "./+types/TransportRateRulesPage";
-import { DpContentInfo, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContentInfo, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { CALCULATION_TYPE, RATE_RULE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import { getAuthUser } from "~/lib/get-auth-user";

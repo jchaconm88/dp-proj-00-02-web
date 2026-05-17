@@ -7,8 +7,8 @@ import {
 } from "~/features/inventory/movements";
 import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import type { Route } from "./+types/MovementsPage";
-import { DpContent, DpContentHeader } from "~/components/DpContent";
-import { DpTable, type DpTableRef } from "~/components/DpTable";
+import { DpContent, DpContentHeader } from "~/components/ui";
+import { DpTable, type DpTableRef } from "~/components/ui";
 import { MOVEMENT_TYPE, MOVEMENT_REFERENCE_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
 import MovementDialog from "./MovementDialog";

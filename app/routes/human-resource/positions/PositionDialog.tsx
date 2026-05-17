@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useNavigation } from "react-router";
-import { DpInput } from "~/components/DpInput";
-import { DpCodeInput } from "~/components/DpCodeInput";
-import { DpContentSet } from "~/components/DpContent";
+import { DpInput } from "~/components/ui";
+import { DpCodeInput } from "~/components/ui";
+import { DpContentSet } from "~/components/ui";
 import { getPosition, addPosition, updatePosition } from "~/features/human-resource/positions";
 import { generateSequenceCode } from "~/features/system/sequences";
 
