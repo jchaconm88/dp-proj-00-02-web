@@ -89,6 +89,26 @@ const MANUAL_ENTRIES: SearchEntry[] = [
     permission: { action: "create", module: "sale-order" },
     type: "quick-action",
   },
+  {
+    id: "qa-create-recipe",
+    title: "Crear receta",
+    keywords: ["nueva receta", "agregar receta", "registrar receta", "bom", "formula"],
+    path: "/production/recipes/add",
+    icon: "book",
+    category: "Producción",
+    permission: { action: "create", module: "recipe" },
+    type: "quick-action",
+  },
+  {
+    id: "qa-create-production-order",
+    title: "Crear orden de producción",
+    keywords: ["nueva orden produccion", "agregar orden", "registrar orden produccion"],
+    path: "/production/orders/add",
+    icon: "cog",
+    category: "Producción",
+    permission: { action: "create", module: "production-order" },
+    type: "quick-action",
+  },
 ];
 
 const ENTITY_CONFIGS: EntitySearchConfig[] = [
@@ -154,6 +174,15 @@ const ENTITY_CONFIGS: EntitySearchConfig[] = [
     icon: "box",
     permission: { action: "view", module: "product" },
     collection: "products",
+  },
+  {
+    id: "entity-production-order",
+    entityId: "production-order",
+    fields: ["code", "finishedProductName", "status"],
+    detailPath: "/production/orders/edit/:id",
+    icon: "cog",
+    permission: { action: "view", module: "production-order" },
+    collection: "production-orders",
   },
 ];
 

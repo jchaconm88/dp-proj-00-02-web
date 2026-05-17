@@ -1,6 +1,13 @@
 import type { DenormalizedUnitFields } from "~/features/system/units-of-measure";
 
-export type ProductType = "good" | "service";
+export type ProductType =
+  | "good"
+  | "service"
+  | "raw_material"
+  | "finished_good"
+  | "semi_finished"
+  | "by_product"
+  | "supply";
 
 export interface ProductRecord extends DenormalizedUnitFields {
   id: string;

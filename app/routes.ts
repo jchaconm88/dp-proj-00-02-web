@@ -181,6 +181,34 @@ export default [
       route("edit/:itemId", "routes/sales/sale-orders/SaleOrderItemEdit.tsx"),
     ]),
 
+    // Production
+    route("production/recipes", "routes/production/recipes/RecipesPage.tsx", [
+      route("add", "routes/production/recipes/RecipeAdd.tsx"),
+      route("edit/:id", "routes/production/recipes/RecipeEdit.tsx"),
+    ]),
+    route("production/recipes/:id/materials", "routes/production/recipes/RecipeMaterialsPage.tsx", [
+      route("add", "routes/production/recipes/RecipeMaterialAdd.tsx"),
+      route("edit/:materialId", "routes/production/recipes/RecipeMaterialEdit.tsx"),
+    ]),
+    route("production/recipes/:id/results", "routes/production/recipes/RecipeResultsPage.tsx", [
+      route("add", "routes/production/recipes/RecipeResultAdd.tsx"),
+      route("edit/:resultId", "routes/production/recipes/RecipeResultEdit.tsx"),
+    ]),
+    route("production/orders", "routes/production/orders/OrdersPage.tsx", [
+      route("add", "routes/production/orders/OrderAdd.tsx"),
+      route("edit/:id", "routes/production/orders/OrderEdit.tsx"),
+    ]),
+    route("production/orders/:id", "routes/production/orders/OrderDetailPage.tsx"),
+    route("production/orders/:id/materials", "routes/production/orders/OrderMaterialsPage.tsx"),
+    route("production/orders/:id/results", "routes/production/orders/OrderResultsPage.tsx", [
+      route("edit/:resultId", "routes/production/orders/OrderResultEdit.tsx"),
+    ]),
+    route("production/orders/:id/costs", "routes/production/orders/OrderCostsPage.tsx", [
+      route("add", "routes/production/orders/OrderCostAdd.tsx"),
+      route("edit/:costId", "routes/production/orders/OrderCostEdit.tsx"),
+    ]),
+    route("production/planning", "routes/production/planning/PlanningPage.tsx"),
+
     // Inventory
     route("inventory/product-categories", "routes/inventory/product-categories/ProductCategoriesPage.tsx", [
       route("add", "routes/inventory/product-categories/ProductCategoryAdd.tsx"),

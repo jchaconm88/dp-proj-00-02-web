@@ -222,6 +222,37 @@
     ]
   },
   {
+    "title": "Producción",
+    "enabled": true,
+    "icon": "cog",
+    "children": [
+      {
+        "title": "Recetas",
+        "link": "/production/recipes",
+        "permission": [
+          "view",
+          "recipe"
+        ]
+      },
+      {
+        "title": "Órdenes",
+        "link": "/production/orders",
+        "permission": [
+          "view",
+          "production-order"
+        ]
+      },
+      {
+        "title": "Planificación",
+        "link": "/production/planning",
+        "permission": [
+          "view",
+          "production-order"
+        ]
+      }
+    ]
+  },
+  {
     "title": "Inventario",
     "enabled": true,
     "icon": "box",

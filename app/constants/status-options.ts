@@ -545,6 +545,7 @@ export const MOVEMENT_TYPE: Record<string, StatusOption> = {
 export const MOVEMENT_REFERENCE_TYPE: Record<string, StatusOption> = {
   "purchase-order": { label: "Orden de Compra", severity: "info" },
   "sale-order": { label: "Orden de Venta", severity: "info" },
+  "production-order": { label: "Orden de Producción", severity: "info" },
   manual: { label: "Manual", severity: "secondary" },
 };
 
@@ -559,6 +560,11 @@ export const WAREHOUSE_TYPE: Record<string, StatusOption> = {
 export const PRODUCT_TYPE: Record<string, StatusOption> = {
   good: { label: "Bien", severity: "info" },
   service: { label: "Servicio", severity: "secondary" },
+  raw_material: { label: "Materia prima", severity: "info" },
+  finished_good: { label: "Producto terminado", severity: "success" },
+  semi_finished: { label: "Semielaborado", severity: "warning" },
+  by_product: { label: "Subproducto", severity: "info" },
+  supply: { label: "Insumo", severity: "secondary" },
 };
 
 /** @deprecated Usar `INVOICE_STATUS` (mismo conjunto de claves). */

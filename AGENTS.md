@@ -382,6 +382,14 @@ La regla equivalente para el agente vive en `.cursor/rules/dp-confirm-dialog.mdc
 - **`DpContentSet`:** `variant` puede ser **`"panel" | "inline" | "dialog"`**; con **`visible`** el formulario se muestra en diálogo (PrimeReact `Dialog`).
 - **`updateDocument` + `deleteField()`:** en `~/lib/firestore.service.ts`, **`stripUndefined`** debe preservar instancias de **`FieldValue`** (no tratarlas como objeto plano).
 
+### Carga de catálogos en diálogos (selects)
+
+- Para formularios modales (`*Dialog.tsx`) que usan selects con catálogos remotos (productos, empleados, recursos, servicios, etc.), cargar esos catálogos **al abrir el diálogo** con `useEffect(() => { ... }, [visible])` y guardas `if (!visible) return;`.
+- **No** inflar el `clientLoader` de la página padre con catálogos exclusivos del diálogo; el loader debe priorizar datos de la lista/página.
+- Si el diálogo tiene modo edición, además disparar la carga del registro (`getById`) en un `useEffect` dependiente de `visible` + `id`, y resetear estado cuando abre en modo add.
+- Referencia de patrón en `transport`: `DriverDialog`, `TripChargeDialog`, `TransportRateRuleDialog`.
+- Caso aplicado en `production`: `RecipeMaterialDialog` carga productos al abrir el modal y `RecipeMaterialsPage` ya no pide productos en su `clientLoader`.
+
 Regla Cursor en repo raíz: **`.cursor/rules/dp-web-dpinput-select-dpcontentset.mdc`**.
 
 ### Campos `code` (código) — `DpCodeInput`

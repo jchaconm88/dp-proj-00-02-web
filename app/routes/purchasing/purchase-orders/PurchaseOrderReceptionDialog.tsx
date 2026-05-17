@@ -9,6 +9,8 @@ import type { PurchaseOrderItemRecord } from "~/features/purchasing/purchase-ord
 export interface PurchaseOrderReceptionDialogProps {
   visible: boolean;
   orderId: string;
+  locationId: string;
+  locationName: string;
   items: PurchaseOrderItemRecord[];
   onSuccess?: () => void;
   onHide: () => void;
@@ -26,6 +28,8 @@ interface ReceptionLine {
 export default function PurchaseOrderReceptionDialog({
   visible,
   orderId,
+  locationId,
+  locationName,
   items,
   onSuccess,
   onHide,
@@ -37,6 +41,9 @@ export default function PurchaseOrderReceptionDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+
+  const selectedWarehouse = warehouses.find((w) => w.id === warehouseId);
+  const warehouseName = selectedWarehouse?.name ?? "";
 
   // Load warehouses and build reception lines when dialog opens
   useEffect(() => {
@@ -104,18 +111,24 @@ export default function PurchaseOrderReceptionDialog({
     return qty === 0 || (qty >= 1 && qty <= line.pendingQuantity);
   });
   const noItemsInvalid = touched && !hasAtLeastOneItem;
+  const locationInvalid = touched && (!locationId.trim() || !locationName.trim());
 
-  const valid = !!warehouseId && hasAtLeastOneItem && allQuantitiesValid;
+  const formValid =
+    !!warehouseId &&
+    !!warehouseName &&
+    !!locationId.trim() &&
+    !!locationName.trim() &&
+    hasAtLeastOneItem &&
+    allQuantitiesValid;
 
   const save = async () => {
     setTouched(true);
-    if (!valid) return;
+    if (!formValid) return;
 
     setSaving(true);
     setError(null);
     try {
       const companyId = requireActiveCompanyId();
-      const selectedWarehouse = warehouses.find((w) => w.id === warehouseId);
 
       const receptionItems = lines
         .filter((l) => {
@@ -132,7 +145,9 @@ export default function PurchaseOrderReceptionDialog({
         body: JSON.stringify({
           companyId,
           warehouseId,
-          warehouseName: selectedWarehouse?.name ?? "",
+          warehouseName,
+          locationId: locationId.trim(),
+          locationName: locationName.trim(),
           items: receptionItems,
         }),
       });
@@ -153,7 +168,7 @@ export default function PurchaseOrderReceptionDialog({
       saveLabel="Confirmar recepción"
       onSave={save}
       saving={saving}
-      saveDisabled={!valid}
+      saveDisabled={!formValid}
       visible={visible}
       onHide={onHide}
       dialogWidth="min(56rem, 96vw)"
@@ -162,6 +177,11 @@ export default function PurchaseOrderReceptionDialog({
       errorMessage={error ?? ""}
     >
       <div className="flex flex-col gap-4 pt-2">
+        {(!locationId.trim() || !locationName.trim()) && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            La orden de compra no tiene sede registrada. Edite la OC y guárdela con la sede activa antes de recibir.
+          </p>
+        )}
         <DpInput
           type="select"
           label="Almacén destino *"

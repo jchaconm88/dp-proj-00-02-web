@@ -3,12 +3,23 @@ import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import { denormalizedUnitFromApi } from "~/features/system/units-of-measure";
 import type { ProductRecord, ProductAddInput, ProductEditInput } from "./products.types";
 
+const PRODUCT_TYPES = new Set([
+  "good",
+  "service",
+  "raw_material",
+  "finished_good",
+  "semi_finished",
+  "by_product",
+  "supply",
+]);
+
 function queryParams(companyId: string): string {
   return `?companyId=${encodeURIComponent(companyId)}`;
 }
 
 function toProductRecord(doc: Record<string, unknown>): ProductRecord {
   const u = denormalizedUnitFromApi(doc);
+  const rawType = String(doc.type ?? "").trim();
   return {
     id: String(doc.id ?? ""),
     code: String(doc.code ?? ""),
@@ -16,7 +27,7 @@ function toProductRecord(doc: Record<string, unknown>): ProductRecord {
     description: doc.description ? String(doc.description) : undefined,
     categoryId: doc.categoryId ? String(doc.categoryId) : undefined,
     categoryName: doc.categoryName ? String(doc.categoryName) : undefined,
-    type: doc.type === "service" ? "service" : "good",
+    type: PRODUCT_TYPES.has(rawType) ? (rawType as ProductRecord["type"]) : "good",
     ...u,
     purchasePrice: Number(doc.purchasePrice) || 0,
     salePrice: Number(doc.salePrice) || 0,

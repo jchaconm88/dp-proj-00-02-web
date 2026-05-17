@@ -212,10 +212,15 @@ function DpTableInner<T extends DpTableRow>(
   const [selection, setSelection] = useState<T[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(() => new Date());
   const selectionRef = useRef(selection);
+  const onSelectionChangeRef = useRef(onSelectionChange);
 
   useEffect(() => {
     selectionRef.current = selection;
   }, [selection]);
+
+  useEffect(() => {
+    onSelectionChangeRef.current = onSelectionChange;
+  }, [onSelectionChange]);
 
   // Modo controlado: sincroniza datos externos â†’ estado interno cuando cambia `data` prop
   useEffect(() => {
@@ -300,8 +305,8 @@ function DpTableInner<T extends DpTableRow>(
   );
 
   useEffect(() => {
-    onSelectionChange?.(selection);
-  }, [selection, onSelectionChange]);
+    onSelectionChangeRef.current?.(selection);
+  }, [selection]);
 
   const filters = useMemo(
     () => ({ global: { value: globalFilter, matchMode: "contains" as const } }),

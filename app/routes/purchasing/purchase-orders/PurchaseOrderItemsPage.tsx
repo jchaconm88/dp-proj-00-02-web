@@ -219,6 +219,8 @@ export default function PurchaseOrderItemsPage({ loaderData }: Route.ComponentPr
         <PurchaseOrderReceptionDialog
           visible={receptionVisible}
           orderId={orderId}
+          locationId={order.locationId ?? ""}
+          locationName={order.locationName ?? ""}
           items={items}
           onSuccess={handleReceptionSuccess}
           onHide={() => setReceptionVisible(false)}
