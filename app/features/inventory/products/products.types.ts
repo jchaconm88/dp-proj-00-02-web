@@ -30,6 +30,13 @@ export interface ProductRecord extends DenormalizedUnitFields {
   createBy?: string;
   updateAt?: any;
   updateBy?: string;
+  sku?: string;
+  ecommerceStatus: "active" | "inactive" | "discontinued";
+  imageUrls: string[];
+  categoryPath: string[];
+  variantAttributeTypeCodes: string[];
+  variantAttributeLabels: Record<string, string>;
+  attributeDefinitions?: Record<string, string[]>;
 }
 
 export interface ProductAddInput {
@@ -48,6 +55,11 @@ export interface ProductAddInput {
   minStock?: number;
   maxStock?: number;
   active: boolean;
+  sku?: string;
+  ecommerceStatus?: "active" | "inactive" | "discontinued";
+  imageUrls?: string[];
+  categoryPath?: string[];
+  variantAttributeTypeCodes?: string[];
 }
 
 export type ProductEditInput = Partial<Omit<ProductRecord, "id" | "companyId" | "accountId" | "createAt" | "createBy">>;

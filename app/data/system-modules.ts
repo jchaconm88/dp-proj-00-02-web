@@ -466,6 +466,13 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 3, name: "description", header: "Descripción", filter: true },
     { order: 4, name: "active", header: "Activo", filter: true, format: "bool" },
   ]),
+  withPermissions("variant-attribute-type", "Tipos de variante", [
+    { order: 1, name: "code", header: "Código", filter: true },
+    { order: 2, name: "label", header: "Etiqueta", filter: true },
+    { order: 3, name: "valuesDisplay", header: "Valores", filter: true },
+    { order: 4, name: "sortOrder", header: "Orden", filter: true },
+    { order: 5, name: "active", header: "Activo", filter: true, format: "bool" },
+  ]),
   withPermissions("product", "Productos", [
     { order: 1, name: "code", header: "Código", filter: true },
     { order: 2, name: "name", header: "Nombre", filter: true },

@@ -24,6 +24,11 @@ export interface SaleOrderRecord {
   createBy?: string;
   updateAt?: any;
   updateBy?: string;
+  channel?: string;
+  externalId?: string;
+  paymentStatus?: string;
+  integrationSyncStatus?: string;
+  integrationLastError?: string;
 }
 
 export interface SaleOrderAddInput {

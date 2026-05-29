@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigation } from "react-router";
 import { DpInput } from "~/components/ui";
 import { DpCodeInput } from "~/components/ui";
@@ -11,26 +11,32 @@ import {
 } from "~/features/inventory/products";
 import { getActiveCompanyCurrencyOptions } from "~/features/system/companies";
 import { getProductCategories } from "~/features/inventory/product-categories";
-import { PRODUCT_TYPE, TAX_AFFECTATION_CODE, statusToSelectOptions } from "~/constants/status-options";
+import { getVariantAttributeTypes } from "~/features/inventory/variant-attribute-types";
+import { MultiSelect } from "primereact/multiselect";
+import { PRODUCT_TYPE, TAX_AFFECTATION_CODE, ECOMMERCE_STATUS, statusToSelectOptions } from "~/constants/status-options";
 import { generateSequenceCode } from "~/features/system/sequences";
 import type { UnitOfMeasureRecord } from "~/features/system/units-of-measure";
 import { unitsCatalogToSelectOptions } from "~/features/system/units-of-measure";
+import { requireActiveCompanyId } from "~/lib/tenant";
 
 export interface ProductDialogProps {
   visible: boolean;
   productId: string | null;
   unitsCatalog: UnitOfMeasureRecord[];
+  companyId: string;
   onSuccess?: () => void;
   onHide: () => void;
 }
 
 const PRODUCT_TYPE_OPTIONS = statusToSelectOptions(PRODUCT_TYPE);
 const TAX_AFFECTATION_OPTIONS = statusToSelectOptions(TAX_AFFECTATION_CODE);
+const ECOMMERCE_OPTIONS = statusToSelectOptions(ECOMMERCE_STATUS);
 
 export default function ProductDialog({
   visible,
   productId,
   unitsCatalog,
+  companyId,
   onSuccess,
   onHide,
 }: ProductDialogProps) {
@@ -52,8 +58,14 @@ export default function ProductDialog({
   const [minStock, setMinStock] = useState("");
   const [maxStock, setMaxStock] = useState("");
   const [active, setActive] = useState(true);
+  const [sku, setSku] = useState("");
+  const [ecommerceStatus, setEcommerceStatus] = useState("active");
+  const [imageUrls, setImageUrls] = useState("");
+  const [categoryPath, setCategoryPath] = useState("");
+  const [variantAttributeTypeCodes, setVariantAttributeTypeCodes] = useState<string[]>([]);
 
   const [categoryOptions, setCategoryOptions] = useState<{ label: string; value: string }[]>([]);
+  const [variantTypeOptions, setVariantTypeOptions] = useState<{ label: string; value: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +92,17 @@ export default function ProductDialog({
       })
       .catch(() => setCategoryOptions([]));
 
+    getVariantAttributeTypes()
+      .then(({ items }) => {
+        setVariantTypeOptions(
+          items
+            .filter((t) => t.active !== false)
+            .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
+            .map((t) => ({ label: `${t.label} (${t.code})`, value: t.code }))
+        );
+      })
+      .catch(() => setVariantTypeOptions([]));
+
     if (!productId) {
       setCode("");
       setName("");
@@ -95,6 +118,11 @@ export default function ProductDialog({
       setMinStock("");
       setMaxStock("");
       setActive(true);
+      setSku("");
+      setEcommerceStatus("active");
+      setImageUrls("");
+      setCategoryPath("");
+      setVariantAttributeTypeCodes([]);
       setLoading(false);
       return;
     }
@@ -120,6 +148,13 @@ export default function ProductDialog({
         setMinStock(data.minStock != null ? String(data.minStock) : "");
         setMaxStock(data.maxStock != null ? String(data.maxStock) : "");
         setActive(data.active !== false);
+        setSku(data.sku ?? "");
+        setEcommerceStatus(data.ecommerceStatus ?? "active");
+        setImageUrls(Array.isArray(data.imageUrls) ? data.imageUrls.join(", ") : "");
+        setCategoryPath(Array.isArray(data.categoryPath) ? data.categoryPath.join(", ") : "");
+        setVariantAttributeTypeCodes(
+          Array.isArray(data.variantAttributeTypeCodes) ? data.variantAttributeTypeCodes : []
+        );
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
@@ -179,6 +214,15 @@ export default function ProductDialog({
         }
       }
 
+      const imageUrlsArr = imageUrls
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const categoryPathArr = categoryPath
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const payload = {
         code: finalCode,
         name: name.trim(),
@@ -194,6 +238,11 @@ export default function ProductDialog({
         ...(minStockNum != null ? { minStock: minStockNum } : { minStock: undefined }),
         ...(maxStockNum != null ? { maxStock: maxStockNum } : { maxStock: undefined }),
         active,
+        sku: sku.trim() || undefined,
+        ecommerceStatus: ecommerceStatus as "active" | "inactive" | "discontinued",
+        imageUrls: imageUrlsArr,
+        categoryPath: categoryPathArr,
+        variantAttributeTypeCodes,
       };
 
       if (productId) {
@@ -350,6 +399,68 @@ export default function ProductDialog({
           )}
         </div>
 
+        <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+          <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">E-commerce</h4>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <DpInput
+              type="input"
+              label="SKU"
+              name="sku"
+              value={sku}
+              onChange={setSku}
+              placeholder="Código SKU"
+            />
+            <DpInput
+              type="select"
+              label="Estado e-commerce"
+              name="ecommerceStatus"
+              value={ecommerceStatus}
+              onChange={(v) => setEcommerceStatus(String(v))}
+              options={ECOMMERCE_OPTIONS}
+            />
+          </div>
+          <DpInput
+            type="input"
+            label="URLs de imágenes (separadas por coma)"
+            name="imageUrls"
+            value={imageUrls}
+            onChange={setImageUrls}
+            placeholder="https://..."
+          />
+          <DpInput
+            type="input"
+            label="Ruta de categoría (separada por coma)"
+            name="categoryPath"
+            value={categoryPath}
+            onChange={setCategoryPath}
+            placeholder="Padre, Hijo, Subhijo"
+          />
+        </div>
+
+        <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+          <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            Atributos de variante
+          </h4>
+          <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
+            Tipos aplicables a este producto
+          </label>
+          <MultiSelect
+            value={variantAttributeTypeCodes}
+            options={variantTypeOptions}
+            onChange={(e) => setVariantAttributeTypeCodes((e.value as string[]) ?? [])}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccione talla, color, etc."
+            display="chip"
+            className="w-full"
+            disabled={variantTypeOptions.length === 0}
+          />
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Define qué dimensiones tendrán las variaciones de este producto. Configúre los tipos en
+            Inventario → Tipos de variante.
+          </p>
+        </div>
+
         <DpInput
           type="check"
           label="Activo"
@@ -358,6 +469,8 @@ export default function ProductDialog({
           onChange={setActive}
         />
       </div>
+
+      {/* Variaciones se gestionan en pantalla dedicada: /inventory/products/:id/variants */}
     </DpContentSet>
   );
 }

@@ -567,5 +567,12 @@ export const PRODUCT_TYPE: Record<string, StatusOption> = {
   supply: { label: "Insumo", severity: "secondary" },
 };
 
+/** Estado e-commerce del producto. */
+export const ECOMMERCE_STATUS: Record<string, StatusOption> = {
+  active: { label: "Activo", severity: "success" },
+  inactive: { label: "Inactivo", severity: "secondary" },
+  discontinued: { label: "Descontinuado", severity: "danger" },
+};
+
 /** @deprecated Usar `INVOICE_STATUS` (mismo conjunto de claves). */
 export const INVOICE_SUNAT_STATUS = INVOICE_STATUS;

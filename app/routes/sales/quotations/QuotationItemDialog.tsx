@@ -11,6 +11,7 @@ import {
 } from "~/features/sales/quotations";
 import { getProducts, type ProductRecord } from "~/features/inventory/products";
 import { TAX_AFFECTATION_CODE, statusToSelectOptions } from "~/constants/status-options";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import ProductDialog from "../../inventory/products/ProductDialog";
 import type { UnitOfMeasureRecord } from "~/features/system/units-of-measure";
 import { unitsCatalogToSelectOptions } from "~/features/system/units-of-measure";
@@ -39,6 +40,7 @@ export default function QuotationItemDialog({
   const isEdit = !!itemId;
   const navigation = useNavigation();
   const isNavigating = navigation.state !== "idle";
+  const companyId = requireActiveCompanyId();
 
   const [productId, setProductId] = useState("");
   const [productName, setProductName] = useState("");
@@ -381,6 +383,7 @@ export default function QuotationItemDialog({
         visible={showCreateProductDialog}
         productId={null}
         unitsCatalog={unitsCatalog}
+        companyId={companyId}
         onHide={() => setShowCreateProductDialog(false)}
         onSuccess={() => {
           setShowCreateProductDialog(false);

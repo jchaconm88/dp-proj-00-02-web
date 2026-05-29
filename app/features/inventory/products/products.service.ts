@@ -20,6 +20,7 @@ function queryParams(companyId: string): string {
 function toProductRecord(doc: Record<string, unknown>): ProductRecord {
   const u = denormalizedUnitFromApi(doc);
   const rawType = String(doc.type ?? "").trim();
+  const rawStatus = String(doc.ecommerceStatus ?? "").trim();
   return {
     id: String(doc.id ?? ""),
     code: String(doc.code ?? ""),
@@ -42,6 +43,31 @@ function toProductRecord(doc: Record<string, unknown>): ProductRecord {
     createBy: doc.createBy ? String(doc.createBy) : undefined,
     updateAt: doc.updateAt ?? undefined,
     updateBy: doc.updateBy ? String(doc.updateBy) : undefined,
+    sku: doc.sku ? String(doc.sku) : undefined,
+    ecommerceStatus: rawStatus === "inactive" || rawStatus === "discontinued" ? rawStatus as ProductRecord["ecommerceStatus"] : "active",
+    imageUrls: Array.isArray(doc.imageUrls) ? doc.imageUrls.map(String) : [],
+    categoryPath: Array.isArray(doc.categoryPath) ? doc.categoryPath.map(String) : [],
+    variantAttributeTypeCodes: Array.isArray(doc.variantAttributeTypeCodes)
+      ? doc.variantAttributeTypeCodes.map(String)
+      : [],
+    variantAttributeLabels:
+      doc.variantAttributeLabels && typeof doc.variantAttributeLabels === "object" && !Array.isArray(doc.variantAttributeLabels)
+        ? Object.fromEntries(
+            Object.entries(doc.variantAttributeLabels as Record<string, unknown>).map(([k, v]) => [
+              String(k),
+              String(v ?? ""),
+            ])
+          )
+        : {},
+    attributeDefinitions:
+      doc.attributeDefinitions && typeof doc.attributeDefinitions === "object" && !Array.isArray(doc.attributeDefinitions)
+        ? Object.fromEntries(
+            Object.entries(doc.attributeDefinitions as Record<string, unknown>).map(([k, v]) => [
+              k,
+              Array.isArray(v) ? v.map(String) : [],
+            ])
+          )
+        : undefined,
   };
 }
 
@@ -87,6 +113,13 @@ export async function addProduct(data: ProductAddInput): Promise<string> {
       minStock: data.minStock != null ? Number(data.minStock) : null,
       maxStock: data.maxStock != null ? Number(data.maxStock) : null,
       active: data.active !== false,
+      sku: data.sku?.trim() ?? "",
+      ecommerceStatus: data.ecommerceStatus ?? "active",
+      imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
+      categoryPath: Array.isArray(data.categoryPath) ? data.categoryPath : [],
+      variantAttributeTypeCodes: Array.isArray(data.variantAttributeTypeCodes)
+        ? data.variantAttributeTypeCodes
+        : [],
     }),
   });
   return result.id;
@@ -109,6 +142,13 @@ export async function updateProduct(id: string, data: ProductEditInput): Promise
   if (data.minStock !== undefined) payload.minStock = data.minStock;
   if (data.maxStock !== undefined) payload.maxStock = data.maxStock;
   if (data.active !== undefined) payload.active = data.active;
+  if (data.sku !== undefined) payload.sku = data.sku;
+  if (data.ecommerceStatus !== undefined) payload.ecommerceStatus = data.ecommerceStatus;
+  if (data.imageUrls !== undefined) payload.imageUrls = data.imageUrls;
+  if (data.categoryPath !== undefined) payload.categoryPath = data.categoryPath;
+  if (data.variantAttributeTypeCodes !== undefined) {
+    payload.variantAttributeTypeCodes = data.variantAttributeTypeCodes;
+  }
   await webFetch(`/inventory/products/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify(payload),

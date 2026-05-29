@@ -176,6 +176,7 @@ export default [
       route("add", "routes/sales/sale-orders/SaleOrderAdd.tsx"),
       route("edit/:id", "routes/sales/sale-orders/SaleOrderEdit.tsx"),
     ]),
+    route("sales/ecommerce-orders", "routes/sales/ecommerce-orders/EcommerceOrdersPage.tsx"),
     route("sales/sale-orders/:id/items", "routes/sales/sale-orders/SaleOrderItemsPage.tsx", [
       route("add", "routes/sales/sale-orders/SaleOrderItemAdd.tsx"),
       route("edit/:itemId", "routes/sales/sale-orders/SaleOrderItemEdit.tsx"),
@@ -214,9 +215,17 @@ export default [
       route("add", "routes/inventory/product-categories/ProductCategoryAdd.tsx"),
       route("edit/:id", "routes/inventory/product-categories/ProductCategoryEdit.tsx"),
     ]),
+    route("inventory/variant-attribute-types", "routes/inventory/variant-attribute-types/VariantAttributeTypesPage.tsx", [
+      route("add", "routes/inventory/variant-attribute-types/VariantAttributeTypeAdd.tsx"),
+      route("edit/:id", "routes/inventory/variant-attribute-types/VariantAttributeTypeEdit.tsx"),
+    ]),
     route("inventory/products", "routes/inventory/products/ProductsPage.tsx", [
       route("add", "routes/inventory/products/ProductAdd.tsx"),
       route("edit/:id", "routes/inventory/products/ProductEdit.tsx"),
+    ]),
+    route("inventory/products/:id/variants", "routes/inventory/products/ProductVariantsPage.tsx", [
+      route("add", "routes/inventory/products/ProductVariantAdd.tsx"),
+      route("edit/:variantId", "routes/inventory/products/ProductVariantEdit.tsx"),
     ]),
     route("inventory/warehouses", "routes/inventory/warehouses/WarehousesPage.tsx", [
       route("add", "routes/inventory/warehouses/WarehouseAdd.tsx"),

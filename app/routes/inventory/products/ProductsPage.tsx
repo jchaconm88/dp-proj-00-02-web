@@ -8,9 +8,10 @@ import {
 } from "~/features/inventory/products";
 import { getUnitsOfMeasureCatalog } from "~/features/system/units-of-measure";
 import { getAuthUser } from "~/lib/get-auth-user";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import type { Route } from "./+types/ProductsPage";
 import { DpContent, DpContentHeader } from "~/components/ui";
-import { DpTable, type DpTableRef } from "~/components/ui";
+import { DpTable, DpTColumn, type DpTableRef, type DpTableDefColumn } from "~/components/ui";
 import { DpConfirmDialog } from "~/components/ui";
 import { PRODUCT_TYPE } from "~/constants/status-options";
 import { moduleTableDef } from "~/data/system-modules";
@@ -23,12 +24,16 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-const TABLE_DEF = moduleTableDef("product", { type: PRODUCT_TYPE });
+const TABLE_DEF: DpTableDefColumn[] = [
+  ...moduleTableDef("product", { type: PRODUCT_TYPE }),
+  { header: "Variaciones", column: "variants", order: 99, display: true, filter: false },
+];
 
 export async function clientLoader() {
   await getAuthUser();
   const [{ items }, unitsCatalog] = await Promise.all([getProducts(), getUnitsOfMeasureCatalog()]);
-  return { items, unitsCatalog };
+  const companyId = requireActiveCompanyId();
+  return { items, unitsCatalog, companyId };
 }
 
 export default function ProductsPage({ loaderData }: Route.ComponentProps) {
@@ -58,6 +63,8 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
   const openAdd = () => navigate("/inventory/products/add");
   const openEdit = (row: ProductRecord) =>
     navigate(`/inventory/products/edit/${encodeURIComponent(row.id)}`);
+  const openVariants = (row: ProductRecord) =>
+    navigate(`/inventory/products/${encodeURIComponent(row.id)}/variants`);
 
   const openDeleteConfirm = () => {
     const selected = tableRef.current?.getSelectedRows() ?? [];
@@ -130,13 +137,27 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
         showFilterInHeader={false}
         emptyMessage="No hay productos registrados."
         emptyFilterMessage="No se encontraron productos."
-      />
+      >
+        <DpTColumn name="variants">
+          {(row: ProductRecord) => (
+            <button
+              type="button"
+              className="p-button p-component p-button-text p-button-sm"
+              onClick={() => openVariants(row)}
+              title="Gestionar variaciones"
+            >
+              Variaciones
+            </button>
+          )}
+        </DpTColumn>
+      </DpTable>
 
       {dialogVisible && (
         <ProductDialog
           visible={dialogVisible}
           productId={editId}
           unitsCatalog={loaderData.unitsCatalog}
+          companyId={loaderData.companyId}
           onSuccess={handleSuccess}
           onHide={handleHide}
         />

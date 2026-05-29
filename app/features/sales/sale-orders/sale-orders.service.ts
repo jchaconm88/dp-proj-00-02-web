@@ -40,6 +40,11 @@ function toSaleOrderRecord(doc: Record<string, unknown>): SaleOrderRecord {
     createBy: doc.createBy ? String(doc.createBy) : undefined,
     updateAt: doc.updateAt ?? undefined,
     updateBy: doc.updateBy ? String(doc.updateBy) : undefined,
+    channel: doc.channel ? String(doc.channel) : undefined,
+    externalId: doc.externalId ? String(doc.externalId) : undefined,
+    paymentStatus: doc.paymentStatus ? String(doc.paymentStatus) : undefined,
+    integrationSyncStatus: doc.integrationSyncStatus ? String(doc.integrationSyncStatus) : undefined,
+    integrationLastError: doc.integrationLastError ? String(doc.integrationLastError) : undefined,
   } as SaleOrderRecord;
 }
 
@@ -447,4 +452,22 @@ export async function dispatchSaleOrder(orderId: string, data: DispatchSaleOrder
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+// ─── E-commerce (WooCommerce) ────────────────────────────────────────────────
+
+export async function getEcommerceSaleOrders(): Promise<{ items: SaleOrderRecord[] }> {
+  const companyId = requireActiveCompanyId();
+  const locationId = getLocationFilterId();
+  let qs = `${queryParams(companyId, locationId)}&channel=woocommerce`;
+  const data = await webFetch<{ items: Record<string, unknown>[] }>(`/sales/sale-orders${qs}`);
+  return { items: (data.items ?? []).map(toSaleOrderRecord) };
+}
+
+export async function retrySaleOrderIntegrationWebhook(orderId: string): Promise<void> {
+  const companyId = requireActiveCompanyId();
+  await webFetch<{ ok: boolean }>(
+    `/sales/sale-orders/${encodeURIComponent(orderId)}/integration/retry-webhook?companyId=${encodeURIComponent(companyId)}`,
+    { method: "POST" }
+  );
 }

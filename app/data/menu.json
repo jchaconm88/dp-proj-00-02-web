@@ -218,6 +218,14 @@
           "view",
           "sale-order"
         ]
+      },
+      {
+        "title": "Pedidos e-commerce",
+        "link": "/sales/ecommerce-orders",
+        "permission": [
+          "view",
+          "sale-order"
+        ]
       }
     ]
   },
@@ -263,6 +271,14 @@
         "permission": [
           "view",
           "product-category"
+        ]
+      },
+      {
+        "title": "Tipos de variante",
+        "link": "/inventory/variant-attribute-types",
+        "permission": [
+          "view",
+          "variant-attribute-type"
         ]
       },
       {
