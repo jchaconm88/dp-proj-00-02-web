@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { DpContentSet, DpInput } from "~/components/ui";
-import { createVariant, updateVariant, validateVariantSkuAgainstParent } from "~/features/inventory/products";
+import { createVariant, updateVariant, validateVariantSkuAgainstParent, uploadProductImage } from "~/features/inventory/products";
 import type { ProductVariantInput, ProductVariantRecord } from "~/features/inventory/products";
 import type { VariantAttributeTypeRecord } from "~/features/inventory/variant-attribute-types";
+import ImageUpload, { type PendingImage } from "~/components/ImageUpload";
 
 export function ProductVariantDialog({
   visible,
@@ -30,6 +31,8 @@ export function ProductVariantDialog({
   const [salePricePromo, setSalePricePromo] = useState<number | null>(null);
   const [weightKg, setWeightKg] = useState<number | null>(null);
   const [active, setActive] = useState(true);
+  const [images, setImages] = useState<string[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +51,7 @@ export function ProductVariantDialog({
       setSalePricePromo(variant.salePricePromo);
       setWeightKg(variant.weightKg ?? null);
       setActive(variant.active);
+      setImages(Array.isArray(variant.imageUrls) ? variant.imageUrls : []);
       return;
     }
     setSku("");
@@ -56,6 +60,8 @@ export function ProductVariantDialog({
     setSalePricePromo(null);
     setWeightKg(null);
     setActive(true);
+    setImages([]);
+    setPendingImages([]);
   }, [visible, variant]);
 
   const setAttributeValue = (code: string, value: string) => {
@@ -77,6 +83,18 @@ export function ProductVariantDialog({
       return;
     }
     try {
+      // Upload pending images before saving
+      let allImageUrls = [...images];
+      if (pendingImages.length > 0) {
+        for (const pending of pendingImages) {
+          const result = await uploadProductImage(companyId, productId, pending.file);
+          allImageUrls.push(result.url);
+        }
+        pendingImages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        setPendingImages([]);
+        setImages(allImageUrls);
+      }
+
       const input: ProductVariantInput = {
         sku: sku.trim(),
         attributes,
@@ -84,6 +102,7 @@ export function ProductVariantDialog({
         salePricePromo: salePricePromo ?? undefined,
         weightKg: weightKg ?? undefined,
         active,
+        imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
       };
       if (isEdit && variant) {
         await updateVariant(productId, variant.id, input, companyId);
@@ -171,6 +190,12 @@ export function ProductVariantDialog({
         <label>Activo</label>
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
       </div>
+      <ImageUpload
+        images={images}
+        pendingImages={pendingImages}
+        onImagesChange={setImages}
+        onPendingImagesChange={setPendingImages}
+      />
     </DpContentSet>
   );
 }

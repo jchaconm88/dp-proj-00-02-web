@@ -4,6 +4,7 @@ import type {
   ProductCategoryRecord,
   ProductCategoryAddInput,
   ProductCategoryEditInput,
+  CategoryTreeNode,
 } from "./product-categories.types";
 
 function queryParams(companyId: string): string {
@@ -72,6 +73,63 @@ export async function deleteProductCategory(id: string): Promise<void> {
   await webFetch(`/inventory/product-categories/${encodeURIComponent(id)}${queryParams(companyId)}`, {
     method: "DELETE",
   });
+}
+
+export function buildCategoryTree(categories: ProductCategoryRecord[]): CategoryTreeNode[] {
+  const map = new Map<string, CategoryTreeNode>();
+  const roots: CategoryTreeNode[] = [];
+
+  for (const cat of categories) {
+    map.set(cat.id, {
+      id: cat.id,
+      name: cat.name,
+      code: cat.code,
+      parentCategoryId: cat.parentCategoryId,
+      children: [],
+      depth: 0,
+      active: cat.active,
+    });
+  }
+
+  for (const node of map.values()) {
+    if (node.parentCategoryId && map.has(node.parentCategoryId)) {
+      const parent = map.get(node.parentCategoryId)!;
+      parent.children.push(node);
+      node.depth = parent.depth + 1;
+    } else {
+      node.depth = 1;
+      roots.push(node);
+    }
+  }
+
+  return roots;
+}
+
+export function getCategoryDepth(categoryId: string, categories: ProductCategoryRecord[]): number {
+  const map = new Map(categories.map((c) => [c.id, c]));
+  let depth = 1;
+  let current = map.get(categoryId);
+  while (current?.parentCategoryId && map.has(current.parentCategoryId)) {
+    depth++;
+    current = map.get(current.parentCategoryId);
+    if (depth > 10) break;
+  }
+  return depth;
+}
+
+export function computeCategoryPath(categoryTree: CategoryTreeNode[], categoryId: string): string[] {
+  const flatten = (nodes: CategoryTreeNode[], parentNames: string[]): string[] => {
+    for (const node of nodes) {
+      const names = [...parentNames, node.name];
+      if (node.id === categoryId) return names;
+      if (node.children.length > 0) {
+        const result = flatten(node.children, names);
+        if (result.length > 0) return result;
+      }
+    }
+    return [];
+  };
+  return flatten(categoryTree, []);
 }
 
 export async function deleteProductCategories(ids: string[]): Promise<void> {

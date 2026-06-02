@@ -219,6 +219,10 @@ export default [
       route("add", "routes/inventory/variant-attribute-types/VariantAttributeTypeAdd.tsx"),
       route("edit/:id", "routes/inventory/variant-attribute-types/VariantAttributeTypeEdit.tsx"),
     ]),
+    route("inventory/filterable-attribute-types", "routes/inventory/filterable-attribute-types/FilterableAttributeTypesPage.tsx", [
+      route("add", "routes/inventory/filterable-attribute-types/FilterableAttributeTypeAdd.tsx"),
+      route("edit/:id", "routes/inventory/filterable-attribute-types/FilterableAttributeTypeEdit.tsx"),
+    ]),
     route("inventory/products", "routes/inventory/products/ProductsPage.tsx", [
       route("add", "routes/inventory/products/ProductAdd.tsx"),
       route("edit/:id", "routes/inventory/products/ProductEdit.tsx"),

@@ -463,10 +463,18 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
   withPermissions("product-category", "Categorías de producto", [
     { order: 1, name: "code", header: "Código", filter: true },
     { order: 2, name: "name", header: "Nombre", filter: true },
-    { order: 3, name: "description", header: "Descripción", filter: true },
-    { order: 4, name: "active", header: "Activo", filter: true, format: "bool" },
+    { order: 3, name: "parentCategoryId", header: "Categoría padre", filter: true },
+    { order: 4, name: "description", header: "Descripción", filter: true },
+    { order: 5, name: "active", header: "Activo", filter: true, format: "bool" },
   ]),
   withPermissions("variant-attribute-type", "Tipos de variante", [
+    { order: 1, name: "code", header: "Código", filter: true },
+    { order: 2, name: "label", header: "Etiqueta", filter: true },
+    { order: 3, name: "valuesDisplay", header: "Valores", filter: true },
+    { order: 4, name: "sortOrder", header: "Orden", filter: true },
+    { order: 5, name: "active", header: "Activo", filter: true, format: "bool" },
+  ]),
+  withPermissions("filterable-attribute-type", "Tipos de atributo filtrable", [
     { order: 1, name: "code", header: "Código", filter: true },
     { order: 2, name: "label", header: "Etiqueta", filter: true },
     { order: 3, name: "valuesDisplay", header: "Valores", filter: true },
@@ -482,7 +490,10 @@ export const SYSTEM_MODULES_CATALOG: ModuleRecord[] = [
     { order: 6, name: "purchasePrice", header: "Precio compra", filter: true },
     { order: 7, name: "salePrice", header: "Precio venta", filter: true },
     { order: 8, name: "minStock", header: "Stock mínimo", filter: true },
-    { order: 9, name: "active", header: "Activo", filter: true, format: "bool" },
+    { order: 9, name: "ecommerceStatus", header: "Estado e-commerce", filter: true, format: "status" },
+    { order: 10, name: "woocommerceType", header: "Tipo WC", filter: true, format: "label" },
+    { order: 11, name: "visibleInStore", header: "Visible tienda", filter: true, format: "bool" },
+    { order: 12, name: "active", header: "Activo", filter: true, format: "bool" },
   ]),
   withPermissions("warehouse", "Almacenes", [
     { order: 1, name: "code", header: "Código", filter: true },

@@ -574,5 +574,13 @@ export const ECOMMERCE_STATUS: Record<string, StatusOption> = {
   discontinued: { label: "Descontinuado", severity: "danger" },
 };
 
+/** Tipo WooCommerce de producto. */
+export const WOOCOMMERCE_TYPE: Record<string, StatusOption> = {
+  simple:   { label: "Simple",   severity: "info" },
+  variable: { label: "Variable", severity: "info" },
+  grouped:  { label: "Agrupado", severity: "info" },
+};
+export type WoocommerceType = keyof typeof WOOCOMMERCE_TYPE;
+
 /** @deprecated Usar `INVOICE_STATUS` (mismo conjunto de claves). */
 export const INVOICE_SUNAT_STATUS = INVOICE_STATUS;

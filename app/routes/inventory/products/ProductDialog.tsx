@@ -7,13 +7,24 @@ import {
   getProduct,
   addProduct,
   updateProduct,
+  uploadProductImage,
   type ProductType,
 } from "~/features/inventory/products";
 import { getActiveCompanyCurrencyOptions } from "~/features/system/companies";
 import { getProductCategories } from "~/features/inventory/product-categories";
 import { getVariantAttributeTypes } from "~/features/inventory/variant-attribute-types";
+import {
+  getFilterableAttributeTypes,
+  type FilterableAttributeTypeRecord,
+} from "~/features/inventory/filterable-attribute-types";
+import FilterableAttributesSection from "~/components/FilterableAttributesSection";
 import { MultiSelect } from "primereact/multiselect";
-import { PRODUCT_TYPE, TAX_AFFECTATION_CODE, ECOMMERCE_STATUS, statusToSelectOptions } from "~/constants/status-options";
+import { PRODUCT_TYPE, TAX_AFFECTATION_CODE, ECOMMERCE_STATUS, WOOCOMMERCE_TYPE, statusToSelectOptions } from "~/constants/status-options";
+import CategorySelector from "~/components/CategorySelector";
+import TagInput from "~/components/TagInput";
+import ImageUpload, { type PendingImage } from "~/components/ImageUpload";
+import { buildCategoryTree, type CategoryTreeNode } from "~/features/inventory/product-categories";
+import { getProducts } from "~/features/inventory/products";
 import { generateSequenceCode } from "~/features/system/sequences";
 import type { UnitOfMeasureRecord } from "~/features/system/units-of-measure";
 import { unitsCatalogToSelectOptions } from "~/features/system/units-of-measure";
@@ -31,6 +42,7 @@ export interface ProductDialogProps {
 const PRODUCT_TYPE_OPTIONS = statusToSelectOptions(PRODUCT_TYPE);
 const TAX_AFFECTATION_OPTIONS = statusToSelectOptions(TAX_AFFECTATION_CODE);
 const ECOMMERCE_OPTIONS = statusToSelectOptions(ECOMMERCE_STATUS);
+const WOOCOMMERCE_TYPE_OPTIONS = statusToSelectOptions(WOOCOMMERCE_TYPE);
 
 export default function ProductDialog({
   visible,
@@ -47,7 +59,7 @@ export default function ProductDialog({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [categoryName, setCategoryName] = useState("");
   const [type, setType] = useState<ProductType>("good");
   const [unitOfMeasure, setUnitOfMeasure] = useState("");
@@ -60,12 +72,21 @@ export default function ProductDialog({
   const [active, setActive] = useState(true);
   const [sku, setSku] = useState("");
   const [ecommerceStatus, setEcommerceStatus] = useState("active");
-  const [imageUrls, setImageUrls] = useState("");
-  const [categoryPath, setCategoryPath] = useState("");
+  const [woocommerceType, setWoocommerceType] = useState("simple");
+  const [visibleInStore, setVisibleInStore] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [groupedProductIds, setGroupedProductIds] = useState<string[]>([]);
+  const [imageUrlsArr, setImageUrlsArr] = useState<string[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [variantAttributeTypeCodes, setVariantAttributeTypeCodes] = useState<string[]>([]);
 
-  const [categoryOptions, setCategoryOptions] = useState<{ label: string; value: string }[]>([]);
+  const [filterableAttributes, setFilterableAttributes] = useState<Record<string, string[]>>({});
+  const [filterableAttributeTypes, setFilterableAttributeTypes] = useState<FilterableAttributeTypeRecord[]>([]);
+
+  const [categoryTreeNodes, setCategoryTreeNodes] = useState<CategoryTreeNode[]>([]);
   const [variantTypeOptions, setVariantTypeOptions] = useState<{ label: string; value: string }[]>([]);
+  const [simpleProductOptions, setSimpleProductOptions] = useState<{ label: string; value: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,23 +95,24 @@ export default function ProductDialog({
   const unitOptions = useMemo(() => unitsCatalogToSelectOptions(unitsCatalog), [unitsCatalog]);
 
   const handleHide = () => {
-    if (!saving && !isNavigating) onHide();
+    if (!saving && !isNavigating) {
+      // Revoke blob URLs for any pending images on cancel
+      pendingImages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setPendingImages([]);
+      onHide();
+    }
   };
 
   useEffect(() => {
     if (!visible) return;
     setError(null);
 
-    // Load categories for dropdown
+    // Load categories for tree selector
     getProductCategories()
       .then(({ items }) => {
-        setCategoryOptions(
-          items
-            .filter((c) => c.active !== false)
-            .map((c) => ({ label: c.name, value: c.id }))
-        );
+        setCategoryTreeNodes(buildCategoryTree(items.filter((c) => c.active !== false)));
       })
-      .catch(() => setCategoryOptions([]));
+      .catch(() => setCategoryTreeNodes([]));
 
     getVariantAttributeTypes()
       .then(({ items }) => {
@@ -103,11 +125,26 @@ export default function ProductDialog({
       })
       .catch(() => setVariantTypeOptions([]));
 
+    getFilterableAttributeTypes()
+      .then(({ items }) => {
+        setFilterableAttributeTypes(items);
+      })
+      .catch(() => setFilterableAttributeTypes([]));
+
+    getProducts()
+      .then(({ items }) => {
+        const simple = items.filter((p) => p.woocommerceType === "simple" && p.id !== productId);
+        setSimpleProductOptions(
+          simple.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }))
+        );
+      })
+      .catch(() => setSimpleProductOptions([]));
+
     if (!productId) {
       setCode("");
       setName("");
       setDescription("");
-      setCategoryId("");
+      setCategoryIds([]);
       setCategoryName("");
       setType("good");
       setUnitOfMeasure("");
@@ -120,9 +157,15 @@ export default function ProductDialog({
       setActive(true);
       setSku("");
       setEcommerceStatus("active");
-      setImageUrls("");
-      setCategoryPath("");
+      setWoocommerceType("simple");
+      setVisibleInStore(false);
+      setTags([]);
+      setGroupedProductIds([]);
+      setImageUrlsArr([]);
+      setPendingImages([]);
+      setCategoryPath([]);
       setVariantAttributeTypeCodes([]);
+      setFilterableAttributes({});
       setLoading(false);
       return;
     }
@@ -137,7 +180,7 @@ export default function ProductDialog({
         setCode(data.code ?? "");
         setName(data.name ?? "");
         setDescription(data.description ?? "");
-        setCategoryId(data.categoryId ?? "");
+        setCategoryIds(Array.isArray(data.categoryIds) ? data.categoryIds : data.categoryId ? [data.categoryId] : []);
         setCategoryName(data.categoryName ?? "");
         setType(data.type ?? "good");
         setUnitOfMeasure(data.unitOfMeasureCode || "");
@@ -150,10 +193,19 @@ export default function ProductDialog({
         setActive(data.active !== false);
         setSku(data.sku ?? "");
         setEcommerceStatus(data.ecommerceStatus ?? "active");
-        setImageUrls(Array.isArray(data.imageUrls) ? data.imageUrls.join(", ") : "");
-        setCategoryPath(Array.isArray(data.categoryPath) ? data.categoryPath.join(", ") : "");
+        setWoocommerceType(data.woocommerceType ?? "simple");
+        setVisibleInStore(data.visibleInStore ?? false);
+        setTags(Array.isArray(data.tags) ? data.tags : []);
+        setGroupedProductIds(Array.isArray(data.groupedProductIds) ? data.groupedProductIds : []);
+        setImageUrlsArr(Array.isArray(data.imageUrls) ? data.imageUrls : []);
+        setCategoryPath(Array.isArray(data.categoryPath) ? data.categoryPath : []);
         setVariantAttributeTypeCodes(
           Array.isArray(data.variantAttributeTypeCodes) ? data.variantAttributeTypeCodes : []
+        );
+        setFilterableAttributes(
+          data.filterableAttributes && typeof data.filterableAttributes === "object"
+            ? data.filterableAttributes
+            : {}
         );
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
@@ -196,8 +248,49 @@ export default function ProductDialog({
 
   const valid = nameValid && unitValid && pricesValid && stockValid;
 
+  const visibleInStoreValid = !visibleInStore || (
+    sku.trim().length > 0 &&
+    name.trim().length > 0 &&
+    categoryPath.length > 0 &&
+    (woocommerceType === "grouped" || salePriceNum > 0)
+  );
+
+  /**
+   * Validates and updates filterable attributes.
+   * Only allows values that exist in the type's values array.
+   */
+  const handleFilterableAttributesChange = useCallback(
+    (attrs: Record<string, string[]>) => {
+      const validated: Record<string, string[]> = {};
+      for (const [code, values] of Object.entries(attrs)) {
+        const attrType = filterableAttributeTypes.find((t) => t.code === code);
+        if (!attrType) {
+          // Keep existing values for orphaned codes (type removed from catalog)
+          validated[code] = values;
+          continue;
+        }
+        // Only keep values that exist in the type's values array
+        const validValues = values.filter((v) => attrType.values.includes(v));
+        if (validValues.length > 0) {
+          validated[code] = validValues;
+        }
+      }
+      setFilterableAttributes(validated);
+    },
+    [filterableAttributeTypes]
+  );
+
   const save = async () => {
     if (!valid) return;
+    if (visibleInStore && !visibleInStoreValid) {
+      const missing: string[] = [];
+      if (!sku.trim()) missing.push("SKU");
+      if (!name.trim()) missing.push("Nombre");
+      if (categoryPath.length === 0) missing.push("Categoría");
+      if (woocommerceType !== "grouped" && salePriceNum <= 0) missing.push("Precio venta");
+      setError(`Campos requeridos faltantes para visible en tienda: ${missing.join(", ")}`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -214,21 +307,41 @@ export default function ProductDialog({
         }
       }
 
-      const imageUrlsArr = imageUrls
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const categoryPathArr = categoryPath
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const primaryCategoryId = categoryIds.length > 0 ? categoryIds[0] : undefined;
+      const primaryCategoryName = primaryCategoryId
+        ? categoryTreeNodes.length > 0
+          ? (() => {
+              const flat = (nodes: CategoryTreeNode[]): CategoryTreeNode[] =>
+                nodes.flatMap((n) => [n, ...flat(n.children)]);
+              const found = flat(categoryTreeNodes).find((n) => n.id === primaryCategoryId);
+              return found?.name ?? "";
+            })()
+          : ""
+        : "";
+
+      const groupedIds = woocommerceType === "grouped" ? groupedProductIds : undefined;
+
+      // Upload pending images before saving
+      let allImageUrls = [...imageUrlsArr];
+      if (pendingImages.length > 0) {
+        const targetProductId = productId ?? "__new__";
+        for (const pending of pendingImages) {
+          const result = await uploadProductImage(companyId, targetProductId, pending.file);
+          allImageUrls.push(result.url);
+        }
+        // Clear pending images after successful upload
+        pendingImages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        setPendingImages([]);
+        setImageUrlsArr(allImageUrls);
+      }
 
       const payload = {
         code: finalCode,
         name: name.trim(),
         description: description.trim(),
-        categoryId: categoryId.trim(),
-        categoryName: categoryName.trim(),
+        categoryIds,
+        categoryId: primaryCategoryId,
+        categoryName: primaryCategoryName,
         type,
         unitOfMeasureCode: unitOfMeasure.trim(),
         purchasePrice: purchasePriceNum,
@@ -240,9 +353,14 @@ export default function ProductDialog({
         active,
         sku: sku.trim() || undefined,
         ecommerceStatus: ecommerceStatus as "active" | "inactive" | "discontinued",
-        imageUrls: imageUrlsArr,
-        categoryPath: categoryPathArr,
+        woocommerceType: woocommerceType as "simple" | "variable" | "grouped",
+        visibleInStore,
+        tags,
+        ...(groupedIds != null ? { groupedProductIds: groupedIds } : { groupedProductIds: undefined }),
+        imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
+        categoryPath,
         variantAttributeTypeCodes,
+        filterableAttributes,
       };
 
       if (productId) {
@@ -309,19 +427,19 @@ export default function ProductDialog({
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <DpInput
-            type="select"
-            label="Categoría"
-            name="categoryId"
-            value={categoryId}
-            onChange={(v) => {
-              setCategoryId(String(v));
-              const found = categoryOptions.find((o) => o.value === String(v));
-              setCategoryName(found ? found.label : "");
-            }}
-            options={categoryOptions}
-            placeholder="Seleccione..."
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Categorías
+            </label>
+            <CategorySelector
+              value={categoryIds}
+              onChange={(ids, path) => {
+                setCategoryIds(ids);
+                setCategoryPath(path);
+              }}
+              categories={categoryTreeNodes}
+            />
+          </div>
           <DpInput
             type="select"
             label="Unidad de medida *"
@@ -419,22 +537,52 @@ export default function ProductDialog({
               options={ECOMMERCE_OPTIONS}
             />
           </div>
-          <DpInput
-            type="input"
-            label="URLs de imágenes (separadas por coma)"
-            name="imageUrls"
-            value={imageUrls}
-            onChange={setImageUrls}
-            placeholder="https://..."
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <DpInput
+              type="select"
+              label="Tipo WooCommerce"
+              name="woocommerceType"
+              value={woocommerceType}
+              onChange={(v) => setWoocommerceType(String(v))}
+              options={WOOCOMMERCE_TYPE_OPTIONS}
+            />
+            <DpInput
+              type="check"
+              label="Visible en tienda"
+              name="visibleInStore"
+              value={visibleInStore}
+              onChange={setVisibleInStore}
+            />
+          </div>
+          <TagInput value={tags} onChange={setTags} />
+          {woocommerceType === "grouped" && (
+            <div className="mt-2">
+              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Productos hijos (agrupados)
+              </label>
+              <MultiSelect
+                value={groupedProductIds}
+                options={simpleProductOptions}
+                onChange={(e) => setGroupedProductIds((e.value as string[]) ?? [])}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccione productos simples..."
+                display="chip"
+                className="w-full"
+              />
+            </div>
+          )}
+          <ImageUpload
+            images={imageUrlsArr}
+            pendingImages={pendingImages}
+            onImagesChange={setImageUrlsArr}
+            onPendingImagesChange={setPendingImages}
           />
-          <DpInput
-            type="input"
-            label="Ruta de categoría (separada por coma)"
-            name="categoryPath"
-            value={categoryPath}
-            onChange={setCategoryPath}
-            placeholder="Padre, Hijo, Subhijo"
-          />
+          {categoryPath.length > 0 && (
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              Ruta: {categoryPath.join(" → ")}
+            </div>
+          )}
         </div>
 
         <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
@@ -459,6 +607,18 @@ export default function ProductDialog({
             Define qué dimensiones tendrán las variaciones de este producto. Configúre los tipos en
             Inventario → Tipos de variante.
           </p>
+        </div>
+
+        <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+          <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            Atributos filtrables
+          </h4>
+          <FilterableAttributesSection
+            value={filterableAttributes}
+            onChange={handleFilterableAttributesChange}
+            attributeTypes={filterableAttributeTypes}
+            disabled={saving}
+          />
         </div>
 
         <DpInput

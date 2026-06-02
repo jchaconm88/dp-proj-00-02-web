@@ -22,3 +22,13 @@ export interface ProductCategoryAddInput {
 }
 
 export type ProductCategoryEditInput = Partial<Omit<ProductCategoryRecord, "id" | "companyId" | "accountId" | "createAt" | "createBy" | "updateAt" | "updateBy">>;
+
+export interface CategoryTreeNode {
+  id: string;
+  name: string;
+  code: string;
+  parentCategoryId?: string;
+  children: CategoryTreeNode[];
+  depth: number;
+  active: boolean;
+}

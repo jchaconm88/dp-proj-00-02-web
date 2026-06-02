@@ -1,6 +1,8 @@
 import { webFetch } from "~/lib/backend-client";
 import { requireActiveCompanyId, resolveActiveAccountId } from "~/lib/tenant";
 import { denormalizedUnitFromApi } from "~/features/system/units-of-measure";
+import { getAuthUser } from "~/lib/get-auth-user";
+import { auth } from "~/lib/firebase";
 import type { ProductRecord, ProductAddInput, ProductEditInput } from "./products.types";
 
 const PRODUCT_TYPES = new Set([
@@ -68,6 +70,31 @@ function toProductRecord(doc: Record<string, unknown>): ProductRecord {
             ])
           )
         : undefined,
+    woocommerceType: ["simple", "variable", "grouped"].includes(String(doc.woocommerceType))
+      ? String(doc.woocommerceType) as ProductRecord["woocommerceType"]
+      : "simple",
+    visibleInStore: doc.visibleInStore === true,
+    tags: Array.isArray(doc.tags) ? doc.tags.map(String) : [],
+    categoryIds: Array.isArray(doc.categoryIds) ? doc.categoryIds.map(String) : [],
+    groupedProductIds: Array.isArray(doc.groupedProductIds) ? doc.groupedProductIds.map(String) : [],
+    filterableAttributes:
+      doc.filterableAttributes && typeof doc.filterableAttributes === "object" && !Array.isArray(doc.filterableAttributes)
+        ? Object.fromEntries(
+            Object.entries(doc.filterableAttributes as Record<string, unknown>).map(([k, v]) => [
+              k,
+              Array.isArray(v) ? v.map(String) : [],
+            ])
+          )
+        : undefined,
+    filterableAttributeLabels:
+      doc.filterableAttributeLabels && typeof doc.filterableAttributeLabels === "object" && !Array.isArray(doc.filterableAttributeLabels)
+        ? Object.fromEntries(
+            Object.entries(doc.filterableAttributeLabels as Record<string, unknown>).map(([k, v]) => [
+              String(k),
+              String(v ?? ""),
+            ])
+          )
+        : undefined,
   };
 }
 
@@ -115,11 +142,17 @@ export async function addProduct(data: ProductAddInput): Promise<string> {
       active: data.active !== false,
       sku: data.sku?.trim() ?? "",
       ecommerceStatus: data.ecommerceStatus ?? "active",
+      woocommerceType: data.woocommerceType ?? "simple",
+      visibleInStore: data.visibleInStore === true,
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      categoryIds: Array.isArray(data.categoryIds) ? data.categoryIds : [],
+      groupedProductIds: Array.isArray(data.groupedProductIds) ? data.groupedProductIds : [],
       imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
       categoryPath: Array.isArray(data.categoryPath) ? data.categoryPath : [],
       variantAttributeTypeCodes: Array.isArray(data.variantAttributeTypeCodes)
         ? data.variantAttributeTypeCodes
         : [],
+      filterableAttributes: data.filterableAttributes ?? {},
     }),
   });
   return result.id;
@@ -144,10 +177,18 @@ export async function updateProduct(id: string, data: ProductEditInput): Promise
   if (data.active !== undefined) payload.active = data.active;
   if (data.sku !== undefined) payload.sku = data.sku;
   if (data.ecommerceStatus !== undefined) payload.ecommerceStatus = data.ecommerceStatus;
+  if (data.woocommerceType !== undefined) payload.woocommerceType = data.woocommerceType;
+  if (data.visibleInStore !== undefined) payload.visibleInStore = data.visibleInStore;
+  if (data.tags !== undefined) payload.tags = data.tags;
+  if (data.categoryIds !== undefined) payload.categoryIds = data.categoryIds;
+  if (data.groupedProductIds !== undefined) payload.groupedProductIds = data.groupedProductIds;
   if (data.imageUrls !== undefined) payload.imageUrls = data.imageUrls;
   if (data.categoryPath !== undefined) payload.categoryPath = data.categoryPath;
   if (data.variantAttributeTypeCodes !== undefined) {
     payload.variantAttributeTypeCodes = data.variantAttributeTypeCodes;
+  }
+  if (data.filterableAttributes !== undefined) {
+    payload.filterableAttributes = data.filterableAttributes;
   }
   await webFetch(`/inventory/products/${encodeURIComponent(id)}`, {
     method: "PUT",
@@ -160,6 +201,82 @@ export async function deleteProduct(id: string): Promise<void> {
   await webFetch(`/inventory/products/${encodeURIComponent(id)}${queryParams(companyId)}`, {
     method: "DELETE",
   });
+}
+
+export interface ImageUploadResult {
+  url: string;
+  path: string;
+  filename: string;
+}
+
+function resolveUploadBaseUrl(): string {
+  const configured = String(import.meta.env.VITE_WEB_BACKEND_BASE_URL ?? "").trim().replace(/\/$/, "");
+  if (configured) return `${configured}/web`;
+  return import.meta.env.DEV ? "/web-backend" : "";
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const user = auth.currentUser ?? (await getAuthUser());
+  const token = user ? await user.getIdToken(true) : "";
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function uploadProductImage(
+  companyId: string,
+  productId: string,
+  file: File
+): Promise<ImageUploadResult> {
+  const base = resolveUploadBaseUrl();
+  const headers = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("companyId", companyId);
+  const res = await fetch(`${base}/inventory/products/${encodeURIComponent(productId)}/images`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<ImageUploadResult>;
+}
+
+export async function uploadVariantImage(
+  companyId: string,
+  productId: string,
+  variantId: string,
+  file: File
+): Promise<ImageUploadResult> {
+  const base = resolveUploadBaseUrl();
+  const headers = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("companyId", companyId);
+  const res = await fetch(
+    `${base}/inventory/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/images`,
+    { method: "POST", headers, body: formData }
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<ImageUploadResult>;
+}
+
+export async function deleteProductImage(storagePath: string): Promise<void> {
+  const base = resolveUploadBaseUrl();
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${base}/inventory/products/__delete__/images`, {
+    method: "DELETE",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ storagePath }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
 }
 
 export async function deleteProducts(ids: string[]): Promise<void> {

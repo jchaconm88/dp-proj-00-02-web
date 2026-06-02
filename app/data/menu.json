@@ -282,6 +282,14 @@
         ]
       },
       {
+        "title": "Atributos filtrables",
+        "link": "/inventory/filterable-attribute-types",
+        "permission": [
+          "view",
+          "filterable-attribute-type"
+        ]
+      },
+      {
         "title": "Productos",
         "link": "/inventory/products",
         "permission": [

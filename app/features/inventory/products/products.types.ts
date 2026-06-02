@@ -1,4 +1,5 @@
 import type { DenormalizedUnitFields } from "~/features/system/units-of-measure";
+import type { WoocommerceType } from "~/constants/status-options";
 
 export type ProductType =
   | "good"
@@ -37,6 +38,13 @@ export interface ProductRecord extends DenormalizedUnitFields {
   variantAttributeTypeCodes: string[];
   variantAttributeLabels: Record<string, string>;
   attributeDefinitions?: Record<string, string[]>;
+  woocommerceType: WoocommerceType;
+  visibleInStore: boolean;
+  tags: string[];
+  categoryIds: string[];
+  groupedProductIds: string[];
+  filterableAttributes?: Record<string, string[]>;
+  filterableAttributeLabels?: Record<string, string>;
 }
 
 export interface ProductAddInput {
@@ -60,6 +68,12 @@ export interface ProductAddInput {
   imageUrls?: string[];
   categoryPath?: string[];
   variantAttributeTypeCodes?: string[];
+  woocommerceType?: WoocommerceType;
+  visibleInStore?: boolean;
+  tags?: string[];
+  categoryIds?: string[];
+  groupedProductIds?: string[];
+  filterableAttributes?: Record<string, string[]>;
 }
 
 export type ProductEditInput = Partial<Omit<ProductRecord, "id" | "companyId" | "accountId" | "createAt" | "createBy">>;
