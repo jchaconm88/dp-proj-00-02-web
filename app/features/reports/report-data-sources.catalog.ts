@@ -205,8 +205,8 @@ export const REPORT_DATA_SOURCES: ReportDataSourceCatalogEntry[] = [
     id: "inventory-movements",
     label: "Movimientos de Inventario",
     description:
-      "Movimientos de inventario filtrados por rango de fechas, tipo y almacén. " +
-      "Incluye resumen con total de registros y cantidades por tipo de movimiento.",
+      "Líneas de kardex (inventory-movements) por periodo con cantidades y valorización PPP " +
+      "(unitCostApplied, valueIn, valueOut, balanceValueAfter). Filtros por fechas, almacén, producto o stockLevelKey.",
     parameters: [
       {
         id: "dateFrom",
@@ -243,12 +243,19 @@ export const REPORT_DATA_SOURCES: ReportDataSourceCatalogEntry[] = [
         scope: "run",
         description: "Filtro opcional por producto específico.",
       },
+      {
+        id: "stockLevelKey",
+        label: "Clave de stock (SKU + almacén)",
+        kind: "string",
+        scope: "run",
+        description: "Filtro opcional para kardex valorizado de un ítem (formato productId_warehouseId o variantId_warehouseId).",
+      },
     ],
     granularities: [
       {
         id: "perTrip",
         label: "Por movimiento",
-        description: "Una fila por cada movimiento de inventario en el periodo.",
+        description: "Una fila por cada movimiento de inventario en el periodo (formato Registro de Inventario Permanente).",
       },
     ],
   },
@@ -256,8 +263,7 @@ export const REPORT_DATA_SOURCES: ReportDataSourceCatalogEntry[] = [
     id: "stock-valuation",
     label: "Valorización de Stock",
     description:
-      "Stock actual valorizado (quantity × purchasePrice) por producto y almacén. " +
-      "Muestra el valor monetario del inventario en un momento dado.",
+      "Foto actual en stock-levels: quantity, averageUnitCost (PPP) e inventoryValue por producto/variante y almacén.",
     parameters: [
       {
         id: "warehouseId",

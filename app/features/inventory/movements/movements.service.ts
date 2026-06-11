@@ -63,6 +63,8 @@ export async function addMovement(data: MovementAddInput): Promise<string> {
       warehouseDestinationName: data.warehouseDestinationName?.trim() ?? undefined,
       productId: data.productId.trim(),
       productName: data.productName.trim(),
+      variantId: data.variantId?.trim() || undefined,
+      unitCostApplied: data.unitCostApplied,
       quantity: data.quantity,
       unitOfMeasureCode: data.unitOfMeasure.trim(),
       reason: data.reason?.trim() ?? undefined,

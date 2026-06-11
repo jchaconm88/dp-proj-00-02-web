@@ -215,13 +215,13 @@ export default [
       route("add", "routes/inventory/product-categories/ProductCategoryAdd.tsx"),
       route("edit/:id", "routes/inventory/product-categories/ProductCategoryEdit.tsx"),
     ]),
-    route("inventory/variant-attribute-types", "routes/inventory/variant-attribute-types/VariantAttributeTypesPage.tsx", [
-      route("add", "routes/inventory/variant-attribute-types/VariantAttributeTypeAdd.tsx"),
-      route("edit/:id", "routes/inventory/variant-attribute-types/VariantAttributeTypeEdit.tsx"),
+    route("inventory/product-attribute-types", "routes/inventory/product-attribute-types/ProductAttributeTypesPage.tsx", [
+      route("add", "routes/inventory/product-attribute-types/ProductAttributeTypeAdd.tsx"),
+      route("edit/:id", "routes/inventory/product-attribute-types/ProductAttributeTypeEdit.tsx"),
     ]),
-    route("inventory/filterable-attribute-types", "routes/inventory/filterable-attribute-types/FilterableAttributeTypesPage.tsx", [
-      route("add", "routes/inventory/filterable-attribute-types/FilterableAttributeTypeAdd.tsx"),
-      route("edit/:id", "routes/inventory/filterable-attribute-types/FilterableAttributeTypeEdit.tsx"),
+    route("inventory/product-variants", "routes/inventory/product-variants/ProductVariantsListPage.tsx", [
+      route("add", "routes/inventory/product-variants/ProductVariantGlobalAdd.tsx"),
+      route("edit/:variantId", "routes/inventory/product-variants/ProductVariantGlobalEdit.tsx"),
     ]),
     route("inventory/products", "routes/inventory/products/ProductsPage.tsx", [
       route("add", "routes/inventory/products/ProductAdd.tsx"),
@@ -240,5 +240,6 @@ export default [
       route("edit/:id", "routes/inventory/movements/MovementEdit.tsx"),
     ]),
     route("inventory/stock", "routes/inventory/stock/StockPage.tsx"),
+    route("inventory/kardex", "routes/inventory/kardex/KardexPage.tsx"),
   ]),
 ] satisfies RouteConfig;

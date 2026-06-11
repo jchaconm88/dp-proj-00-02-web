@@ -1,6 +1,11 @@
 import fc from "fast-check";
 import { describe, it, expect } from "vitest";
-import { buildCategoryTree, getCategoryDepth, computeCategoryPath } from "../product-categories.service";
+import {
+  buildCategoryTree,
+  getCategoryDepth,
+  computeCategoryPath,
+  computePrimaryCategoryPath,
+} from "../product-categories.service";
 import type { ProductCategoryRecord } from "../product-categories.types";
 
 function makeCategory(overrides: Partial<ProductCategoryRecord>): ProductCategoryRecord {
@@ -46,6 +51,22 @@ describe("Property 1: Category depth invariant", () => {
       ),
       { numRuns: 100 }
     );
+  });
+});
+
+describe("computePrimaryCategoryPath", () => {
+  it("returns the deepest path when multiple ancestors are selected", () => {
+    const tree = buildCategoryTree([
+      makeCategory({ id: "1", name: "Calzado", code: "C1" }),
+      makeCategory({ id: "2", name: "Zapatillas", code: "C2", parentCategoryId: "1" }),
+      makeCategory({ id: "3", name: "Hombre", code: "C3", parentCategoryId: "2" }),
+    ]);
+    expect(computePrimaryCategoryPath(tree, ["1", "2", "3"])).toEqual([
+      "Calzado",
+      "Zapatillas",
+      "Hombre",
+    ]);
+    expect(computePrimaryCategoryPath(tree, ["1"])).toEqual(["Calzado"]);
   });
 });
 

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigation, useRevalidator } from "react-router";
+import { useNavigate, useNavigation, useRevalidator } from "react-router";
 import { getAuthUser } from "~/lib/get-auth-user";
 import { getStockLevels, type StockLevelRecord } from "~/features/inventory/stock";
 import type { Route } from "./+types/StockPage";
@@ -25,6 +25,7 @@ export async function clientLoader() {
 }
 
 export default function StockPage({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const tableRef = useRef<DpTableRef<StockRow>>(null);
@@ -55,6 +56,11 @@ export default function StockPage({ loaderData }: Route.ComponentProps) {
         data={loaderData.items}
         loading={isLoading}
         tableDef={TABLE_DEF}
+        linkColumn="productName"
+        onDetail={(row) => {
+          const key = encodeURIComponent(row.stockLevelKey);
+          navigate(`/inventory/kardex?stockLevelKey=${key}`);
+        }}
         showFilterInHeader={false}
         emptyMessage="No se encontraron registros de stock"
         emptyFilterMessage="No se encontraron registros de stock"

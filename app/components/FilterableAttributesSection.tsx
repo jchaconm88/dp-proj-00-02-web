@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { MultiSelect } from "primereact/multiselect";
-import type { FilterableAttributeTypeRecord } from "~/features/inventory/filterable-attribute-types";
+import type { ProductAttributeTypeRecord } from "~/features/inventory/product-attribute-types";
 
 export interface FilterableAttributesSectionProps {
   value: Record<string, string[]>;
   onChange: (attrs: Record<string, string[]>) => void;
-  attributeTypes: FilterableAttributeTypeRecord[];
+  attributeTypes: ProductAttributeTypeRecord[];
   disabled?: boolean;
 }
 
@@ -23,7 +23,7 @@ export default function FilterableAttributesSection({
 }: FilterableAttributesSectionProps) {
   // Build a map of attribute types by code for quick lookup
   const typesByCode = useMemo(() => {
-    const map = new Map<string, FilterableAttributeTypeRecord>();
+    const map = new Map<string, ProductAttributeTypeRecord>();
     for (const t of attributeTypes) {
       map.set(t.code, t);
     }

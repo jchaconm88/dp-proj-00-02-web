@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { FilterableAttributeTypeRecord } from "~/features/inventory/filterable-attribute-types";
+import type { ProductAttributeTypeRecord } from "~/features/inventory/product-attribute-types";
 
 /**
  * Tests for FilterableAttributesSection logic.
@@ -10,9 +10,9 @@ import type { FilterableAttributeTypeRecord } from "~/features/inventory/filtera
 // --- Extracted logic functions (mirror component internals) ---
 
 function computeRows(
-  attributeTypes: FilterableAttributeTypeRecord[],
+  attributeTypes: ProductAttributeTypeRecord[],
   value: Record<string, string[]>
-): FilterableAttributeTypeRecord[] {
+): ProductAttributeTypeRecord[] {
   const activeTypes = attributeTypes
     .filter((t) => t.active)
     .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -26,9 +26,9 @@ function computeRows(
 
 function computeOrphanedCodes(
   value: Record<string, string[]>,
-  attributeTypes: FilterableAttributeTypeRecord[]
+  attributeTypes: ProductAttributeTypeRecord[]
 ): string[] {
-  const typesByCode = new Map<string, FilterableAttributeTypeRecord>();
+  const typesByCode = new Map<string, ProductAttributeTypeRecord>();
   for (const t of attributeTypes) {
     typesByCode.set(t.code, t);
   }
@@ -50,7 +50,7 @@ function computeOrphanedValues(
 
 // --- Test data helpers ---
 
-function makeType(overrides: Partial<FilterableAttributeTypeRecord> & { code: string }): FilterableAttributeTypeRecord {
+function makeType(overrides: Partial<ProductAttributeTypeRecord> & { code: string }): ProductAttributeTypeRecord {
   return {
     id: overrides.id ?? overrides.code,
     code: overrides.code,
@@ -60,6 +60,10 @@ function makeType(overrides: Partial<FilterableAttributeTypeRecord> & { code: st
     active: overrides.active ?? true,
     companyId: "company1",
     accountId: "account1",
+    useForVariants: overrides.useForVariants ?? false,
+    useForFilters: overrides.useForFilters ?? true,
+    isColor: overrides.isColor ?? false,
+    valueColors: overrides.valueColors ?? {},
   };
 }
 

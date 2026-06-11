@@ -11,6 +11,9 @@ export interface ProductVariantRecord {
   imageUrls: string[];
   active: boolean;
   updatedAt: string | null;
+  standardUnitCost?: number | null;
+  productName?: string;
+  productSku?: string;
 }
 
 export interface ProductVariantInput {
@@ -23,4 +26,5 @@ export interface ProductVariantInput {
   weightKg?: number;
   imageUrls?: string[];
   active?: boolean;
+  standardUnitCost?: number | null;
 }

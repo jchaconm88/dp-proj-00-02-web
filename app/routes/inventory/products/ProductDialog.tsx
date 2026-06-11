@@ -12,18 +12,23 @@ import {
 } from "~/features/inventory/products";
 import { getActiveCompanyCurrencyOptions } from "~/features/system/companies";
 import { getProductCategories } from "~/features/inventory/product-categories";
-import { getVariantAttributeTypes } from "~/features/inventory/variant-attribute-types";
 import {
-  getFilterableAttributeTypes,
-  type FilterableAttributeTypeRecord,
-} from "~/features/inventory/filterable-attribute-types";
+  getProductAttributeTypes,
+  variantAttributeTypes,
+  filterableAttributeTypes,
+  type ProductAttributeTypeRecord,
+} from "~/features/inventory/product-attribute-types";
 import FilterableAttributesSection from "~/components/FilterableAttributesSection";
 import { MultiSelect } from "primereact/multiselect";
 import { PRODUCT_TYPE, TAX_AFFECTATION_CODE, ECOMMERCE_STATUS, WOOCOMMERCE_TYPE, statusToSelectOptions } from "~/constants/status-options";
 import CategorySelector from "~/components/CategorySelector";
 import TagInput from "~/components/TagInput";
 import ImageUpload, { type PendingImage } from "~/components/ImageUpload";
-import { buildCategoryTree, type CategoryTreeNode } from "~/features/inventory/product-categories";
+import {
+  buildCategoryTree,
+  computePrimaryCategoryPath,
+  type CategoryTreeNode,
+} from "~/features/inventory/product-categories";
 import { getProducts } from "~/features/inventory/products";
 import { generateSequenceCode } from "~/features/system/sequences";
 import type { UnitOfMeasureRecord } from "~/features/system/units-of-measure";
@@ -79,10 +84,10 @@ export default function ProductDialog({
   const [imageUrlsArr, setImageUrlsArr] = useState<string[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
-  const [variantAttributeTypeCodes, setVariantAttributeTypeCodes] = useState<string[]>([]);
+  const [attributeTypeCodes, setAttributeTypeCodes] = useState<string[]>([]);
 
   const [filterableAttributes, setFilterableAttributes] = useState<Record<string, string[]>>({});
-  const [filterableAttributeTypes, setFilterableAttributeTypes] = useState<FilterableAttributeTypeRecord[]>([]);
+  const [filterableAttributeTypesList, setFilterableAttributeTypesList] = useState<ProductAttributeTypeRecord[]>([]);
 
   const [categoryTreeNodes, setCategoryTreeNodes] = useState<CategoryTreeNode[]>([]);
   const [variantTypeOptions, setVariantTypeOptions] = useState<{ label: string; value: string }[]>([]);
@@ -114,22 +119,19 @@ export default function ProductDialog({
       })
       .catch(() => setCategoryTreeNodes([]));
 
-    getVariantAttributeTypes()
+    getProductAttributeTypes()
       .then(({ items }) => {
         setVariantTypeOptions(
-          items
-            .filter((t) => t.active !== false)
+          variantAttributeTypes(items)
             .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
             .map((t) => ({ label: `${t.label} (${t.code})`, value: t.code }))
         );
+        setFilterableAttributeTypesList(filterableAttributeTypes(items));
       })
-      .catch(() => setVariantTypeOptions([]));
-
-    getFilterableAttributeTypes()
-      .then(({ items }) => {
-        setFilterableAttributeTypes(items);
-      })
-      .catch(() => setFilterableAttributeTypes([]));
+      .catch(() => {
+        setVariantTypeOptions([]);
+        setFilterableAttributeTypesList([]);
+      });
 
     getProducts()
       .then(({ items }) => {
@@ -164,7 +166,7 @@ export default function ProductDialog({
       setImageUrlsArr([]);
       setPendingImages([]);
       setCategoryPath([]);
-      setVariantAttributeTypeCodes([]);
+      setAttributeTypeCodes([]);
       setFilterableAttributes({});
       setLoading(false);
       return;
@@ -199,8 +201,8 @@ export default function ProductDialog({
         setGroupedProductIds(Array.isArray(data.groupedProductIds) ? data.groupedProductIds : []);
         setImageUrlsArr(Array.isArray(data.imageUrls) ? data.imageUrls : []);
         setCategoryPath(Array.isArray(data.categoryPath) ? data.categoryPath : []);
-        setVariantAttributeTypeCodes(
-          Array.isArray(data.variantAttributeTypeCodes) ? data.variantAttributeTypeCodes : []
+        setAttributeTypeCodes(
+          Array.isArray(data.attributeTypeCodes) ? data.attributeTypeCodes : []
         );
         setFilterableAttributes(
           data.filterableAttributes && typeof data.filterableAttributes === "object"
@@ -211,6 +213,11 @@ export default function ProductDialog({
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar."))
       .finally(() => setLoading(false));
   }, [visible, productId]);
+
+  useEffect(() => {
+    if (!visible || categoryIds.length === 0 || categoryTreeNodes.length === 0) return;
+    setCategoryPath(computePrimaryCategoryPath(categoryTreeNodes, categoryIds));
+  }, [visible, categoryIds, categoryTreeNodes]);
 
   useEffect(() => {
     if (!visible) return;
@@ -263,7 +270,7 @@ export default function ProductDialog({
     (attrs: Record<string, string[]>) => {
       const validated: Record<string, string[]> = {};
       for (const [code, values] of Object.entries(attrs)) {
-        const attrType = filterableAttributeTypes.find((t) => t.code === code);
+        const attrType = filterableAttributeTypesList.find((t) => t.code === code);
         if (!attrType) {
           // Keep existing values for orphaned codes (type removed from catalog)
           validated[code] = values;
@@ -277,7 +284,7 @@ export default function ProductDialog({
       }
       setFilterableAttributes(validated);
     },
-    [filterableAttributeTypes]
+    [filterableAttributeTypesList]
   );
 
   const save = async () => {
@@ -357,9 +364,9 @@ export default function ProductDialog({
         visibleInStore,
         tags,
         ...(groupedIds != null ? { groupedProductIds: groupedIds } : { groupedProductIds: undefined }),
-        imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
+        imageUrls: productId ? allImageUrls : allImageUrls.length > 0 ? allImageUrls : undefined,
         categoryPath,
-        variantAttributeTypeCodes,
+        attributeTypeCodes,
         filterableAttributes,
       };
 
@@ -593,9 +600,9 @@ export default function ProductDialog({
             Tipos aplicables a este producto
           </label>
           <MultiSelect
-            value={variantAttributeTypeCodes}
+            value={attributeTypeCodes}
             options={variantTypeOptions}
-            onChange={(e) => setVariantAttributeTypeCodes((e.value as string[]) ?? [])}
+            onChange={(e) => setAttributeTypeCodes((e.value as string[]) ?? [])}
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccione talla, color, etc."
@@ -605,7 +612,7 @@ export default function ProductDialog({
           />
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Define qué dimensiones tendrán las variaciones de este producto. Configúre los tipos en
-            Inventario → Tipos de variante.
+            Inventario → Tipos de atributo (marcar «Usar en variantes»).
           </p>
         </div>
 
@@ -616,7 +623,7 @@ export default function ProductDialog({
           <FilterableAttributesSection
             value={filterableAttributes}
             onChange={handleFilterableAttributesChange}
-            attributeTypes={filterableAttributeTypes}
+            attributeTypes={filterableAttributeTypesList}
             disabled={saving}
           />
         </div>

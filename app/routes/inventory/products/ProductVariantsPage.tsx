@@ -4,7 +4,11 @@ import { DpContentInfo, DpContentHeader, DpConfirmDialog, DpTable, type DpTableD
 import { getAuthUser } from "~/lib/get-auth-user";
 import { withUrlSearch } from "~/lib/url-search";
 import { deleteVariant, getProduct, getVariants, type ProductRecord, type ProductVariantRecord } from "~/features/inventory/products";
-import { getVariantAttributeTypes, type VariantAttributeTypeRecord } from "~/features/inventory/variant-attribute-types";
+import {
+  getProductAttributeTypes,
+  variantAttributeTypes,
+  type ProductAttributeTypeRecord,
+} from "~/features/inventory/product-attribute-types";
 import type { Route } from "./+types/ProductVariantsPage";
 import { ProductVariantDialog } from "./ProductVariantDialog";
 
@@ -19,15 +23,15 @@ const TABLE_DEF: DpTableDefColumn[] = [
 
 function resolveApplicableTypes(
   product: ProductRecord,
-  catalog: VariantAttributeTypeRecord[]
-): VariantAttributeTypeRecord[] {
-  const codes = new Set(product.variantAttributeTypeCodes ?? []);
+  catalog: ProductAttributeTypeRecord[]
+): ProductAttributeTypeRecord[] {
+  const codes = new Set(product.attributeTypeCodes ?? []);
   return catalog.filter((t) => t.active !== false && codes.has(t.code));
 }
 
 function formatAttributesDisplay(
   attributes: Record<string, string>,
-  types: VariantAttributeTypeRecord[]
+  types: ProductAttributeTypeRecord[]
 ): string {
   const labelByCode = new Map(types.map((t) => [t.code, t.label]));
   return Object.entries(attributes)
@@ -48,10 +52,11 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   if (!productId) throw new Error("Producto no encontrado");
   const product = await getProduct(productId);
   if (!product) throw new Error("Producto no encontrado");
-  const [{ items: attributeTypes }, variants] = await Promise.all([
-    getVariantAttributeTypes(),
+  const [{ items: allTypes }, variants] = await Promise.all([
+    getProductAttributeTypes(),
     getVariants(productId, product.companyId),
   ]);
+  const attributeTypes = variantAttributeTypes(allTypes);
   const applicableTypes = resolveApplicableTypes(product, attributeTypes);
   return { product, productId, variants, companyId: product.companyId, applicableTypes, attributeTypes };
 }

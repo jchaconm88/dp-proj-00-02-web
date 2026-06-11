@@ -35,8 +35,8 @@ export interface ProductRecord extends DenormalizedUnitFields {
   ecommerceStatus: "active" | "inactive" | "discontinued";
   imageUrls: string[];
   categoryPath: string[];
-  variantAttributeTypeCodes: string[];
-  variantAttributeLabels: Record<string, string>;
+  attributeTypeCodes: string[];
+  attributeLabels: Record<string, string>;
   attributeDefinitions?: Record<string, string[]>;
   woocommerceType: WoocommerceType;
   visibleInStore: boolean;
@@ -67,7 +67,7 @@ export interface ProductAddInput {
   ecommerceStatus?: "active" | "inactive" | "discontinued";
   imageUrls?: string[];
   categoryPath?: string[];
-  variantAttributeTypeCodes?: string[];
+  attributeTypeCodes?: string[];
   woocommerceType?: WoocommerceType;
   visibleInStore?: boolean;
   tags?: string[];

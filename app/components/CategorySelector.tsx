@@ -1,6 +1,6 @@
 import { TreeSelect, type TreeSelectSelectionKeysType, type TreeSelectChangeEvent } from "primereact/treeselect";
 import type { CategoryTreeNode } from "~/features/inventory/product-categories";
-import { computeCategoryPath } from "~/features/inventory/product-categories";
+import { computePrimaryCategoryPath } from "~/features/inventory/product-categories";
 
 interface TreeNode {
   key: string;
@@ -47,7 +47,7 @@ export default function CategorySelector({
         }
       }
     }
-    const primaryPath = ids.length > 0 ? computeCategoryPath(categories, ids[0]) : [];
+    const primaryPath = ids.length > 0 ? computePrimaryCategoryPath(categories, ids) : [];
     onChange(ids, primaryPath);
   };
 

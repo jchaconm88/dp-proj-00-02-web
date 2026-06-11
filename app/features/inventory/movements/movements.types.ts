@@ -13,7 +13,9 @@ export interface InventoryMovementRecord extends DenormalizedUnitFields {
   warehouseDestinationName?: string;
   productId: string;
   productName: string;
+  variantId?: string;
   quantity: number;
+  unitCostApplied?: number;
   reason?: string;
   referenceType?: MovementReferenceType;
   referenceId?: string;
@@ -36,7 +38,9 @@ export interface MovementAddInput {
   warehouseDestinationName?: string;
   productId: string;
   productName: string;
+  variantId?: string;
   quantity: number;
+  unitCostApplied?: number;
   /** Código de unidad del catálogo (ej. `unit`, `kg`). */
   unitOfMeasure: string;
   reason?: string;

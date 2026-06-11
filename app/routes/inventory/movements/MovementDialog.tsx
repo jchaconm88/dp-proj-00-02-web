@@ -8,7 +8,8 @@ import {
   type MovementType,
   type MovementReferenceType,
 } from "~/features/inventory/movements";
-import { getProducts, type ProductRecord } from "~/features/inventory/products";
+import { getProducts, getVariants, type ProductRecord, type ProductVariantRecord } from "~/features/inventory/products";
+import { requireActiveCompanyId } from "~/lib/tenant";
 import { getWarehouses, type WarehouseRecord } from "~/features/inventory/warehouses";
 import { generateSequenceCode } from "~/features/system/sequences";
 import {
@@ -43,6 +44,8 @@ export default function MovementDialog({
   const [code, setCode] = useState("");
   const [type, setType] = useState<MovementType | "">("");
   const [productId, setProductId] = useState("");
+  const [variantId, setVariantId] = useState("");
+  const [unitCostApplied, setUnitCostApplied] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [warehouseDestinationId, setWarehouseDestinationId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -54,6 +57,7 @@ export default function MovementDialog({
   const [notes, setNotes] = useState("");
 
   const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [variants, setVariants] = useState<ProductVariantRecord[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseRecord[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,6 +73,9 @@ export default function MovementDialog({
     setCode("");
     setType("");
     setProductId("");
+    setVariantId("");
+    setUnitCostApplied("");
+    setVariants([]);
     setWarehouseId("");
     setWarehouseDestinationId("");
     setQuantity("");
@@ -103,6 +110,14 @@ export default function MovementDialog({
     label: `${p.code ? p.code + " - " : ""}${p.name}`,
   }));
 
+  const variantOptions = [
+    { value: "", label: "(Sin variante — producto base)" },
+    ...variants.map((v) => ({
+      value: v.id,
+      label: `${v.sku}${Object.keys(v.attributes).length ? ` · ${Object.values(v.attributes).join(", ")}` : ""}`,
+    })),
+  ];
+
   const warehouseOptions = warehouses.map((w) => ({
     value: w.id,
     label: `${w.code ? w.code + " - " : ""}${w.name}`,
@@ -115,15 +130,30 @@ export default function MovementDialog({
       label: `${w.code ? w.code + " - " : ""}${w.name}`,
     }));
 
-  const handleProductChange = (v: string) => {
+  const handleProductChange = async (v: string) => {
     setProductId(v);
+    setVariantId("");
     const p = products.find((x) => x.id === v);
     if (p) setUnitOfMeasure((p.unitOfMeasureCode || "unit").trim());
     else setUnitOfMeasure("");
+    if (!v) {
+      setVariants([]);
+      return;
+    }
+    try {
+      const companyId = requireActiveCompanyId();
+      const list = await getVariants(v, companyId);
+      setVariants(list.filter((x) => x.active !== false));
+    } catch {
+      setVariants([]);
+    }
   };
 
   const isTransfer = type === "transfer";
+  const needsUnitCost = type === "entry";
   const quantityNum = parseFloat(quantity);
+  const unitCostNum = parseFloat(unitCostApplied);
+  const unitCostValid = !needsUnitCost || (!isNaN(unitCostNum) && unitCostNum >= 0);
   const quantityValid = !isNaN(quantityNum) && quantityNum > 0;
 
   const unitInCatalog =
@@ -145,6 +175,7 @@ export default function MovementDialog({
     !!type &&
     !!date &&
     unitInCatalog &&
+    unitCostValid &&
     (!isTransfer || (!!warehouseDestinationId && warehouseDestinationId !== warehouseId));
 
   const save = async () => {
@@ -174,6 +205,8 @@ export default function MovementDialog({
         type: type as MovementType,
         productId,
         productName: selectedProduct?.name ?? "",
+        variantId: variantId || undefined,
+        unitCostApplied: needsUnitCost ? unitCostNum : undefined,
         warehouseId,
         warehouseName: selectedWarehouse?.name ?? "",
         warehouseDestinationId: isTransfer ? warehouseDestinationId : undefined,
@@ -250,6 +283,25 @@ export default function MovementDialog({
           </p>
         )}
 
+        {variants.length > 0 && (
+          <DpInput
+            type="select"
+            label="Variación"
+            name="variantId"
+            value={variantId}
+            onChange={(v) => {
+              const id = String(v);
+              setVariantId(id);
+              const variant = variants.find((x) => x.id === id);
+              if (variant?.standardUnitCost != null) {
+                setUnitCostApplied(String(variant.standardUnitCost));
+              }
+            }}
+            options={variantOptions}
+            placeholder="Opcional"
+          />
+        )}
+
         <DpInput
           type="select"
           label="Unidad de medida *"
@@ -318,6 +370,16 @@ export default function MovementDialog({
             onChange={setDate}
           />
         </div>
+        {needsUnitCost && (
+          <DpInput
+            type="number"
+            label="Costo unitario aplicado *"
+            name="unitCostApplied"
+            value={unitCostApplied}
+            onChange={setUnitCostApplied}
+            placeholder="0.00"
+          />
+        )}
         {quantityInvalid && (
           <p className="mt-[-0.5rem] text-xs text-red-600 dark:text-red-400">
             La cantidad debe ser mayor a 0.

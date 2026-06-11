@@ -274,24 +274,24 @@
         ]
       },
       {
-        "title": "Tipos de variante",
-        "link": "/inventory/variant-attribute-types",
+        "title": "Tipos de atributo",
+        "link": "/inventory/product-attribute-types",
         "permission": [
           "view",
-          "variant-attribute-type"
-        ]
-      },
-      {
-        "title": "Atributos filtrables",
-        "link": "/inventory/filterable-attribute-types",
-        "permission": [
-          "view",
-          "filterable-attribute-type"
+          "product-attribute-type"
         ]
       },
       {
         "title": "Productos",
         "link": "/inventory/products",
+        "permission": [
+          "view",
+          "product"
+        ]
+      },
+      {
+        "title": "Variaciones",
+        "link": "/inventory/product-variants",
         "permission": [
           "view",
           "product"
@@ -319,6 +319,14 @@
         "permission": [
           "view",
           "stock-level"
+        ]
+      },
+      {
+        "title": "Kardex",
+        "link": "/inventory/kardex",
+        "permission": [
+          "view",
+          "inventory-kardex"
         ]
       }
     ]

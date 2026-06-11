@@ -132,6 +132,19 @@ export function computeCategoryPath(categoryTree: CategoryTreeNode[], categoryId
   return flatten(categoryTree, []);
 }
 
+/** Longest root-to-node path among selected category ids (deepest branch). */
+export function computePrimaryCategoryPath(
+  categoryTree: CategoryTreeNode[],
+  selectedIds: string[]
+): string[] {
+  let best: string[] = [];
+  for (const id of selectedIds) {
+    const path = computeCategoryPath(categoryTree, id);
+    if (path.length > best.length) best = path;
+  }
+  return best;
+}
+
 export async function deleteProductCategories(ids: string[]): Promise<void> {
   const companyId = requireActiveCompanyId();
   await Promise.all(

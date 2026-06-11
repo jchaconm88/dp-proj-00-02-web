@@ -7,11 +7,17 @@ function toStockLevelRecord(doc: Record<string, unknown>): StockLevelRecord {
   const u = denormalizedUnitFromApi(doc);
   return {
     id: String(doc.id ?? ""),
+    stockLevelKey: String(doc.stockLevelKey ?? doc.id ?? ""),
     productId: String(doc.productId ?? ""),
     productName: String(doc.productName ?? ""),
+    variantId: doc.variantId ? String(doc.variantId) : undefined,
+    variantSku: doc.variantSku ? String(doc.variantSku) : undefined,
     warehouseId: String(doc.warehouseId ?? ""),
     warehouseName: String(doc.warehouseName ?? ""),
     quantity: Number(doc.quantity) || 0,
+    averageUnitCost: Number(doc.averageUnitCost) || 0,
+    inventoryValue: Number(doc.inventoryValue) || 0,
+    currencyCode: String(doc.currencyCode ?? ""),
     ...u,
     lastMovementDate: String(doc.lastMovementDate ?? ""),
     locationId: String(doc.locationId ?? ""),

@@ -49,13 +49,13 @@ function toProductRecord(doc: Record<string, unknown>): ProductRecord {
     ecommerceStatus: rawStatus === "inactive" || rawStatus === "discontinued" ? rawStatus as ProductRecord["ecommerceStatus"] : "active",
     imageUrls: Array.isArray(doc.imageUrls) ? doc.imageUrls.map(String) : [],
     categoryPath: Array.isArray(doc.categoryPath) ? doc.categoryPath.map(String) : [],
-    variantAttributeTypeCodes: Array.isArray(doc.variantAttributeTypeCodes)
-      ? doc.variantAttributeTypeCodes.map(String)
+    attributeTypeCodes: Array.isArray(doc.attributeTypeCodes)
+      ? doc.attributeTypeCodes.map(String)
       : [],
-    variantAttributeLabels:
-      doc.variantAttributeLabels && typeof doc.variantAttributeLabels === "object" && !Array.isArray(doc.variantAttributeLabels)
+    attributeLabels:
+      doc.attributeLabels && typeof doc.attributeLabels === "object" && !Array.isArray(doc.attributeLabels)
         ? Object.fromEntries(
-            Object.entries(doc.variantAttributeLabels as Record<string, unknown>).map(([k, v]) => [
+            Object.entries(doc.attributeLabels as Record<string, unknown>).map(([k, v]) => [
               String(k),
               String(v ?? ""),
             ])
@@ -149,8 +149,8 @@ export async function addProduct(data: ProductAddInput): Promise<string> {
       groupedProductIds: Array.isArray(data.groupedProductIds) ? data.groupedProductIds : [],
       imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
       categoryPath: Array.isArray(data.categoryPath) ? data.categoryPath : [],
-      variantAttributeTypeCodes: Array.isArray(data.variantAttributeTypeCodes)
-        ? data.variantAttributeTypeCodes
+      attributeTypeCodes: Array.isArray(data.attributeTypeCodes)
+        ? data.attributeTypeCodes
         : [],
       filterableAttributes: data.filterableAttributes ?? {},
     }),
@@ -184,8 +184,8 @@ export async function updateProduct(id: string, data: ProductEditInput): Promise
   if (data.groupedProductIds !== undefined) payload.groupedProductIds = data.groupedProductIds;
   if (data.imageUrls !== undefined) payload.imageUrls = data.imageUrls;
   if (data.categoryPath !== undefined) payload.categoryPath = data.categoryPath;
-  if (data.variantAttributeTypeCodes !== undefined) {
-    payload.variantAttributeTypeCodes = data.variantAttributeTypeCodes;
+  if (data.attributeTypeCodes !== undefined) {
+    payload.attributeTypeCodes = data.attributeTypeCodes;
   }
   if (data.filterableAttributes !== undefined) {
     payload.filterableAttributes = data.filterableAttributes;
@@ -255,7 +255,7 @@ export async function uploadVariantImage(
   formData.append("file", file);
   formData.append("companyId", companyId);
   const res = await fetch(
-    `${base}/inventory/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/images`,
+    `${base}/inventory/product-variants/${encodeURIComponent(variantId)}/images`,
     { method: "POST", headers, body: formData }
   );
   if (!res.ok) {
